@@ -1,0 +1,725 @@
+.auth-scene {
+  --primary: #005cf0;
+  --foreground: #071348;
+  --muted-foreground: #56658b;
+  --input: #d5deeb;
+  color-scheme: light;
+  color: #071348;
+  min-height: 100svh;
+  isolation: isolate;
+  position: relative;
+  overflow: clip;
+  background:
+    linear-gradient(180deg, transparent 58%, #b4e6d1 85%, #a0decd 100%),
+    radial-gradient(ellipse at 50% 22%, #effaff 0%, #cceaff 42%, #b7dffc 70%, #b4e6d1 100%);
+  padding: 21px 16px 40px;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+.auth-landscape {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  width: 31%;
+  pointer-events: none;
+  background-image: url('../../assets/auth-reference.png');
+  background-size: max(100vw, 150vh) 100%;
+  background-repeat: no-repeat;
+}
+.auth-landscape-left {
+  left: 0;
+  background-position: left center;
+  mask-image: linear-gradient(to right, #000 45%, transparent);
+}
+.auth-landscape-right {
+  right: 0;
+  background-position: right center;
+  mask-image: linear-gradient(to left, #000 45%, transparent);
+}
+.auth-brand {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.auth-brand > span {
+  font-size: clamp(32px, 3vw, 49px);
+  font-weight: 800;
+  gap: 15px;
+  letter-spacing: -1.6px;
+  line-height: 1;
+}
+.auth-brand svg {
+  width: 65px;
+  height: 65px;
+}
+
+.auth-brand svg g circle {
+  fill: white;
+}
+
+.auth-language {
+  position: absolute;
+  right: 0;
+  top: 0;
+  color: #324a79;
+}
+.auth-composition {
+  width: min(626px, 100%);
+  margin: 16px auto 0;
+}
+.auth-greeter {
+  position: relative;
+  height: 240px;
+}
+.auth-kap-slot {
+  width: 290px;
+  height: 255px;
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.auth-greeting {
+  position: absolute;
+  left: 72%;
+  top: 9px;
+  width: 246px;
+  padding: 15px 12px;
+  border-radius: 42px;
+  text-align: center;
+  background: white;
+  font-size: 26px;
+  line-height: 1.22;
+  font-weight: 800;
+  box-shadow: 0 5px 14px #448bce40;
+}
+.auth-greeting::after {
+  content: '';
+  position: absolute;
+  bottom: -16px;
+  left: 25px;
+  width: 38px;
+  height: 25px;
+  background: white;
+  clip-path: polygon(15% 0, 100% 0, 0 100%);
+}
+.auth-card {
+  position: relative;
+  background: #fff;
+  border-radius: 48px;
+  padding: 32px 60px 26px;
+  box-shadow: 0 9px 25px #24618a30;
+}
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+.auth-heading {
+  text-align: center;
+  margin-bottom: 6px;
+}
+.auth-heading h1 {
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -1.3px;
+  margin: 0;
+}
+.auth-heading p {
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: #52628d;
+  margin: 5px -20px 0;
+}
+.auth-form label > span:first-child {
+  font-size: 19px;
+  font-weight: 700;
+}
+.auth-form input:not([type='checkbox']) {
+  background: white;
+  border: 2px solid #d5deeb;
+  height: 51px;
+  border-radius: 16px;
+  color: #071348;
+  font-size: 18px;
+  box-shadow: none;
+}
+.auth-form input:focus-visible {
+  outline: 3px solid #005cf055;
+  outline-offset: 3px;
+  border-color: #005cf0;
+}
+.auth-form button:focus-visible,
+.auth-brand button:focus-visible {
+  outline: 3px solid #005cf0;
+  outline-offset: 4px;
+}
+.auth-form label > span.relative {
+  margin-top: 6px;
+}
+.auth-form .relative button {
+  height: 51px;
+  width: 58px;
+  color: #62739a;
+  border-radius: 14px;
+}
+.auth-form .relative button svg {
+  width: 27px;
+  height: 27px;
+}
+.auth-submit {
+  margin-top: 10px;
+  min-height: 56px;
+  border-radius: 19px;
+  background: #005cf0;
+  color: white;
+  font-size: 24px;
+  font-weight: 750;
+}
+.auth-submit:hover {
+  background: #004ed0;
+}
+.auth-switch {
+  color: #005cf0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.auth-tagline {
+  text-align: center;
+  font-size: clamp(23px, 2.4vw, 35px);
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin: 24px -50px 0;
+}
+@media (max-width: 900px) {
+  .auth-greeting {
+    left: auto;
+    right: -12px;
+    width: 190px;
+    font-size: 21px;
+    top: 18px;
+  }
+  .auth-greeter {
+    height: 220px;
+  }
+  .auth-composition {
+    width: min(570px, 100%);
+  }
+  .auth-landscape {
+    width: 30%;
+    opacity: 0.75;
+  }
+}
+@media (max-width: 600px) {
+  .auth-scene {
+    padding: 18px 16px 30px;
+  }
+  .auth-brand > span {
+    font-size: 34px;
+    gap: 10px;
+    letter-spacing: -1px;
+  }
+  .auth-brand svg {
+    width: 44px;
+    height: 44px;
+  }
+  .auth-language {
+    position: fixed;
+    top: 4px;
+    right: 4px;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
+  .auth-composition {
+    margin-top: 14px;
+  }
+  .auth-greeter {
+    height: 169px;
+  }
+  .auth-kap-slot {
+    width: 220px;
+    height: 194px;
+    left: 44%;
+  }
+  .auth-greeting {
+    font-size: 15px;
+    width: 138px;
+    border-radius: 24px;
+    padding: 12px 5px;
+    right: -4px;
+    top: 4px;
+  }
+  .auth-card {
+    padding: 27px 22px 20px;
+    border-radius: 30px;
+  }
+  .auth-heading h1 {
+    font-size: 30px;
+    letter-spacing: -0.8px;
+  }
+  .auth-heading p {
+    font-size: 15px;
+    margin: 8px 0 0;
+  }
+  .auth-form {
+    gap: 13px;
+  }
+  .auth-form label > span:first-child {
+    font-size: 16px;
+  }
+  .auth-form input:not([type='checkbox']) {
+    height: 49px;
+    font-size: 16px;
+    border-radius: 13px;
+  }
+  .auth-submit {
+    font-size: 20px;
+    min-height: 52px;
+    margin-top: 5px;
+    border-radius: 15px;
+  }
+  .auth-switch {
+    font-size: 16px;
+    padding: 0;
+  }
+  .auth-tagline {
+    font-size: 22px;
+    margin: 22px 0 0;
+    line-height: 1.25;
+  }
+  .auth-landscape {
+    width: 26%;
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-scene *,
+  .auth-scene *::before,
+  .auth-scene *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (max-height: 560px) and (max-width: 900px) {
+  .auth-greeter {
+    height: 65px;
+  }
+  .auth-kap-slot,
+  .auth-greeting {
+    display: none;
+  }
+}
+.auth-kap-art {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  clip-path: polygon(
+    0% 39%,
+    35% 0%,
+    40% 0%,
+    75% 15%,
+    80% 20%,
+    80% 25%,
+    74% 31%,
+    75% 40%,
+    73% 49%,
+    70% 58%,
+    78% 56%,
+    89% 40%,
+    93% 39%,
+    96% 42%,
+    95% 48%,
+    98% 46%,
+    100% 50%,
+    98% 55%,
+    100% 58%,
+    97% 65%,
+    94% 72%,
+    87% 78%,
+    79% 80%,
+    74% 77%,
+    75% 94%,
+    26% 94%,
+    25% 98%,
+    21% 100%,
+    15% 99%,
+    10% 96%,
+    6% 96%,
+    2% 92%,
+    3% 86%,
+    8% 80%,
+    10% 73%,
+    15% 66%,
+    20% 61%,
+    13% 57%,
+    10% 49%,
+    1% 45%
+  );
+}
+.auth-kap-art img {
+  position: absolute;
+  max-width: none;
+  width: 576.552%;
+  left: -241.379%;
+  top: -40.467%;
+  pointer-events: none;
+  user-select: none;
+}
+.auth-brand > span {
+  display: flex;
+  align-items: center;
+}
+/* Exclude the reference's speech-bubble edge from the right scenery window. */
+.auth-landscape-right {
+  clip-path: polygon(0 28%, 20% 28%, 20% 0, 100% 0, 100% 100%, 0 100%);
+}
+.auth-landscape-right {
+  clip-path: none;
+  mask-image:
+    linear-gradient(to left, #000 45%, transparent),
+    radial-gradient(ellipse 220px 340px at left top, transparent 80%, #000 100%);
+  mask-composite: intersect;
+}
+
+/* A small breath keeps the existing peeking pose anchored at the card edge. */
+.auth-kap-slot[data-state='idle'] .auth-kap-art {
+  transform-origin: 50% 94%;
+  animation: auth-kap-breathe 3.6s ease-in-out infinite;
+}
+@keyframes auth-kap-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.016) scaleX(1.003);
+  }
+}
+.auth-kap-privacy {
+  position: absolute;
+  height: 102%;
+  width: auto;
+  max-width: none;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  user-select: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-kap-slot[data-state='idle'] .auth-kap-art {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* Stop decorative work in background tabs without resetting the current pose. */
+.auth-kap-slot[data-page-visible='false'] .auth-kap-art {
+  animation-play-state: paused;
+}
+
+.kap-regular-stage {
+  position: absolute;
+  inset: 0;
+}
+.auth-kap-rig,
+.auth-kap-flight {
+  position: absolute;
+  height: 102%;
+  width: auto;
+  max-width: none;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  overflow: hidden;
+}
+.kap-rig-wing {
+  transition: transform 480ms cubic-bezier(0.22, 0.75, 0.25, 1);
+}
+.kap-rig-wing-left {
+  transform-origin: 380px 780px;
+  transform: rotate(160deg);
+}
+.kap-rig-wing-right {
+  transform-origin: 1036px 780px;
+  transform: rotate(-160deg);
+  transition-duration: 460ms;
+  transition-delay: 18ms;
+}
+.auth-kap-rig[data-raised='true'] .kap-rig-wing {
+  transform: rotate(0deg);
+}
+.auth-kap-slot[data-phase='turning-away'] .kap-rig-wing {
+  transition: none;
+}
+.kap-rig-head {
+  transform-origin: 708px 735px;
+  transform: translate(var(--kap-head-x, 0px), var(--kap-head-y, 0px)) rotate(var(--kap-head-tilt, 0deg));
+  transition: transform 220ms ease-out;
+}
+.auth-kap-slot[data-phase='turning-away'] .kap-rig-head,
+.auth-kap-slot[data-phase='away'] .kap-rig-head {
+  transform: translate(65px, -4px) skewY(2deg) scaleX(0.86) rotate(2deg);
+}
+.kap-pupil {
+  transform: translate(var(--kap-eye-x, 0px), var(--kap-eye-y, 0px));
+}
+.auth-kap-slot[data-state='idle'] .auth-kap-rig {
+  animation: kap-rig-breathe 3.6s ease-in-out infinite;
+  transform-origin: 50% 94%;
+}
+@keyframes kap-rig-breathe {
+  0%,
+  100% {
+    transform: translateX(-50%) scaleY(1);
+  }
+  50% {
+    transform: translateX(-50%) scaleY(1.016) scaleX(1.003);
+  }
+}
+/* Flight wings beat independently of the slower eyes-led scan. Body stays upright. */
+.auth-kap-flight {
+  height: 103%;
+  overflow: visible;
+}
+.kap-flight-hover {
+  animation: kap-patrol-hover 3.9s ease-in-out infinite;
+}
+.kap-flight-wing {
+  transform-box: view-box;
+}
+.kap-flight-left {
+  transform-origin: 500px 650px;
+  animation: kap-wing-left 780ms ease-in-out infinite;
+}
+.kap-flight-right {
+  transform-origin: 1036px 650px;
+  animation: kap-wing-right 810ms ease-in-out infinite;
+}
+.kap-flight-head {
+  transform-origin: 768px 610px;
+  animation: kap-patrol-head 3.7s ease-in-out infinite;
+  animation-delay: 160ms;
+}
+.kap-flight-eyes .kap-pupil {
+  animation: kap-patrol-eyes 3.7s ease-in-out infinite;
+}
+@keyframes kap-patrol-hover {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+@keyframes kap-wing-left {
+  0%,
+  100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+@keyframes kap-wing-right {
+  0%,
+  100% {
+    transform: rotate(10deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+@keyframes kap-patrol-head {
+  0%,
+  100% {
+    transform: translateX(-7px) rotate(-1.2deg);
+  }
+  45%,
+  55% {
+    transform: translateX(7px) rotate(1.2deg);
+  }
+}
+@keyframes kap-patrol-eyes {
+  0%,
+  100% {
+    transform: translate(-15px, 0);
+  }
+  43%,
+  57% {
+    transform: translate(15px, 0);
+  }
+}
+.auth-kap-flight[data-landing='true'] {
+  animation: kap-landing 180ms ease-in forwards;
+}
+.auth-kap-flight[data-landing='true'] .kap-flight-hover {
+  animation: none;
+}
+@keyframes kap-landing {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(9px);
+  }
+}
+.auth-kap-slot[data-page-visible='false'] * {
+  animation-play-state: paused !important;
+}
+.auth-kap-slot[data-quality='light'] .auth-kap-rig,
+.auth-kap-slot[data-quality='light'] .kap-flight-hover {
+  animation: none;
+}
+.auth-kap-slot[data-compact='true'] {
+  display: none;
+}
+.auth-greeter:has(.auth-kap-slot[data-compact='true']) {
+  height: 55px;
+}
+.auth-greeter:has(.auth-kap-slot[data-compact='true']) .auth-greeting {
+  display: none;
+}
+.auth-greeting {
+  z-index: 3;
+  transition: opacity 150ms;
+}
+.auth-greeter:has(.auth-kap-slot[data-state='patrol']) .auth-greeting,
+.auth-greeter:has(.auth-kap-slot[data-state='landing']) .auth-greeting {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-kap-slot *,
+  .auth-kap-slot {
+    animation: none !important;
+    transition: none !important;
+  }
+  .kap-rig-head {
+    transform: none !important;
+  }
+}
+/* A rare, restrained idle glance; pointer/focus tracking takes over without competing motion. */
+.auth-kap-slot[data-state='idle'][data-tracking='off'] .kap-rig-head {
+  animation: kap-idle-glance 11s ease-in-out infinite;
+}
+@keyframes kap-idle-glance {
+  0%,
+  28%,
+  88%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  44% {
+    transform: translate(2px, -1px) rotate(0.6deg);
+  }
+  64% {
+    transform: translate(-2px, 0) rotate(-0.45deg);
+  }
+}
+.auth-kap-slot[data-quality='light'] .kap-rig-head {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-kap-slot .kap-rig-head {
+    animation: none !important;
+  }
+}
+
+/* The card is a foreground occluder: relaxed feathers tuck behind it, never end at a raw SVG cut. */
+.auth-card {
+  z-index: 5;
+}
+.auth-kap-rig {
+  overflow: visible;
+}
+.auth-ui {
+  transition: opacity 240ms ease;
+}
+.auth-scene[data-loading-stage='true'] .auth-ui {
+  opacity: 0;
+  pointer-events: none;
+}
+.kap-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  isolation: isolate;
+  overflow: hidden;
+}
+.kap-loading-screen[data-landing='true'] {
+  pointer-events: none;
+}
+.kap-loading-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 42%, #f7fcff 0%, #e0f2ff 48%, #c8e6fa 100%);
+}
+.kap-loading-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  perspective: 1200px;
+}
+.kap-loading-hero {
+  width: min(92vw, 820px);
+  aspect-ratio: 3/2;
+  position: relative;
+  transform-origin: 50% 55%;
+  will-change: transform, opacity;
+}
+.kap-loading-hero > .auth-kap-flight {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  overflow: visible;
+  filter: drop-shadow(0 18px 20px #6fafd935);
+}
+.kap-loading-private {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 18px 20px #6fafd935);
+}
+.kap-loading-private img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kap-loading-screen * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .auth-ui {
+    transition: none;
+  }
+}
+
+/* Preserve the existing registration agreement control and legal footer. */
+.auth-form input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: #005cf0;
+}
+.auth-form input[type='checkbox']:focus-visible {
+  outline: 3px solid #005cf0;
+  outline-offset: 3px;
+}
