@@ -1,448 +1,514 @@
-/* Sign-in: Duolingo's white canvas, Kap peeking over a sticker card, rolling hills along the bottom.
-   Colours come from the app tokens (styles.css), so dark mode follows the device here too. */
 .auth-scene {
+  --primary: #005cf0;
+  --foreground: #071348;
+  --muted-foreground: #56658b;
+  --input: #d5deeb;
+  color-scheme: light;
+  color: #071348;
   min-height: 100svh;
-  position: relative;
   isolation: isolate;
+  position: relative;
   overflow: clip;
-  background: var(--background);
-  /* The Android app draws under the status bar and navigation buttons: start and end clear of them. */
-  padding: calc(20px + env(safe-area-inset-top)) 16px calc(48px + env(safe-area-inset-bottom));
+  background:
+    linear-gradient(180deg, transparent 58%, #b4e6d1 85%, #a0decd 100%),
+    radial-gradient(ellipse at 50% 22%, #effaff 0%, #cceaff 42%, #b7dffc 70%, #b4e6d1 100%);
+  padding: 21px 16px 40px;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
-.auth-hills {
-  position: fixed;
-  inset: auto 0 0;
-  height: 44svh;
+.auth-landscape {
+  position: absolute;
   z-index: -1;
+  top: 0;
+  bottom: 0;
+  width: 31%;
+  pointer-events: none;
+  background-image: url('../../assets/auth-reference.png');
+  background-size: max(100vw, 150vh) 100%;
+  background-repeat: no-repeat;
 }
-/* Just hills and the barangay on sign-in: the sun and clouds would float beside the card. */
-.auth-hills .scene-sun,
-.auth-hills .scene-cloud {
-  display: none;
+.auth-landscape-left {
+  left: 0;
+  background-position: left center;
+  mask-image: linear-gradient(to right, #000 45%, transparent);
 }
-.auth-scene [data-depth] {
-  transform: translate3d(calc(var(--px, 0) * var(--depth, 1) * 1px), calc(var(--py, 0) * var(--depth, 1) * 1px), 0);
-  transition: transform 600ms var(--ease-out);
+.auth-landscape-right {
+  right: 0;
+  background-position: right center;
+  mask-image: linear-gradient(to left, #000 45%, transparent);
 }
 .auth-brand {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  max-width: 1080px;
-  margin: 0 auto;
 }
+.auth-brand > span {
+  font-size: clamp(32px, 3vw, 49px);
+  font-weight: 800;
+  gap: 15px;
+  letter-spacing: -1.6px;
+  line-height: 1;
+}
+.auth-brand svg {
+  width: 65px;
+  height: 65px;
+}
+
+.auth-brand svg g circle {
+  fill: white;
+}
+
 .auth-language {
   position: absolute;
   right: 0;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  min-height: 40px;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-  background: var(--card);
-}
-.auth-language:hover {
-  background: var(--muted);
+  top: 0;
+  color: #324a79;
 }
 .auth-composition {
-  width: min(460px, 100%);
-  margin: 8px auto 0;
+  width: min(626px, 100%);
+  margin: 16px auto 0;
 }
-
-/* Kap stands behind the card's top edge, which hides the end of his art: nothing is ever cut in view. */
 .auth-greeter {
   position: relative;
-  height: 232px;
+  height: 240px;
 }
 .auth-kap-slot {
+  width: 290px;
+  height: 255px;
   position: absolute;
   left: 50%;
-  bottom: -44px;
-  width: 268px;
-  height: 268px;
-  translate: -50% 0;
+  bottom: -13px;
+  transform: translateX(-50%);
   z-index: 2;
 }
 .auth-greeting {
   position: absolute;
-  left: calc(50% + 104px);
-  top: 12px;
-  z-index: 3;
-  min-width: 150px;
-  max-width: 220px;
-  padding: 12px 16px;
-  border: 2px solid var(--border);
-  border-bottom-width: 4px;
-  border-radius: 18px;
-  background: var(--card);
-  color: var(--foreground);
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 1.3;
+  left: 72%;
+  top: 9px;
+  width: 246px;
+  padding: 15px 12px;
+  border-radius: 42px;
   text-align: center;
-  transform-origin: 0% 100%;
-  /* Springs in with a squash and stretch, then keeps bobbing and wobbling like a soap bubble. */
-  animation:
-    bubble-pop 520ms var(--ease-spring) both,
-    bubble-float 3.4s ease-in-out 520ms infinite;
-  transition: opacity 150ms;
+  background: white;
+  font-size: 26px;
+  line-height: 1.22;
+  font-weight: 800;
+  box-shadow: 0 5px 14px #448bce40;
 }
-/* The tail points down-left at Kap. */
 .auth-greeting::after {
   content: '';
   position: absolute;
-  left: 18px;
-  bottom: -11px;
-  width: 16px;
-  height: 16px;
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-top: 0;
-  border-left: 0;
-  border-bottom-width: 4px;
-  rotate: 45deg;
-  skew: -12deg -12deg;
+  bottom: -16px;
+  left: 25px;
+  width: 38px;
+  height: 25px;
+  background: white;
+  clip-path: polygon(15% 0, 100% 0, 0 100%);
 }
-.auth-typed {
-  position: relative;
-  display: inline;
-}
-.auth-word {
-  display: inline-block;
-  white-space: nowrap;
-}
-/* Every letter is laid out from the start; typing only lets each one pop up into view. */
-.auth-letter {
-  display: inline-block;
-  opacity: 0;
-}
-.auth-letter[data-on] {
-  opacity: 1;
-  animation: letter-pop 240ms var(--ease-spring) both;
-}
-@keyframes letter-pop {
-  from {
-    opacity: 0;
-    translate: 0 6px;
-    scale: 0.4;
-  }
-}
-@keyframes bubble-pop {
-  0% {
-    opacity: 0;
-    scale: 0.4 0.3;
-  }
-  45% {
-    opacity: 1;
-    scale: 1.1 0.92;
-  }
-  70% {
-    scale: 0.96 1.05;
-  }
-  100% {
-    scale: 1;
-  }
-}
-@keyframes bubble-float {
-  0%,
-  100% {
-    translate: 0 0;
-    rotate: 0deg;
-  }
-  30% {
-    translate: 0 -4px;
-    rotate: -1.2deg;
-  }
-  65% {
-    translate: 0 2px;
-    rotate: 1deg;
-  }
-}
-/* Small sticker bubbles drift up off the speech bubble's top corner, swell and pop, one after another. */
-.auth-fizz {
-  position: absolute;
-  right: 6px;
-  top: -2px;
-  pointer-events: none;
-}
-.auth-fizz i {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--border);
-  border-radius: 50%;
-  background: var(--card);
-  opacity: 0;
-  animation: fizz 2.8s ease-out infinite;
-}
-.auth-fizz i:nth-child(2) {
-  width: 7px;
-  height: 7px;
-  right: 16px;
-  animation-delay: 0.7s;
-}
-.auth-fizz i:nth-child(3) {
-  width: 12px;
-  height: 12px;
-  right: -8px;
-  animation-delay: 1.4s;
-}
-.auth-fizz i:nth-child(4) {
-  width: 6px;
-  height: 6px;
-  right: 28px;
-  animation-delay: 2.1s;
-}
-@keyframes fizz {
-  0% {
-    opacity: 0;
-    translate: 0 0;
-    scale: 0.3;
-  }
-  15% {
-    opacity: 1;
-  }
-  75% {
-    opacity: 1;
-    translate: 4px -30px;
-    scale: 1;
-  }
-  85% {
-    opacity: 0.6;
-    scale: 1.5;
-  }
-  100% {
-    opacity: 0;
-    translate: 5px -34px;
-    scale: 1.7;
-  }
-}
-
-/* Leaves falling behind the card: the outer span falls, its svg sways and spins on its own clock. */
-.auth-leaves {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-.auth-leaf {
-  position: absolute;
-  top: -40px;
-  width: var(--size);
-  height: var(--size);
-  animation: leaf-fall var(--fall) linear var(--delay) infinite;
-}
-.auth-leaf svg {
-  width: 100%;
-  height: 100%;
-  animation: leaf-sway calc(var(--fall) / 4) ease-in-out var(--delay) infinite alternate;
-}
-@keyframes leaf-fall {
-  from {
-    translate: 0 0;
-  }
-  to {
-    translate: 0 calc(100svh + 80px);
-  }
-}
-@keyframes leaf-sway {
-  from {
-    translate: -26px 0;
-    rotate: -40deg;
-  }
-  to {
-    translate: 26px 0;
-    rotate: 70deg;
-  }
-}
-
 .auth-card {
   position: relative;
-  z-index: 5;
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-bottom-width: 6px;
-  border-radius: 28px;
-  padding: 30px 32px 22px;
+  background: #fff;
+  border-radius: 48px;
+  padding: 32px 60px 26px;
+  box-shadow: 0 9px 25px #24618a30;
 }
 .auth-form {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 .auth-heading {
   text-align: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .auth-heading h1 {
-  font-size: 32px;
+  font-size: clamp(30px, 3vw, 44px);
   line-height: 1.15;
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-weight: 800;
+  letter-spacing: -1.3px;
+  margin: 0;
 }
 .auth-heading p {
-  margin-top: 6px;
-  font-size: 16px;
-  color: var(--muted-foreground);
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: #52628d;
+  margin: 5px -20px 0;
 }
-.auth-label {
-  font-size: 15px;
-  font-weight: 800;
+.auth-form label > span:first-child {
+  font-size: 19px;
+  font-weight: 700;
+}
+.auth-form input:not([type='checkbox']) {
+  background: white;
+  border: 2px solid #d5deeb;
+  height: 51px;
+  border-radius: 16px;
+  color: #071348;
+  font-size: 18px;
+  box-shadow: none;
+}
+.auth-form input:focus-visible {
+  outline: 3px solid #005cf055;
+  outline-offset: 3px;
+  border-color: #005cf0;
+}
+.auth-form button:focus-visible,
+.auth-brand button:focus-visible {
+  outline: 3px solid #005cf0;
+  outline-offset: 4px;
+}
+.auth-form label > span.relative {
+  margin-top: 6px;
+}
+.auth-form .relative button {
+  height: 51px;
+  width: 58px;
+  color: #62739a;
+  border-radius: 14px;
+}
+.auth-form .relative button svg {
+  width: 27px;
+  height: 27px;
+}
+.auth-submit {
+  margin-top: 10px;
+  min-height: 56px;
+  border-radius: 19px;
+  background: #005cf0;
+  color: white;
+  font-size: 24px;
+  font-weight: 750;
+}
+.auth-submit:hover {
+  background: #004ed0;
+}
+.auth-switch {
+  color: #005cf0;
+  font-size: 20px;
+  font-weight: 700;
 }
 .auth-tagline {
   text-align: center;
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  margin-top: 24px;
+  font-size: clamp(23px, 2.4vw, 35px);
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin: 24px -50px 0;
 }
-.auth-ui {
-  transition: opacity 240ms ease;
-}
-.auth-scene[data-loading-stage='true'] .auth-ui {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ------------------------------------------------------------------ Kap rig (KapRig.tsx) */
-.kap-regular-stage {
-  position: absolute;
-  inset: 0;
-  animation: kap-arrive 640ms var(--ease-spring) both;
-}
-/* First appearance: he pops up from behind the card with a little squash. */
-@keyframes kap-arrive {
-  0% {
-    opacity: 0;
-    transform: translateY(60px) scale(0.86, 0.8);
+@media (max-width: 900px) {
+  .auth-greeting {
+    left: auto;
+    right: -12px;
+    width: 190px;
+    font-size: 21px;
+    top: 18px;
   }
-  55% {
-    opacity: 1;
-    transform: translateY(-8px) scale(0.97, 1.05);
+  .auth-greeter {
+    height: 220px;
   }
-  78% {
-    transform: translateY(2px) scale(1.03, 0.97);
+  .auth-composition {
+    width: min(570px, 100%);
   }
-  100% {
-    transform: none;
+  .auth-landscape {
+    width: 30%;
+    opacity: 0.75;
   }
 }
-/* KapBuddy.tsx: the new frame shows at once on top while the old one fades out beneath it,
-   so mid-swap Kap is never half see-through. The bust breathes from his shoulders. */
-.kap-buddy {
-  transform-origin: 50% 92%;
-  animation: kap-breathe 3.2s ease-in-out infinite;
+@media (max-width: 600px) {
+  .auth-scene {
+    padding: 18px 16px 30px;
+  }
+  .auth-brand > span {
+    font-size: 34px;
+    gap: 10px;
+    letter-spacing: -1px;
+  }
+  .auth-brand svg {
+    width: 44px;
+    height: 44px;
+  }
+  .auth-language {
+    position: fixed;
+    top: 4px;
+    right: 4px;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
+  .auth-composition {
+    margin-top: 14px;
+  }
+  .auth-greeter {
+    height: 169px;
+  }
+  .auth-kap-slot {
+    width: 220px;
+    height: 194px;
+    left: 44%;
+  }
+  .auth-greeting {
+    font-size: 15px;
+    width: 138px;
+    border-radius: 24px;
+    padding: 12px 5px;
+    right: -4px;
+    top: 4px;
+  }
+  .auth-card {
+    padding: 27px 22px 20px;
+    border-radius: 30px;
+  }
+  .auth-heading h1 {
+    font-size: 30px;
+    letter-spacing: -0.8px;
+  }
+  .auth-heading p {
+    font-size: 15px;
+    margin: 8px 0 0;
+  }
+  .auth-form {
+    gap: 13px;
+  }
+  .auth-form label > span:first-child {
+    font-size: 16px;
+  }
+  .auth-form input:not([type='checkbox']) {
+    height: 49px;
+    font-size: 16px;
+    border-radius: 13px;
+  }
+  .auth-submit {
+    font-size: 20px;
+    min-height: 52px;
+    margin-top: 5px;
+    border-radius: 15px;
+  }
+  .auth-switch {
+    font-size: 16px;
+    padding: 0;
+  }
+  .auth-tagline {
+    font-size: 22px;
+    margin: 22px 0 0;
+    line-height: 1.25;
+  }
+  .auth-landscape {
+    width: 26%;
+    opacity: 0.5;
+  }
 }
-.kap-buddy > img {
-  transition: opacity 90ms linear;
+@media (prefers-reduced-motion: reduce) {
+  .auth-scene *,
+  .auth-scene *::before,
+  .auth-scene *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
-.kap-buddy > img[data-shown='true'] {
-  z-index: 1;
-  opacity: 1;
-  transition: none;
+@media (max-height: 560px) and (max-width: 900px) {
+  .auth-greeter {
+    height: 65px;
+  }
+  .auth-kap-slot,
+  .auth-greeting {
+    display: none;
+  }
 }
-.kap-buddy > img[data-shown='false'] {
-  opacity: 0;
-}
-
-.auth-kap-rig {
-  position: absolute;
-  inset: 0;
-}
-/* The whole owl leans toward what he looks at, pivoting at his shoulders; the gaze frames move his eyes. */
-.kap-rig-lean {
+.auth-kap-art {
+  position: relative;
   width: 100%;
   height: 100%;
-  transform-origin: 50% 100%;
-  transform: translate(calc(var(--kap-head-x, 0px) * 0.5), calc(var(--kap-head-y, 0px) * 0.3))
-    rotate(calc(var(--kap-head-tilt, 0deg) * 0.6));
-  transition: transform 260ms var(--ease-out);
+  overflow: hidden;
+  clip-path: polygon(
+    0% 39%,
+    35% 0%,
+    40% 0%,
+    75% 15%,
+    80% 20%,
+    80% 25%,
+    74% 31%,
+    75% 40%,
+    73% 49%,
+    70% 58%,
+    78% 56%,
+    89% 40%,
+    93% 39%,
+    96% 42%,
+    95% 48%,
+    98% 46%,
+    100% 50%,
+    98% 55%,
+    100% 58%,
+    97% 65%,
+    94% 72%,
+    87% 78%,
+    79% 80%,
+    74% 77%,
+    75% 94%,
+    26% 94%,
+    25% 98%,
+    21% 100%,
+    15% 99%,
+    10% 96%,
+    6% 96%,
+    2% 92%,
+    3% 86%,
+    8% 80%,
+    10% 73%,
+    15% 66%,
+    20% 61%,
+    13% 57%,
+    10% 49%,
+    1% 45%
+  );
 }
-/* A little shake while the concerned face clears, so a typo never feels like a scolding. */
-.auth-kap-slot[data-state='error'] .kap-rig-lean {
-  animation: kap-shake 420ms var(--ease-out);
-}
-@keyframes kap-shake {
-  25% {
-    transform: translateX(-12px) rotate(-1.5deg);
-  }
-  50% {
-    transform: translateX(8px) rotate(1deg);
-  }
-  75% {
-    transform: translateX(-4px);
-  }
-}
-/* Fully covered: he hunches a touch and trembles, very committed to not looking. */
-.auth-kap-slot[data-state='covered'] .kap-buddy {
-  animation: kap-tremble 2.2s ease-in-out 420ms infinite;
-}
-@keyframes kap-tremble {
-  0%,
-  100% {
-    transform: none;
-  }
-  10%,
-  30% {
-    transform: rotate(-0.6deg) scale(1.01, 0.985);
-  }
-  20%,
-  40% {
-    transform: rotate(0.6deg) scale(1.01, 0.985);
-  }
-}
-.kap-giggle {
+.auth-kap-art img {
   position: absolute;
-  inset: 0;
-  overflow: visible;
+  max-width: none;
+  width: 576.552%;
+  left: -241.379%;
+  top: -40.467%;
   pointer-events: none;
+  user-select: none;
 }
-.kap-giggle rect {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: kap-giggle 1.4s var(--ease-spring) infinite both;
-  animation-delay: calc(var(--i) * 90ms);
+.auth-brand > span {
+  display: flex;
+  align-items: center;
 }
-@keyframes kap-giggle {
-  0% {
-    opacity: 0;
-    scale: 0.3;
-  }
-  25%,
-  70% {
-    opacity: 1;
-    scale: 1;
-  }
-  100% {
-    opacity: 0;
-    scale: 0.8;
-  }
+/* Exclude the reference's speech-bubble edge from the right scenery window. */
+.auth-landscape-right {
+  clip-path: polygon(0 28%, 20% 28%, 20% 0, 100% 0, 100% 100%, 0 100%);
+}
+.auth-landscape-right {
+  clip-path: none;
+  mask-image:
+    linear-gradient(to left, #000 45%, transparent),
+    radial-gradient(ellipse 220px 340px at left top, transparent 80%, #000 100%);
+  mask-composite: intersect;
 }
 
-/* ------------------------------------------------------------------ patrol flight (KapFlightRig.tsx) */
-.auth-kap-flight {
+/* A small breath keeps the existing peeking pose anchored at the card edge. */
+.auth-kap-slot[data-state='idle'] .auth-kap-art {
+  transform-origin: 50% 94%;
+  animation: auth-kap-breathe 3.6s ease-in-out infinite;
+}
+@keyframes auth-kap-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.016) scaleX(1.003);
+  }
+}
+.auth-kap-privacy {
   position: absolute;
-  height: 103%;
+  height: 102%;
   width: auto;
   max-width: none;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
+  pointer-events: none;
+  user-select: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-kap-slot[data-state='idle'] .auth-kap-art {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* Stop decorative work in background tabs without resetting the current pose. */
+.auth-kap-slot[data-page-visible='false'] .auth-kap-art {
+  animation-play-state: paused;
+}
+
+.kap-regular-stage {
+  position: absolute;
+  inset: 0;
+}
+.auth-kap-rig,
+.auth-kap-flight {
+  position: absolute;
+  height: 102%;
+  width: auto;
+  max-width: none;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  overflow: hidden;
+}
+.kap-rig-wing {
+  transition: transform 480ms cubic-bezier(0.22, 0.75, 0.25, 1);
+}
+.kap-rig-wing-left {
+  transform-origin: 380px 780px;
+  transform: rotate(160deg);
+}
+.kap-rig-wing-right {
+  transform-origin: 1036px 780px;
+  transform: rotate(-160deg);
+  transition-duration: 460ms;
+  transition-delay: 18ms;
+}
+.auth-kap-rig[data-raised='true'] .kap-rig-wing {
+  transform: rotate(0deg);
+}
+.auth-kap-slot[data-phase='turning-away'] .kap-rig-wing {
+  transition: none;
+}
+.kap-rig-head {
+  transform-origin: 708px 735px;
+  transform: translate(var(--kap-head-x, 0px), var(--kap-head-y, 0px)) rotate(var(--kap-head-tilt, 0deg));
+  transition: transform 220ms ease-out;
+}
+.auth-kap-slot[data-phase='turning-away'] .kap-rig-head,
+.auth-kap-slot[data-phase='away'] .kap-rig-head {
+  transform: translate(65px, -4px) skewY(2deg) scaleX(0.86) rotate(2deg);
+}
+.kap-pupil {
+  transform: translate(var(--kap-eye-x, 0px), var(--kap-eye-y, 0px));
+}
+.auth-kap-slot[data-state='idle'] .auth-kap-rig {
+  animation: kap-rig-breathe 3.6s ease-in-out infinite;
+  transform-origin: 50% 94%;
+}
+@keyframes kap-rig-breathe {
+  0%,
+  100% {
+    transform: translateX(-50%) scaleY(1);
+  }
+  50% {
+    transform: translateX(-50%) scaleY(1.016) scaleX(1.003);
+  }
+}
+/* Flight wings beat independently of the slower eyes-led scan. Body stays upright. */
+.auth-kap-flight {
+  height: 103%;
   overflow: visible;
 }
 .kap-flight-hover {
   animation: kap-patrol-hover 3.9s ease-in-out infinite;
 }
-.kap-flight-beat {
+.kap-flight-wing {
   transform-box: view-box;
-  transform-origin: 768px 600px;
-  animation: kap-wing-beat 520ms ease-in-out infinite;
+}
+.kap-flight-left {
+  transform-origin: 500px 650px;
+  animation: kap-wing-left 780ms ease-in-out infinite;
+}
+.kap-flight-right {
+  transform-origin: 1036px 650px;
+  animation: kap-wing-right 810ms ease-in-out infinite;
+}
+.kap-flight-head {
+  transform-origin: 768px 610px;
+  animation: kap-patrol-head 3.7s ease-in-out infinite;
+  animation-delay: 160ms;
 }
 .kap-flight-eyes .kap-pupil {
   animation: kap-patrol-eyes 3.7s ease-in-out infinite;
@@ -450,19 +516,38 @@
 @keyframes kap-patrol-hover {
   0%,
   100% {
-    transform: translateY(0) rotate(-1deg);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-14px) rotate(1deg);
+    transform: translateY(-12px);
   }
 }
-@keyframes kap-wing-beat {
+@keyframes kap-wing-left {
   0%,
   100% {
-    transform: scale(1, 1);
+    transform: rotate(-10deg);
   }
   50% {
-    transform: scale(1.035, 0.985);
+    transform: rotate(14deg);
+  }
+}
+@keyframes kap-wing-right {
+  0%,
+  100% {
+    transform: rotate(10deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+@keyframes kap-patrol-head {
+  0%,
+  100% {
+    transform: translateX(-7px) rotate(-1.2deg);
+  }
+  45%,
+  55% {
+    transform: translateX(7px) rotate(1.2deg);
   }
 }
 @keyframes kap-patrol-eyes {
@@ -491,12 +576,81 @@
     transform: translateX(-50%) translateY(9px);
   }
 }
+.auth-kap-slot[data-page-visible='false'] * {
+  animation-play-state: paused !important;
+}
+.auth-kap-slot[data-quality='light'] .auth-kap-rig,
+.auth-kap-slot[data-quality='light'] .kap-flight-hover {
+  animation: none;
+}
+.auth-kap-slot[data-compact='true'] {
+  display: none;
+}
+.auth-greeter:has(.auth-kap-slot[data-compact='true']) {
+  height: 55px;
+}
+.auth-greeter:has(.auth-kap-slot[data-compact='true']) .auth-greeting {
+  display: none;
+}
+.auth-greeting {
+  z-index: 3;
+  transition: opacity 150ms;
+}
 .auth-greeter:has(.auth-kap-slot[data-state='patrol']) .auth-greeting,
-.auth-greeter:has(.auth-kap-slot[data-state='landing']) .auth-greeting,
-.auth-greeter:has(.auth-kap-slot[data-ready='false']) .auth-greeting {
+.auth-greeter:has(.auth-kap-slot[data-state='landing']) .auth-greeting {
   opacity: 0;
 }
+@media (prefers-reduced-motion: reduce) {
+  .auth-kap-slot *,
+  .auth-kap-slot {
+    animation: none !important;
+    transition: none !important;
+  }
+  .kap-rig-head {
+    transform: none !important;
+  }
+}
+/* A rare, restrained idle glance; pointer/focus tracking takes over without competing motion. */
+.auth-kap-slot[data-state='idle'][data-tracking='off'] .kap-rig-head {
+  animation: kap-idle-glance 11s ease-in-out infinite;
+}
+@keyframes kap-idle-glance {
+  0%,
+  28%,
+  88%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  44% {
+    transform: translate(2px, -1px) rotate(0.6deg);
+  }
+  64% {
+    transform: translate(-2px, 0) rotate(-0.45deg);
+  }
+}
+.auth-kap-slot[data-quality='light'] .kap-rig-head {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-kap-slot .kap-rig-head {
+    animation: none !important;
+  }
+}
 
+/* The card is a foreground occluder: relaxed feathers tuck behind it, never end at a raw SVG cut. */
+.auth-card {
+  z-index: 5;
+}
+.auth-kap-rig {
+  overflow: visible;
+}
+.auth-ui {
+  transition: opacity 240ms ease;
+}
+.auth-scene[data-loading-stage='true'] .auth-ui {
+  opacity: 0;
+  pointer-events: none;
+}
 .kap-loading-screen {
   position: fixed;
   inset: 0;
@@ -510,7 +664,7 @@
 .kap-loading-backdrop {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 42%, var(--card) 0%, var(--sky-soft) 100%);
+  background: radial-gradient(ellipse at 50% 42%, #f7fcff 0%, #e0f2ff 48%, #c8e6fa 100%);
 }
 .kap-loading-center {
   position: absolute;
@@ -534,100 +688,38 @@
   left: auto;
   bottom: auto;
   transform: none;
+  overflow: visible;
+  filter: drop-shadow(0 18px 20px #6fafd935);
 }
 .kap-loading-private {
   position: relative;
   width: 100%;
   height: 100%;
+  filter: drop-shadow(0 18px 20px #6fafd935);
 }
 .kap-loading-private img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
-
-/* ------------------------------------------------------------------ housekeeping */
-.auth-kap-slot[data-page-visible='false'] * {
-  animation-play-state: paused !important;
-}
-/* Slower phones skip the endless breathing, hovering and falling leaves; frame swaps and the wing beat still play. */
-.auth-scene:has(.auth-kap-slot[data-quality='light']) .auth-leaves {
-  display: none;
-}
-.auth-kap-slot[data-quality='light'] .kap-buddy,
-.auth-kap-slot[data-quality='light'] .kap-flight-hover {
-  animation: none;
-}
-.auth-kap-slot[data-compact='true'],
-.auth-greeter:has(.auth-kap-slot[data-compact='true']) .auth-greeting {
-  display: none;
-}
-.auth-greeter:has(.auth-kap-slot[data-compact='true']) {
-  height: 24px;
-}
-
-@media (max-width: 600px) {
-  .auth-scene {
-    padding: calc(10px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
-  }
-  .auth-brand {
-    justify-content: flex-start;
-  }
-  .auth-greeter {
-    height: 140px;
-  }
-  .auth-kap-slot {
-    width: 164px;
-    height: 164px;
-    left: 36%;
-    bottom: -27px;
-  }
-  .auth-greeting {
-    left: auto;
-    right: 0;
-    top: 6px;
-    min-width: 0;
-    max-width: 150px;
-    font-size: 14px;
-    padding: 10px 12px;
-  }
-  .auth-card {
-    padding: 18px 18px 12px;
-    border-radius: 24px;
-  }
-  .auth-form {
-    gap: 10px;
-  }
-  .auth-heading h1 {
-    font-size: 26px;
-  }
-  .auth-heading p {
-    margin-top: 2px;
-    font-size: 14px;
-  }
-  /* Phones: the sign-in fits on one screen; the slogan is a nicety it can do without. */
-  .auth-tagline {
-    display: none;
-  }
-}
-@media (max-height: 560px) and (max-width: 900px) {
-  .auth-greeter {
-    height: 24px;
-  }
-  .auth-kap-slot,
-  .auth-greeting {
-    display: none;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .auth-scene *,
-  .auth-scene *::before,
-  .auth-scene *::after,
   .kap-loading-screen * {
     animation: none !important;
     transition: none !important;
   }
-  .kap-rig-lean {
-    transform: none !important;
+  .auth-ui {
+    transition: none;
   }
+}
+
+/* Preserve the existing registration agreement control and legal footer. */
+.auth-form input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: #005cf0;
+}
+.auth-form input[type='checkbox']:focus-visible {
+  outline: 3px solid #005cf0;
+  outline-offset: 3px;
 }

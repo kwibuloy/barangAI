@@ -22,19 +22,19 @@ function UseCode() {
     if (code.trim()) use.mutate(code.trim(), { onSuccess: () => setCode('') })
   }
   return (
-    <section className="edge space-y-3 rounded-2xl p-4">
-      <h2 className="text-[17px] font-extrabold">
+    <section className="hairline space-y-3 rounded-2xl bg-card p-4">
+      <h2 className="text-[17px] font-semibold">
         <Txt>Use a resident's code</Txt>
       </h2>
-      <form onSubmit={submit} className="flex flex-wrap gap-2">
+      <form onSubmit={submit} className="flex gap-2">
         <Input
           aria-label={t('Code')}
           value={code}
           onChange={event => setCode(event.target.value)}
           placeholder={t('Code')}
-          className="min-w-40 flex-1 uppercase"
+          className="uppercase"
         />
-        <Button type="submit" className="grow basis-auto" disabled={use.isPending || !code.trim()}>
+        <Button type="submit" disabled={use.isPending || !code.trim()}>
           <Txt>Mark as used</Txt>
         </Button>
       </form>
@@ -83,8 +83,8 @@ function AddReward() {
     )
   }
   return (
-    <section className="edge space-y-3 rounded-2xl p-4">
-      <h2 className="text-[17px] font-extrabold">
+    <section className="hairline space-y-3 rounded-2xl bg-card p-4">
+      <h2 className="text-[17px] font-semibold">
         <Txt>Add a reward</Txt>
       </h2>
       <p className="text-[14px] text-muted-foreground">
@@ -121,8 +121,7 @@ function AddReward() {
           value={partner}
           onChange={event => setPartner(event.target.value)}
         />
-        {/* Side by side from tablets up; stacked on phones so "Stock (optional)" isn't cut off. */}
-        <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2.5">
           <Input
             aria-label={t('Points')}
             placeholder={t('Points')}
@@ -162,8 +161,8 @@ function RewardList() {
   const rewards = useManagedRewards(barangay)
   const toggle = useSetRewardActive()
   return (
-    <section className="edge overflow-hidden rounded-2xl">
-      <h2 className="p-4 pb-2 text-[17px] font-extrabold">
+    <section className="hairline rounded-2xl bg-card">
+      <h2 className="p-4 pb-2 text-[17px] font-semibold">
         <Txt>Rewards in the shop</Txt>
       </h2>
       {administrator && (
@@ -182,11 +181,11 @@ function RewardList() {
           </NativeSelect>
         </div>
       )}
-      <ul className="divide-y-2">
+      <ul className="divide-y">
         {(rewards.data ?? []).map(reward => (
           <li key={reward.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[15px]">
             <span className="min-w-0">
-              <span className="block font-extrabold">{reward.name}</span>
+              <span className="block font-medium">{reward.name}</span>
               <span className="block text-[13px] text-muted-foreground">
                 {administrator && reward.barangay && `${reward.barangay} · `}
                 {reward.points_cost} <Txt>pts</Txt>
@@ -216,10 +215,7 @@ function RewardList() {
 /** Basic version: staff use residents' codes and manage their barangay's shop; administrators, every barangay's. */
 export function RewardsDeskPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-5 md:p-8">
-      <h1 className="display text-[30px] leading-tight">
-        <Txt>Rewards</Txt>
-      </h1>
+    <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
       <UseCode />
       <AddReward />
       <RewardList />

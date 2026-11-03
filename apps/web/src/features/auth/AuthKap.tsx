@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { gazeToward, type KapGaze } from './KapBuddy'
-import { KAP_POSES, KapRig } from './KapRig'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import authReference from '../../assets/auth-reference.png'
+import covered from '../../assets/kap-cover-eyes-approved-v1.png'
+import away from '../../assets/kap-turn-away-approved-v1.png'
+import neutral from '../../assets/kap-neutral-approved-v2.png'
+import flight from '../../assets/kap-flight-approved-v2.png'
+import { KapPrivacyRig } from './KapPrivacyRig'
 import { KapLoadingScene } from './KapLoadingScene'
-import { FLIGHT_POSE } from './KapFlightRig'
 import { useKapPrivacy } from './useKapPrivacy'
 import { useKapBlink, useKapFlight, useKapTracking } from './useKapMotion'
 
@@ -21,7 +24,7 @@ export function AuthKap({
   onLoadingChange?: (active: boolean) => void
 }) {
   const root = useRef<HTMLDivElement>(null)
-  const [ready, setReady] = useState({ neutral: false, covered: false })
+  const [ready, setReady] = useState({ covered: false, away: false, neutral: false, flight: false })
   const [requestPrivate, setRequestPrivate] = useState(false)
   const [origin, setOrigin] = useState<{ x: number; y: number; scale: number } | null>(null)
   const wasPresenting = useRef(false)
@@ -57,10 +60,10 @@ export function AuthKap({
     const timer = window.setTimeout(() => setReactingToError(false), 900)
     return () => clearTimeout(timer)
   }, [failed])
-  // Both poses must be loaded before Kap appears, so a private moment can never fall back to his open eyes.
-  const rigReady = ready.neutral && ready.covered
+  const rigReady = ready.covered && ready.away && ready.neutral
   const { phase, reduced } = useKapPrivacy(privacyFocus || requestPrivate, revealed, rigReady)
   const privacy = privacyFocus || revealed || requestPrivate
+  const pose = revealed ? 'away' : 'covered'
   const { flying, landing, presenting } = useKapFlight(pending, rigReady, privacy, reduced, pageVisible)
   const showingFlight = presenting || landing
   useLayoutEffect(() => {
@@ -82,9 +85,7 @@ export function AuthKap({
     if (!showingFlight) setOrigin(null)
   }, [showingFlight])
   const state = privacy
-    ? phase === 'covered'
-      ? 'covered'
-      : 'peek'
+    ? pose
     : flying
       ? 'patrol'
       : presenting
@@ -98,13 +99,7 @@ export function AuthKap({
               : 'idle'
   const interactive =
     rigReady && !privacy && phase === 'idle' && !pending && !reactingToError && !reduced && pageVisible && !compact
-  const [gaze, setGaze] = useState<KapGaze | null>(null)
-  const aim = useCallback((point: { x: number; y: number } | null) => {
-    const box = root.current?.getBoundingClientRect()
-    const next = point && box ? gazeToward(box, point.x, point.y) : null
-    setGaze(current => (current === next ? current : next))
-  }, [])
-  useKapTracking(root, interactive, aim)
+  useKapTracking(root, interactive)
   const blink = useKapBlink(
     rigReady && !privacy && !reduced && pageVisible && !compact && phase === 'idle' && !reactingToError,
   )
@@ -118,14 +113,16 @@ export function AuthKap({
       data-phase={phase}
       data-reduced={reduced}
       data-blink={blink}
-      data-ready={rigReady}
       data-quality={reduced ? 'static' : lightweight ? 'light' : 'full'}
       aria-hidden="true"
     >
-      {(['neutral', 'covered'] as const).map(name => (
+      <div className="auth-kap-art" style={{ visibility: privacy || rigReady ? 'hidden' : 'visible' }}>
+        <img src={authReference} alt="" draggable={false} />
+      </div>
+      {(['neutral', 'flight'] as const).map(name => (
         <img
           key={name}
-          src={KAP_POSES[name]}
+          src={name === 'neutral' ? neutral : flight}
           alt=""
           hidden
           data-asset={name}
@@ -133,11 +130,12 @@ export function AuthKap({
           onError={() => setReady(value => ({ ...value, [name]: false }))}
         />
       ))}
-      {/* Warm the cache so a slow first sign-in never shows the patrol art late; nothing waits on it. */}
-      <img src={FLIGHT_POSE} alt="" hidden />
       {rigReady && (
-        <div className="kap-regular-stage" style={{ visibility: showingFlight ? 'hidden' : 'visible' }}>
-          <KapRig phase={phase} gaze={interactive ? gaze : null} failed={reactingToError && !privacy} />
+        <div
+          className="kap-regular-stage"
+          style={{ visibility: showingFlight || phase === 'away' ? 'hidden' : 'visible' }}
+        >
+          <KapPrivacyRig phase={phase} blink={blink} failed={reactingToError && !privacy} />
         </div>
       )}
       {showingFlight && origin && (
@@ -146,9 +144,27 @@ export function AuthKap({
           landing={landing}
           reduced={reduced}
           blink={blink}
-          privatePose={privacy ? 'covered' : null}
+          privatePose={privacy ? pose : ready.flight ? null : 'neutral'}
         />
       )}
+      {(['covered', 'away'] as const).map(name => (
+        <img
+          key={name}
+          src={name === 'covered' ? covered : away}
+          alt=""
+          draggable={false}
+          className="auth-kap-privacy"
+          data-pose={name}
+          decoding="async"
+          loading="eager"
+          onLoad={() => setReady(value => ({ ...value, [name]: true }))}
+          onError={() => setReady(value => ({ ...value, [name]: false }))}
+          style={{
+            visibility:
+              privacy && pose === name && ready[name] && (!rigReady || phase === 'away') ? 'visible' : 'hidden',
+          }}
+        />
+      ))}
     </div>
   )
 }

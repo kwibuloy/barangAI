@@ -1,35 +1,31 @@
-import { cn } from '@/lib/utils'
-import logo from '../assets/kap/logo.webp'
-
-/** The app logo: Kap's head sticker, cut from the user's own artwork by scripts/kap.py (never redrawn). */
-export function BrandMark({ size = 32, className }: { size?: number; className?: string }) {
+/** App-icon style mark: the vest's eight-rayed sun on a blue squircle, legible at 20px. */
+export function BrandMark({ size = 28 }: { size?: number }) {
+  const rays = Array.from({ length: 8 }, (_, index) => index * 45)
   return (
-    <img
-      src={logo}
-      alt=""
-      aria-hidden="true"
-      draggable={false}
-      width={size}
-      height={size}
-      className={cn('brand-mark shrink-0 object-contain select-none', className)}
-      style={{ width: size, height: size }}
-    />
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
+      <defs>
+        <linearGradient id="brand-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3b82f6" />
+          <stop offset="1" stopColor="#1d4fbf" />
+        </linearGradient>
+      </defs>
+      <rect width="48" height="48" rx="11" fill="url(#brand-fill)" />
+      <g fill="#fff" transform="translate(24 24)">
+        {rays.map(angle => (
+          <path key={angle} d="M0-17 2.6-9.5h-5.2z" transform={`rotate(${angle})`} />
+        ))}
+        <circle r="7" />
+      </g>
+      <circle cx="24" cy="24" r="3.2" fill="#f0b429" />
+    </svg>
   )
 }
 
-/** Logo plus the wordmark in the brand green; logos are exempt from text contrast rules. */
-export function Wordmark({ textClassName, size = 40 }: { textClassName?: string; size?: number }) {
+export function Wordmark({ textClassName }: { textClassName?: string }) {
   return (
-    <span className="group/brand flex items-center gap-2">
-      <BrandMark size={size} />
-      <span
-        className={cn(
-          'text-[26px] leading-none font-black tracking-[-0.035em] text-primary dark:text-primary',
-          textClassName,
-        )}
-      >
-        BarangAI
-      </span>
+    <span className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
+      <BrandMark />
+      <span className={textClassName}>BarangAI</span>
     </span>
   )
 }

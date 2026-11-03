@@ -277,7 +277,10 @@ export function LegalPage({ page }: { page: 'terms' | 'privacy' }) {
   return (
     <main className="pt-safe mx-auto min-h-dvh max-w-2xl bg-background px-5 pb-16">
       <div className="flex h-14 items-center justify-between">
-        <Link to="/" className="-ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-[15px] font-medium text-link">
+        <Link
+          to="/"
+          className="-ml-2 inline-flex min-h-11 items-center gap-1 px-2 text-[15px] font-medium text-primary"
+        >
           <ArrowLeft className="size-4" aria-hidden="true" />
           <Txt>Back to BarangAI</Txt>
         </Link>
@@ -299,7 +302,7 @@ export function LegalPage({ page }: { page: 'terms' | 'privacy' }) {
         </section>
       ))}
       <Operator />
-      <nav className="mt-8 flex gap-4 text-[15px] font-medium text-link">
+      <nav className="mt-8 flex gap-4 text-[15px] font-medium text-primary">
         <Link to={page === 'terms' ? '/privacy' : '/terms'} className="min-h-11">
           <Txt>{page === 'terms' ? 'Privacy notice' : 'Terms and conditions'}</Txt>
         </Link>

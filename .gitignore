@@ -37,6 +37,3 @@ kaggle.json
 
 # ML datasets and review sheets (third-party images; share via private Drive, not Git)
 ml/data/
-
-# Design-hook cache
-apps/web/.impeccable/

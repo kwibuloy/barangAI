@@ -19,17 +19,13 @@ export function StatusBadge({ status, className }: { status: Status; className?:
   return (
     <span
       data-status={status}
-      style={{
-        color,
-        backgroundColor: `color-mix(in oklab, ${color} 12%, transparent)`,
-        borderColor: `color-mix(in oklab, ${color} 28%, transparent)`,
-      }}
+      style={{ color, backgroundColor: `color-mix(in oklab, ${color} 13%, transparent)` }}
       className={cn(
-        'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-xl border-2 px-2.5 text-[13px] font-extrabold whitespace-nowrap',
+        'inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12.5px] font-semibold whitespace-nowrap',
         className,
       )}
     >
-      <Icon className="size-3.5" strokeWidth={2.8} aria-hidden="true" />
+      <Icon className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
       <Txt>{status}</Txt>
     </span>
   )

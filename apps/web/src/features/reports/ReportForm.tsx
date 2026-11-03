@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, m } from 'motion/react'
@@ -21,13 +21,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Kap, kapAvailable, type KapPose } from '@/components/Kap'
-import { Journey } from './Journey'
+import { Kap, kapAvailable } from '@/components/Kap'
 import { DateText } from '@/components/DateText'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Alert, LargeTitle } from '@/components/page'
 import { cn } from '@/lib/utils'
-import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { post } from '../../lib/api'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { ResidentAccount } from '../../app/ResidentShell'
@@ -42,14 +40,8 @@ import type { Category, Hazard, Nearby, Prediction, Report } from './types'
 const UNAVAILABLE: Prediction = { prediction_available: false, model_category: null, confidence: null }
 const NOT_FILLED = { category: false, description: false }
 const STEPS = ['Photo', 'Location', 'Details', 'Review'] as const
-/** Kap coaches each step from beside the progress bar, like Duolingo's owl over a lesson. */
-const COACH: { pose: KapPose; line: string }[] = [
-  { pose: 'idea', line: 'Show me what needs fixing. One clear photo helps staff most.' },
-  { pose: 'thinking', line: 'Where is it? Pin the exact spot so the team can find it.' },
-  { pose: 'clipboard', line: 'Check what I filled in and change anything that looks wrong.' },
-  { pose: 'thumbs', line: 'Looking good! One last check, then send it to your barangay.' },
-]
 const EASE = [0.22, 1, 0.36, 1] as const
+const PATH = ['Pending', 'Under Verification', 'Accepted', 'In Progress', 'Resolved']
 
 /** Client-side checks so residents learn about unusable photos before uploading them. */
 function photoProblem(file: File) {
@@ -74,7 +66,6 @@ function Card({ className, children }: { className?: string; children: ReactNode
 }
 
 export function ReportForm() {
-  const desktop = useMediaQuery(DESKTOP)
   const t = useText()
   const submitReport = useSubmitReport()
   const [step, setStep] = useState(0)
@@ -186,8 +177,6 @@ export function ReportForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photo])
 
-  // Faces first, then the AI's classification; the photo is revealed once both are done (or the AI is unavailable).
-  const photoState: PreviewState = previewState === 'ready' && !prediction ? 'analysing' : previewState
   function go(next: number) {
     setDirection(next > step ? 1 : -1)
     setError('')
@@ -384,11 +373,11 @@ export function ReportForm() {
   const hazards = prediction?.hazards ?? []
   const showSafety = category === 'exposed_wiring' || hazards.includes('electrical_hazard')
   return (
-    <div data-fit className="pt-3 lg:mx-auto lg:max-w-6xl lg:pt-0">
-      <LargeTitle bar title={t('Make a report')} trailing={<ResidentAccount />} />
+    <div className="lg:mx-auto lg:max-w-6xl">
+      <LargeTitle title={t('Make a report')} trailing={<ResidentAccount />} />
       {joining && (
         <div className="mb-4 flex items-start gap-3 rounded-2xl bg-tint p-3.5">
-          <Users className="mt-0.5 size-5 shrink-0 text-link" aria-hidden="true" />
+          <Users className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
           <p className="min-w-0 flex-1 text-[14.5px]">
             <strong className="block font-semibold">
               {t('Adding to')}: {t(label(joining.category))}
@@ -410,48 +399,32 @@ export function ReportForm() {
           </button>
         </div>
       )}
-      {/* Phones show it until a photo is chosen (and again once sent), so every step fits on one screen. */}
-      <p className={cn('mb-3 px-1 text-[13px] text-muted-foreground', (step > 0 || photo) && 'max-lg:hidden')}>
+      <p className="mb-3 px-1 text-[13px] text-muted-foreground">
         <Txt>Not for emergencies. If anyone is in danger, call 911.</Txt>
       </p>
       {/* Desktop: the steps on the left, a live summary of the report on the right. */}
       <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start xl:gap-10">
         <div>
-          <div className="mb-3 lg:mb-5">
+          <div className="mb-4">
             <div className="mb-2 flex items-baseline justify-between text-[15px]">
-              <strong className="font-extrabold">
+              <strong className="font-semibold">
                 <Txt>{STEPS[step]}</Txt>
               </strong>
-              <span className="font-bold text-muted-foreground">
+              <span className="text-muted-foreground">
                 {t('Step')} {step + 1} {t('of')} {STEPS.length}
               </span>
             </div>
-            {/* Duolingo's lesson bar: one thick track, a springy green fill with a highlight along its top. */}
-            <div className="h-4 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-              <m.i
-                className="relative block h-full origin-left rounded-full bg-primary after:absolute after:inset-x-2 after:top-1 after:h-1 after:rounded-full after:bg-white/35"
-                initial={false}
-                animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
-                transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-              />
-            </div>
-            {/* Shorter phones drop the coach on Details and Review, the two fullest steps, so each fits. */}
-            <div
-              className={cn('mt-2 flex items-end gap-2 lg:hidden', step >= 2 && '[@media(max-height:820px)]:hidden')}
-            >
-              <Kap key={step} pose={COACH[step].pose} motion="pop" interactive className="h-14 shrink-0" />
-              <AnimatePresence mode="wait" initial={false}>
-                <m.p
-                  key={step}
-                  className="kap-bubble kap-bubble-left relative mb-2 rounded-2xl border-2 bg-card px-3 py-1.5 text-[13.5px] leading-snug font-bold"
-                  initial={{ opacity: 0, scale: 0.92, x: -6 }}
-                  animate={{ opacity: 1, scale: 1, x: 0 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                >
-                  <Txt>{COACH[step].line}</Txt>
-                </m.p>
-              </AnimatePresence>
+            <div className="flex gap-1.5" aria-hidden="true">
+              {STEPS.map((name, index) => (
+                <span key={name} className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                  <m.i
+                    className="block h-full origin-left rounded-full bg-primary"
+                    initial={false}
+                    animate={{ scaleX: index <= step ? 1 : 0 }}
+                    transition={{ duration: 0.25, ease: EASE }}
+                  />
+                </span>
+              ))}
             </div>
           </div>
           <AnimatePresence mode="wait" initial={false} custom={direction}>
@@ -474,7 +447,7 @@ export function ReportForm() {
                   photo={photo}
                   preparing={preparing}
                   preview={preview}
-                  previewState={photoState}
+                  previewState={previewState}
                   prediction={prediction}
                   onSelect={selectPhoto}
                   onDrop={pickPhoto}
@@ -482,19 +455,23 @@ export function ReportForm() {
               )}
               {step === 1 && (
                 <>
-                  <p className="text-[15px] text-muted-foreground max-lg:hidden">
+                  <p className="text-[15px] text-muted-foreground">
                     <Txt>Use GPS, move a map pin, or enter coordinates.</Txt>
                   </p>
                   <Card className="space-y-3">
-                    {/* Side by side while both labels fit on a line; otherwise each takes the full width. */}
-                    <div className="flex flex-wrap gap-2.5 *:grow *:basis-auto">
-                      <Button className="lg:h-[52px]" type="button" onClick={() => locate()} disabled={locating}>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <Button
+                        className="w-full whitespace-normal lg:h-[52px]"
+                        type="button"
+                        onClick={() => locate()}
+                        disabled={locating}
+                      >
                         {locating ? <LoaderCircle className="animate-spin" /> : <LocateFixed />}
                         <Txt>{locating ? 'Finding your location…' : 'Use GPS'}</Txt>
                       </Button>
                       <Button
                         variant="tinted"
-                        className="lg:h-[52px]"
+                        className="w-full whitespace-normal lg:h-[52px]"
                         type="button"
                         onClick={() => setShowMap(!showMap)}
                       >
@@ -596,7 +573,7 @@ export function ReportForm() {
                       {categories.map(item => (
                         <label
                           key={item.value}
-                          className="hairline relative flex min-h-11 items-center gap-2.5 rounded-2xl bg-card px-2.5 py-2 pr-8 text-[14.5px] leading-tight font-medium lg:min-h-13 lg:gap-3 lg:p-3 lg:pr-9 lg:text-[15px] transition-[box-shadow,background-color] has-checked:bg-tint has-checked:shadow-[0_0_0_2px_var(--primary)] has-focus-visible:ring-2 has-focus-visible:ring-ring"
+                          className="hairline relative flex min-h-13 items-center gap-3 rounded-2xl bg-card p-3 pr-9 text-[15px] leading-snug font-medium transition-[box-shadow,background-color] has-checked:bg-tint has-checked:shadow-[0_0_0_2px_var(--primary)] has-focus-visible:ring-2 has-focus-visible:ring-ring"
                         >
                           <input
                             className="sr-only"
@@ -610,7 +587,7 @@ export function ReportForm() {
                               setAiFilled(current => ({ ...current, category: false }))
                             }}
                           />
-                          <CategoryTile category={item.value} size={desktop ? 'md' : 'sm'} />
+                          <CategoryTile category={item.value} />
                           <Txt>{item.label}</Txt>
                           {category === item.value && (
                             <m.span
@@ -698,7 +675,7 @@ export function ReportForm() {
                     </span>
                     <Textarea
                       rows={2}
-                      className="min-h-14 lg:min-h-16"
+                      className="min-h-16"
                       maxLength={1000}
                       placeholder={t('What happened? Add details the photo may not show.')}
                       value={description}
@@ -720,7 +697,7 @@ export function ReportForm() {
                 <>
                   <div className="hairline overflow-hidden rounded-2xl bg-card">
                     {preview && (
-                      <ProtectedPhoto src={preview} state={photoState} className="aspect-[3/1] max-lg:hidden" />
+                      <ProtectedPhoto src={preview} state={previewState} className="aspect-[2/1] lg:aspect-[3/1]" />
                     )}
                     <dl>
                       {[
@@ -739,18 +716,7 @@ export function ReportForm() {
                           auto: aiDescription,
                         },
                       ].map(item => (
-                        <div
-                          key={item.term}
-                          className="flex items-center gap-3 border-t px-3.5 py-1.5 first:border-t-0 lg:items-start lg:px-4 lg:py-3"
-                        >
-                          {item.edit === 0 && preview && (
-                            <ProtectedPhoto
-                              thumb
-                              src={preview}
-                              state={photoState}
-                              className="h-11 w-16 shrink-0 rounded-lg lg:hidden"
-                            />
-                          )}
+                        <div key={item.term} className="flex items-start gap-3 border-t px-4 py-3 first:border-t-0">
                           <div className="min-w-0 flex-1">
                             <dt className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
                               <Txt>{item.term}</Txt>
@@ -761,12 +727,10 @@ export function ReportForm() {
                                 </span>
                               )}
                             </dt>
-                            <dd className="mt-0.5 line-clamp-2 text-[15px] leading-snug break-words lg:line-clamp-none lg:text-[16px]">
-                              {item.value}
-                            </dd>
+                            <dd className="mt-0.5 text-[16px] break-words">{item.value}</dd>
                           </div>
                           <button
-                            className="-my-1 min-h-11 shrink-0 px-1 text-[15px] font-medium text-link"
+                            className="-my-1 min-h-11 px-1 text-[15px] font-medium text-primary"
                             type="button"
                             onClick={() => go(item.edit)}
                           >
@@ -788,12 +752,11 @@ export function ReportForm() {
               <Txt>{error}</Txt>
             </Alert>
           )}
-          {/* Phones: a solid action bar pinned above the tabs, like Duolingo's CHECK bar. */}
-          <div className="sticky bottom-[var(--tab-offset)] z-20 -mx-4 mt-4 flex gap-2.5 border-t-2 bg-background px-4 py-2.5 sm:-mx-6 sm:px-6 md:bottom-24 md:mx-0 md:rounded-2xl md:border-2 md:px-3 lg:static lg:border-0 lg:p-0">
+          <div className="sticky bottom-[calc(var(--tab-offset)+12px)] z-20 mt-6 flex gap-2.5 md:bottom-28 lg:static">
             {step > 0 && (
               <Button
-                variant="outline"
-                className="size-12 shrink-0 px-0 lg:size-14"
+                variant="secondary"
+                className="glass hairline size-[52px] shrink-0 rounded-2xl px-0"
                 type="button"
                 onClick={() => go(step - 1)}
                 aria-label={t('Back')}
@@ -804,7 +767,7 @@ export function ReportForm() {
             {step < STEPS.length - 1 ? (
               <Button
                 size="lg"
-                className="flex-1 max-lg:min-h-12"
+                className="flex-1 shadow-[0_8px_20px_-8px_rgb(29_100_216/0.6)]"
                 type="button"
                 disabled={!ready[step]}
                 onClick={() => go(step + 1)}
@@ -814,7 +777,7 @@ export function ReportForm() {
             ) : (
               <Button
                 size="lg"
-                className="flex-1 max-lg:min-h-12"
+                className="flex-1 shadow-[0_8px_20px_-8px_rgb(29_100_216/0.6)]"
                 type="button"
                 disabled={submitReport.isPending || checking || (autoFilled && !confirmed)}
                 onClick={() => void submit()}
@@ -836,7 +799,7 @@ export function ReportForm() {
         <Summary
           step={step}
           preview={preview}
-          previewState={photoState}
+          previewState={previewState}
           location={located ? (streetName ?? coordinates) : ''}
           category={category}
           description={description.trim()}
@@ -919,7 +882,7 @@ function Summary({
                 <button
                   type="button"
                   onClick={() => onEdit(row.step)}
-                  className="text-[14px] font-medium text-link hover:underline"
+                  className="text-[14px] font-medium text-primary hover:underline"
                 >
                   <Txt>Edit</Txt>
                 </button>
@@ -946,7 +909,7 @@ function AiTag({ check = false }: { check?: boolean }) {
         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold',
         check
           ? 'bg-[color-mix(in_oklab,var(--status-pending)_14%,transparent)] text-[var(--status-pending)]'
-          : 'bg-tint text-link',
+          : 'bg-tint text-primary',
       )}
     >
       <Sparkles className="size-3" aria-hidden="true" />
@@ -955,20 +918,10 @@ function AiTag({ check = false }: { check?: boolean }) {
   )
 }
 
-type PreviewState = 'checking' | 'analysing' | 'ready' | 'failed'
+type PreviewState = 'checking' | 'ready' | 'failed'
 
 /** Shows the server's face-blurred copy. Until then, only a heavily blurred version of the original is visible. */
-function ProtectedPhoto({
-  src,
-  state,
-  className,
-  thumb = false,
-}: {
-  src: string
-  state: PreviewState
-  className?: string
-  thumb?: boolean
-}) {
+function ProtectedPhoto({ src, state, className }: { src: string; state: PreviewState; className?: string }) {
   const t = useText()
   return (
     <div className={cn('relative w-full overflow-hidden', className)}>
@@ -979,20 +932,15 @@ function ProtectedPhoto({
         src={src}
         alt={t('Preview of incident photo')}
       />
-      {state !== 'ready' && !thumb && (
+      {state !== 'ready' && (
         <div
           className="absolute inset-0 grid place-items-center bg-black/25 p-3 text-center text-[14px] font-medium text-white"
           role="status"
         >
-          {state !== 'failed' && <span className="photo-scan" aria-hidden="true" />}
-          <span className="relative inline-flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1">
-            {state === 'analysing' && <Sparkles className="size-4 shrink-0" aria-hidden="true" />}
+          {state === 'checking' && <span className="photo-scan" aria-hidden="true" />}
+          <span className="relative">
             <Txt>
-              {state === 'checking'
-                ? 'Hiding faces…'
-                : state === 'analysing'
-                  ? 'Checking the photo…'
-                  : 'Preview hidden. Faces are still checked before saving.'}
+              {state === 'checking' ? 'Hiding faces…' : 'Preview hidden. Faces are still checked before saving.'}
             </Txt>
           </span>
         </div>
@@ -1004,8 +952,8 @@ function ProtectedPhoto({
 /** Auto-fill is only an aid: the resident must confirm what the AI and GPS filled in before sending. */
 function AutoFillCheck({ confirmed, onConfirm }: { confirmed: boolean; onConfirm: (value: boolean) => void }) {
   return (
-    <div className="hairline space-y-2 rounded-2xl bg-card p-3 lg:space-y-3 lg:p-4">
-      <p className="flex gap-2.5 text-[13px] leading-snug lg:text-[14px]">
+    <div className="hairline space-y-3 rounded-2xl bg-card p-4">
+      <p className="flex gap-2.5 text-[14px] leading-snug">
         <Info className="mt-0.5 size-4 shrink-0 text-[var(--status-pending)]" aria-hidden="true" />
         <span>
           <Txt>
@@ -1014,7 +962,7 @@ function AutoFillCheck({ confirmed, onConfirm }: { confirmed: boolean; onConfirm
           </Txt>
         </span>
       </p>
-      <label className="flex min-h-11 items-center gap-3 rounded-xl bg-muted/60 px-3 py-2 text-[14px] leading-snug font-medium has-focus-visible:ring-2 has-focus-visible:ring-ring lg:text-[15px]">
+      <label className="flex min-h-11 items-center gap-3 rounded-xl bg-muted/60 px-3 py-2 text-[15px] font-medium has-focus-visible:ring-2 has-focus-visible:ring-ring">
         <input
           type="checkbox"
           className="size-5 shrink-0 accent-[var(--primary)]"
@@ -1050,12 +998,16 @@ function PhotoStep({
     'hairline relative flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-[16px] font-semibold transition-[transform,box-shadow,background-color] active:scale-[0.98] has-focus-visible:ring-2 has-focus-visible:ring-ring lg:min-h-44'
   return (
     <>
-      <p className="text-[15px] text-muted-foreground max-lg:hidden">
+      <p className="text-[15px] text-muted-foreground">
         <Txt>Take a clear photo. The AI fills in the details to help you; check them and change anything wrong.</Txt>
       </p>
       {preview && (
         <m.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }}>
-          <ProtectedPhoto src={preview} state={previewState} className="hairline aspect-[3/1] rounded-2xl xl:hidden" />
+          <ProtectedPhoto
+            src={preview}
+            state={previewState}
+            className="hairline aspect-[2/1] rounded-2xl lg:aspect-[3/1] xl:hidden"
+          />
         </m.div>
       )}
       {preparing && (
@@ -1065,7 +1017,7 @@ function PhotoStep({
         </p>
       )}
       {photo && (
-        <p className="flex items-center gap-2 px-1 text-[14px] text-muted-foreground max-lg:sr-only" role="status">
+        <p className="flex items-center gap-2 px-1 text-[14px] text-muted-foreground" role="status">
           <CheckCircle2 className="size-4 shrink-0 text-[var(--status-resolved)]" />
           <span className="truncate">
             <Txt>Selected photo:</Txt> {photo.name}
@@ -1073,9 +1025,7 @@ function PhotoStep({
         </p>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <label
-          className={cn(tile, 'bg-primary text-primary-foreground', photo && 'min-h-12 flex-row py-2 lg:min-h-16')}
-        >
+        <label className={cn(tile, 'bg-primary text-primary-foreground', photo && 'min-h-14 flex-row lg:min-h-16')}>
           <Camera className="size-7" aria-hidden="true" />
           <Txt>{photo ? 'Retake photo' : 'Take photo'}</Txt>
           <input
@@ -1091,8 +1041,8 @@ function PhotoStep({
         <label
           className={cn(
             tile,
-            'bg-card text-link',
-            photo && 'min-h-12 flex-row py-2 lg:min-h-16',
+            'bg-card text-primary',
+            photo && 'min-h-14 flex-row lg:min-h-16',
             dragging && 'bg-tint shadow-[0_0_0_2px_var(--primary)]',
           )}
           onDragOver={event => {
@@ -1122,7 +1072,7 @@ function PhotoStep({
           />
         </label>
       </div>
-      <p className={cn('px-1 text-[13px] text-muted-foreground', photo && 'max-lg:hidden')}>
+      <p className="px-1 text-[13px] text-muted-foreground">
         <Txt>JPG, PNG, or WebP, up to 25 MB. Avoid faces and license plates.</Txt>
       </p>
       {photo && <AiCard prediction={prediction} />}
@@ -1150,14 +1100,11 @@ function AiCard({ prediction }: { prediction: Prediction | null }) {
           ? ['AI is uncertain', 'Choose the category yourself. Barangay personnel will verify it.']
           : ['AI classification unavailable', 'Choose the category yourself. Barangay personnel will verify it.']
   return (
-    <div
-      aria-live="polite"
-      className={cn('hairline flex gap-3 rounded-2xl p-3 text-[14px] lg:p-4', prediction ? 'bg-card' : 'shimmer')}
-    >
-      <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-tint text-link">
+    <div aria-live="polite" className={cn('hairline flex gap-3 rounded-2xl p-4', prediction ? 'bg-card' : 'shimmer')}>
+      <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-tint text-primary">
         <Sparkles className="size-5" aria-hidden="true" />
       </span>
-      <span className="min-w-0 lg:text-[15px]">
+      <span className="min-w-0 text-[15px]">
         <strong className="block font-semibold">
           {prediction?.model_category && prediction.problem_seen !== false ? (
             <>
@@ -1178,36 +1125,14 @@ function AiCard({ prediction }: { prediction: Prediction | null }) {
 function SuccessView({ report, onAnother }: { report: Report; onAnother: () => void }) {
   const t = useText()
   return (
-    <div
-      data-fit
-      className="flex flex-col items-center pt-[calc(env(safe-area-inset-top)+8px)] text-center lg:mx-auto lg:max-w-md lg:pt-6"
-    >
+    <div className="flex flex-col items-center pt-4 text-center lg:mx-auto lg:max-w-md lg:pt-6">
       {kapAvailable('cheer') ? (
         <m.div
           initial={{ scale: 0.6, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 18 }}
         >
-          <span className="relative block">
-            {/* A burst of sparkles around him, like Duolingo's lesson-complete moment. */}
-            {[
-              ['-left-6 top-4', '#ffc800'],
-              ['-right-5 top-0', '#1cb0f6'],
-              ['-left-3 bottom-6', '#ff9600'],
-              ['-right-7 bottom-10', '#ce82ff'],
-            ].map(([place, color], index) => (
-              <svg
-                key={place}
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                className={cn('sparkle absolute size-6', place)}
-                style={{ '--i': index, color } as CSSProperties}
-              >
-                <path fill="currentColor" d="M12 0c1 6 6 11 12 12-6 1-11 6-12 12-1-6-6-11-12-12C6 11 11 6 12 0z" />
-              </svg>
-            ))}
-            <Kap pose="cheer" motion="greet" interactive className="h-28 w-auto sm:h-40 lg:h-44" />
-          </span>
+          <Kap pose="cheer" className="h-32 w-auto lg:h-36" />
         </m.div>
       ) : (
         <svg className="size-24" viewBox="0 0 96 96" aria-hidden="true">
@@ -1234,7 +1159,7 @@ function SuccessView({ report, onAnother }: { report: Report; onAnother: () => v
           />
         </svg>
       )}
-      <h1 className="display mt-2 text-[28px] lg:mt-3 lg:text-[30px]">
+      <h1 className="mt-3 text-[26px] font-bold">
         <Txt>Report sent</Txt>
       </h1>
       <p role="status" className="mt-1 max-w-sm text-[16px] text-muted-foreground">
@@ -1243,27 +1168,41 @@ function SuccessView({ report, onAnother }: { report: Report; onAnother: () => v
       <p className="mt-2 max-w-sm text-[13px] text-muted-foreground">
         <Txt>Sending a report does not guarantee a response or a date. If anyone is in danger, call 911.</Txt>
       </p>
-      <div className="mt-3 w-full rounded-2xl border-2 border-b-4 bg-card p-3.5 pb-4 text-left lg:mt-5 lg:p-4 lg:pb-5">
-        <span className="label-caps text-[12px] text-muted-foreground">
+      <div className="hairline mt-4 w-full rounded-2xl bg-card p-4 text-left">
+        <span className="text-[13px] text-muted-foreground">
           <Txt>Reference no.</Txt>
         </span>
-        <strong className="mt-0.5 block font-mono text-[24px] font-bold tracking-wider">
+        <strong className="mt-0.5 block font-mono text-[24px] font-semibold tracking-wider">
           {report.id.slice(0, 8).toUpperCase()}
         </strong>
-        <div className="mt-3 border-t-2 pt-12" aria-label={t('Status path')} role="group">
-          <Journey status="Pending" compact />
-        </div>
-        <p className="mt-3 text-[14px] text-muted-foreground lg:mt-4">
+        <ol className="mt-3 space-y-1.5 border-t pt-3" aria-label={t('Status path')}>
+          {PATH.map((status, index) => (
+            <li key={status} className="flex items-center gap-3 text-[15px]">
+              <span
+                className={cn(
+                  'grid size-5 shrink-0 place-items-center rounded-full border-2',
+                  index === 0 ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30',
+                )}
+              >
+                {index === 0 && <Check className="size-3" strokeWidth={3.5} aria-hidden="true" />}
+              </span>
+              <span className={index === 0 ? 'font-semibold' : 'text-muted-foreground'}>
+                <Txt>{status}</Txt>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 text-[14px] text-muted-foreground">
           <Txt>Track it anytime in My reports.</Txt>
         </p>
       </div>
-      <div className="mt-3 grid w-full gap-2 lg:mt-4">
-        <Button asChild size="lg" className="max-lg:min-h-12">
+      <div className="mt-4 grid w-full gap-2">
+        <Button asChild size="lg">
           <Link to={`/reports/${report.id}`}>
             <Txt>View my report</Txt>
           </Link>
         </Button>
-        <Button variant="tinted" size="lg" className="max-lg:min-h-12" type="button" onClick={onAnother}>
+        <Button variant="tinted" size="lg" type="button" onClick={onAnother}>
           <Txt>Make another report</Txt>
         </Button>
       </div>

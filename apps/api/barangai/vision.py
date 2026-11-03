@@ -45,8 +45,7 @@ def configured():
     token = os.environ.get("CLOUDFLARE_WORKERS_AI_TOKEN", "")
     if not re.fullmatch(r"[a-fA-F0-9]{32}", account) or not token:
         return None
-    # A blank line copied from .env.example means "use the default", not "no model".
-    return account, token, os.environ.get("CLOUDFLARE_VISION_MODEL") or DEFAULT_MODEL
+    return account, token, os.environ.get("CLOUDFLARE_VISION_MODEL", DEFAULT_MODEL)
 
 
 def instructions(language: str) -> str:

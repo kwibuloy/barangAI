@@ -580,7 +580,7 @@ describe('optional Google sign-in', () => {
       ),
     )
     render(<App />)
-    await screen.findByRole('heading', { name: 'Sign in' })
+    await screen.findByRole('heading', { name: 'Welcome back' })
     if (enabled)
       expect(await screen.findByRole('link', { name: 'Continue with Google' })).toHaveAttribute(
         'href',
@@ -610,11 +610,11 @@ describe('localized feedback', () => {
     )
     at('/desk/reports')
     render(<App />)
-    fireEvent.click(await screen.findByRole('link', { name: 'I-review ang ulat: Baha' }))
-    expect(await screen.findByText(/Similarity 0.91/)).toHaveTextContent('Hinihintay')
-    fireEvent.error(screen.getByAltText('Na-submit na ulat'))
+    fireEvent.click(await screen.findByRole('link', { name: 'Suriin ang ulat: Pagbaha' }))
+    expect(await screen.findByText(/Antas ng pagkakahawig 0.91/)).toHaveTextContent('Naghihintay ng pasiya')
+    fireEvent.error(screen.getByAltText('Naipasang insidente'))
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Hindi ma-load ang photo. Isara at buksan ulit ang ulat.',
+      'Hindi maipakita ang larawan. Isara at buksan muli ang ulat upang subukan ulit.',
     )
   })
 

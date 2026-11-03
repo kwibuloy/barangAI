@@ -58,7 +58,7 @@ export function QueuePage() {
     setParams(next, { replace: true })
   }
   return (
-    <div className="grid h-[calc(100svh-var(--staff-chrome))] min-h-0 lg:grid-cols-[minmax(320px,400px)_minmax(0,1fr)]">
+    <div className="grid h-[calc(100svh-var(--staff-chrome))] min-h-0 md:h-[calc(100svh-3.5rem-1rem)] lg:grid-cols-[minmax(320px,400px)_minmax(0,1fr)]">
       <section className={cn('flex min-h-0 flex-col border-r', id && 'hidden lg:flex')}>
         <div className="space-y-3 border-b p-4">
           <label className="relative block">
@@ -177,19 +177,19 @@ export function QueuePage() {
                     {report.priority && report.priority.level !== 'low' && <PriorityChip priority={report.priority} />}
                     {report.trust_flags && <TrustChip flags={report.trust_flags} />}
                     {area.enabled && (
-                      <span className="inline-flex h-6 items-center gap-1 rounded-full whitespace-nowrap bg-muted px-2 text-[12.5px] font-semibold text-muted-foreground">
+                      <span className="inline-flex h-6 items-center gap-1 rounded-full bg-muted px-2 text-[12.5px] font-semibold text-muted-foreground">
                         <MapPin className="size-3.5" aria-hidden="true" />
                         {report.barangay ?? t('Outside every boundary')}
                       </span>
                     )}
                     {grouped.sizeOf(report) > 1 && (
-                      <span className="inline-flex h-6 items-center gap-1 rounded-full whitespace-nowrap bg-tint px-2 text-[12.5px] font-semibold text-link">
+                      <span className="inline-flex h-6 items-center gap-1 rounded-full bg-tint px-2 text-[12.5px] font-semibold text-primary">
                         <Layers className="size-3.5" aria-hidden="true" />
                         {grouped.sizeOf(report)} {t('reports')}
                       </span>
                     )}
                     {report.case_id && !report.case_confirmed && (
-                      <span className="inline-flex h-6 items-center gap-1 rounded-full whitespace-nowrap bg-muted px-2 text-[12.5px] font-semibold text-muted-foreground">
+                      <span className="inline-flex h-6 items-center gap-1 rounded-full bg-muted px-2 text-[12.5px] font-semibold text-muted-foreground">
                         <Link2 className="size-3.5" aria-hidden="true" />
                         <Txt>Added to a case · check</Txt>
                       </span>

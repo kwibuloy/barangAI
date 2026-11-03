@@ -353,12 +353,13 @@ function StatusControls({ detail }: { detail: Report }) {
           <Txt>The resident sees this.</Txt>
         </span>
       </label>
-      <div className="flex flex-wrap gap-2 *:grow *:basis-auto">
+      <div className="flex flex-wrap gap-2">
         {actions.map(action => (
           <Button
             key={action.status}
             size="sm"
             variant={action.status === 'Rejected' ? 'destructive' : 'default'}
+            className="flex-1"
             type="button"
             disabled={change.isPending || !described || (action.status === 'Rejected' && !reason)}
             onClick={() => transition(action.status)}
@@ -477,7 +478,7 @@ function DuplicateReview({ id }: { id: string }) {
                 <Txt>Similarity score</Txt> {item.score.toFixed(2)} · <Txt>{item.decision}</Txt>
               </small>
               {item.decision === 'confirmed' && inCase.has(item.candidate_report_id) && (
-                <p className="flex items-center gap-1.5 text-[13px] font-medium text-link">
+                <p className="flex items-center gap-1.5 text-[13px] font-medium text-primary">
                   <Layers className="size-3.5" aria-hidden="true" />
                   <Txt>In this case</Txt>
                 </p>
@@ -539,7 +540,7 @@ function ResidentCaseNote({ id }: { id: string }) {
   if (!info) return null
   return (
     <p className="flex items-start gap-2.5 rounded-2xl bg-tint p-3.5 text-[14.5px]">
-      <Users className="mt-0.5 size-4 shrink-0 text-link" aria-hidden="true" />
+      <Users className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
       <span>
         {info.confirmed && info.contributors == null ? (
           <Txt>Staff have grouped your report with others about the same issue.</Txt>
@@ -693,7 +694,7 @@ function AddDetails({ id }: { id: string }) {
           placeholder={t('What changed? For example: the water is higher now.')}
           onChange={event => setNote(event.target.value)}
         />
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[15px] font-medium text-link">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[15px] font-medium text-primary">
           <ImagePlus className="size-5" aria-hidden="true" />
           <span className="truncate">{photo ? photo.name : t('Add a photo (optional)')}</span>
           <input
@@ -713,11 +714,11 @@ function AddDetails({ id }: { id: string }) {
             <Txt>{add.error.message}</Txt>
           </Alert>
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
             <Txt>Cancel</Txt>
           </Button>
-          <Button type="submit" className="grow basis-auto" disabled={!note.trim() || add.isPending}>
+          <Button type="submit" className="flex-1" disabled={!note.trim() || add.isPending}>
             {add.isPending && <LoaderCircle className="animate-spin" />}
             <Txt>Send to staff</Txt>
           </Button>

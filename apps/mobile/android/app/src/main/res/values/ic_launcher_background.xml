@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Storybook Green behind Kap on the launcher icon; the web app's soft green wash. -->
-    <color name="ic_launcher_background">#D7FFB8</color>
-    <color name="splash_background">#FFFFFF</color>
-    <!-- Eager Green, the web app's primary colour, for the connect dialog's button and cursor. -->
-    <color name="colorPrimary">#58CC02</color>
-    <color name="colorPrimaryDark">#58A700</color>
-    <!-- Darker than the web's green so the dialog's button text reads clearly on white. -->
-    <color name="colorAccent">#3F7A00</color>
-    <!-- Behind Kap's head on the Android 12+ splash. -->
-    <color name="splash_icon_background">#D7FFB8</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="splash_background">#F5F4F1</color>
 </resources>

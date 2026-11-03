@@ -1,38 +1,52 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useReducedMotion } from 'motion/react'
 
-export type KapPhase = 'idle' | 'surprise' | 'peek' | 'covered'
-
-/**
- * Kap's password manners. Typing a hidden password: a wide-eyed beat, then he covers his eyes and cheekily peeks
- * through his feathers. Showing the password: both eyes fully covered, at once. The peek is play-acting only:
- * no password data reaches Kap, and his tracking eyes never follow the password field. Animation never gates
- * the form.
- */
+type Phase = 'idle' | 'surprise' | 'covering' | 'covered' | 'turning-away' | 'away' | 'turning-back' | 'returning'
+/** Cancellable choreography; no password data, animation never gates navigation. */
 export function useKapPrivacy(focused: boolean, revealed: boolean, ready: boolean) {
   const reduced = Boolean(useReducedMotion())
-  const [phase, setPhase] = useState<KapPhase>('idle')
-  const current = useRef<KapPhase>('idle')
-  const target: KapPhase = revealed ? 'covered' : focused ? 'peek' : 'idle'
+  const [phase, setPhase] = useState<Phase>('idle')
+  const current = useRef<Phase>('idle')
+  const target = revealed ? 'away' : focused ? 'covered' : 'idle'
   useLayoutEffect(() => {
-    let timer = 0
-    const enter = (next: KapPhase) => {
+    const timers: number[] = []
+    const enter = (next: Phase) => {
       current.current = next
       setPhase(next)
     }
-    if (target === 'peek' && !reduced && ready && (current.current === 'idle' || current.current === 'surprise')) {
-      enter('surprise')
-      timer = window.setTimeout(() => enter('peek'), 160)
-    } else enter(target)
-    return () => clearTimeout(timer)
+    const later = (next: Phase, delay: number) => timers.push(window.setTimeout(() => enter(next), delay))
+    if (reduced || !ready) enter(target)
+    else if (target === 'away') {
+      enter('turning-away')
+      later('away', 220)
+    } else if (target === 'covered') {
+      if (current.current === 'idle' || current.current === 'surprise') {
+        enter('surprise')
+        later('covering', 140)
+        later('covered', 620)
+      } else if (current.current === 'covering' || current.current === 'returning') {
+        enter('covering')
+        later('covered', 480)
+      } else if (current.current === 'away' || current.current === 'turning-away') {
+        enter('turning-back')
+        later('covered', 220)
+      } else enter('covered')
+    } else if (current.current !== 'idle') {
+      enter('returning')
+      later('idle', 480)
+    }
+    return () => timers.forEach(window.clearTimeout)
   }, [target, reduced, ready])
-  // Revealing covers immediately, before effects run; focus never shows a plain idle frame first.
-  const shown: KapPhase = revealed
-    ? 'covered'
-    : focused && phase === 'idle'
-      ? reduced || !ready
-        ? 'peek'
-        : 'surprise'
-      : phase
-  return { phase: shown, reduced }
+  // Reveal must conceal immediately, before effects run. Never expose the neutral face between private poses.
+  return {
+    phase:
+      revealed && !['turning-away', 'away'].includes(phase)
+        ? reduced || !ready
+          ? 'away'
+          : 'turning-away'
+        : focused && phase === 'idle'
+          ? 'covered'
+          : phase,
+    reduced,
+  }
 }

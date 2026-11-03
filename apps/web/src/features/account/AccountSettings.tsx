@@ -101,7 +101,7 @@ export function AccountButton({ user }: { user: User }) {
         aria-label={t('Account and settings')}
         className="grid size-11 place-items-center rounded-full"
       >
-        <span className="grid size-9 place-items-center rounded-full bg-primary text-[14px] font-extrabold text-primary-foreground shadow-[0_3px_0_var(--primary-edge)]">
+        <span className="grid size-8 place-items-center rounded-full bg-primary text-[14px] font-semibold text-primary-foreground">
           {initials(user)}
         </span>
       </button>
@@ -115,8 +115,7 @@ export function AccountButton({ user }: { user: User }) {
               <Txt>Language, appearance and sign out</Txt>
             </DrawerDescription>
           </DrawerHeader>
-          {/* Scrolls inside the sheet, which already keeps clear of the phone's navigation buttons. */}
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">
+          <div className="pb-safe px-4 pb-6">
             <AccountSettings user={user} />
           </div>
         </DrawerContent>

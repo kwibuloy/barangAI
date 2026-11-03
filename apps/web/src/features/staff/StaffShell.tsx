@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties } from 'react'
+import { Suspense } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { ArrowLeft, Bell, Gift, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
 import {
@@ -17,10 +17,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { BrandMark, Wordmark } from '@/components/BrandMark'
+import { Wordmark } from '@/components/BrandMark'
 import { PageSpinner } from '@/components/page'
-import { navIconStyle, navItemClass } from '@/components/nav'
+import { Kap } from '@/components/Kap'
+import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
 import { cn } from '@/lib/utils'
@@ -32,11 +34,11 @@ import { useNotifications } from '../notifications/NotificationsPage'
 import { useReports } from '../reports/queries'
 
 const NAV = [
-  { to: '/desk', label: 'Overview', icon: LayoutGrid, color: '#ff9600' },
-  { to: '/desk/map', label: 'Map', icon: MapIcon, color: '#ce82ff' },
-  { to: '/desk/updates', label: 'Updates', icon: Bell, color: '#ffc800' },
-  { to: '/desk/reports', label: 'Reports', icon: Inbox, color: '#1cb0f6' },
-  { to: '/desk/rewards', label: 'Rewards', icon: Gift, color: '#58cc02' },
+  { to: '/desk', label: 'Overview', icon: LayoutGrid },
+  { to: '/desk/map', label: 'Map', icon: MapIcon },
+  { to: '/desk/updates', label: 'Updates', icon: Bell },
+  { to: '/desk/reports', label: 'Reports', icon: Inbox },
+  { to: '/desk/rewards', label: 'Rewards', icon: Gift },
 ]
 const SECTIONS = [
   { label: 'Dashboard', items: NAV.slice(0, 3) },
@@ -45,49 +47,36 @@ const SECTIONS = [
 // Hidden when the sidebar collapses to icons.
 const WIDE_ONLY = 'group-data-[collapsible=icon]:hidden'
 
-/** Phones: the sections stay one tap away at the bottom, styled like the resident tab bar. */
+/** Phones: the sections stay one tap away at the bottom, as in the resident app. */
 function StaffTabBar({ current, unread, waiting }: { current: string; unread: number; waiting: number }) {
   const t = useText()
   return (
     <nav
       aria-label={t('Staff sections')}
-      className="tab-bar pb-safe fixed inset-x-0 bottom-0 z-40 border-t-2 bg-background"
+      className="tab-bar glass pb-safe fixed inset-x-0 bottom-0 z-40 shadow-[0_-0.5px_0_var(--border)]"
     >
-      <ul className="mx-auto flex h-[var(--tabbar)] max-w-2xl items-stretch gap-1 px-2">
+      <ul className="flex h-[var(--tabbar)] items-stretch">
         {NAV.map(item => {
-          const active = current === item.to
           const badge = item.to === '/desk/updates' ? unread : item.to === '/desk/reports' ? waiting : 0
           return (
-            <li key={item.to} className="min-w-0 flex-1">
+            <li key={item.to} className="flex-1">
               <NavLink
                 to={item.to}
                 end={item.to === '/desk'}
-                className="flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-extrabold"
+                className={cn(
+                  'flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors',
+                  current === item.to ? 'text-primary' : 'text-muted-foreground',
+                )}
               >
-                <span
-                  className={cn(
-                    'relative grid h-10 w-14 place-items-center rounded-xl border-2 transition-colors',
-                    active ? 'border-[#84d8ff] bg-sky-soft dark:border-[#3f8db5]' : 'border-transparent',
-                  )}
-                >
-                  <item.icon
-                    className="size-[26px]"
-                    strokeWidth={2.4}
-                    style={navIconStyle(item.color)}
-                    aria-hidden="true"
-                  />
+                <span className="relative">
+                  <item.icon className="size-6" aria-hidden="true" />
                   {badge > 0 && (
-                    <span
-                      aria-label={`${badge} ${t(item.to === '/desk/updates' ? 'unread' : 'waiting for review')}`}
-                      className="absolute -top-2 -right-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-background bg-[var(--destructive-edge)] px-1 text-[11px] leading-none font-extrabold text-white"
-                    >
-                      {badge > 99 ? '99+' : badge}
+                    <span className="absolute -top-1 -right-2.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-destructive px-1 text-[11px] leading-none font-semibold text-white">
+                      {badge}
                     </span>
                   )}
                 </span>
-                <span className={cn('max-w-full truncate', active ? 'text-link' : 'text-muted-foreground')}>
-                  <Txt>{item.label}</Txt>
-                </span>
+                <Txt>{item.label}</Txt>
               </NavLink>
             </li>
           )
@@ -97,8 +86,7 @@ function StaffTabBar({ current, unread, waiting }: { current: string; unread: nu
   )
 }
 
-/** Desktop-first staff and admin desk: a Duolingo-style sidebar beside the page, live counts one click away.
-    On phones: bottom tabs and a top bar with back and account buttons. */
+/** Desktop-first staff dashboard: sidebar navigation, content on an inset card. On phones: bottom tabs and a top bar. */
 export function StaffShell({ user }: { user: User }) {
   const t = useText()
   const { pathname } = useLocation()
@@ -124,43 +112,37 @@ export function StaffShell({ user }: { user: User }) {
   }
   return (
     <TooltipProvider delayDuration={300}>
-      <SidebarProvider style={{ '--sidebar-width': '17rem', '--sidebar-width-icon': '5rem' } as CSSProperties}>
-        <Sidebar collapsible="icon" className="group-data-[side=left]:border-r-2">
-          <SidebarHeader className="px-5 pt-7 pb-3 group-data-[collapsible=icon]:px-3">
-            <Link to="/desk" aria-label={t('BarangAI overview')} className="rounded-xl">
-              <span className={WIDE_ONLY}>
-                <Wordmark />
-              </span>
-              <span className="hidden group-data-[collapsible=icon]:block">
-                <BrandMark size={44} className="mx-auto" />
-              </span>
-            </Link>
+      <SidebarProvider>
+        <Sidebar variant="inset" collapsible="icon">
+          <SidebarHeader className="h-14 justify-center px-3 group-data-[collapsible=icon]:px-1.5">
+            <Wordmark textClassName="truncate group-data-[collapsible=icon]:hidden" />
           </SidebarHeader>
-          <SidebarContent className="scroll-thin gap-1 px-1">
+          <SidebarContent className="scroll-thin gap-2">
+            <div className={cn('px-3 pt-1 pb-2', WIDE_ONLY)}>
+              <Button asChild className="w-full shadow-[0_6px_16px_-8px_rgb(29_100_216/0.6)]">
+                <Link to="/desk/reports?status=Pending">
+                  <Inbox />
+                  <Txt>Open review queue</Txt>
+                </Link>
+              </Button>
+            </div>
             {SECTIONS.map(section => (
               <SidebarGroup key={section.label} className="py-1">
-                <SidebarGroupLabel className="label-caps px-3 text-[11px] text-muted-foreground">
+                <SidebarGroupLabel className="text-[12px] font-semibold tracking-wide uppercase">
                   <Txt>{section.label}</Txt>
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <SidebarMenu className="gap-1.5">
+                  <SidebarMenu className="gap-1">
                     {section.items.map(item => (
                       <SidebarMenuItem key={item.to}>
                         <SidebarMenuButton
                           asChild
                           isActive={current.to === item.to}
                           tooltip={t(item.label)}
-                          className={cn(
-                            navItemClass(current.to === item.to),
-                            'h-12 p-3 hover:bg-muted data-active:bg-sky-soft data-active:font-extrabold data-active:text-link group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-2.5! [&>svg]:size-7!',
-                          )}
+                          className="h-11 gap-3 rounded-xl px-3 text-[15px] data-[active=true]:bg-card data-[active=true]:text-primary data-[active=true]:shadow-[0_1px_3px_rgb(0_0_0/0.08),0_0_0_0.5px_var(--border)] [&>svg]:size-5"
                         >
                           <NavLink to={item.to} end={item.to === '/desk'}>
-                            <item.icon
-                              strokeWidth={2.3}
-                              style={navIconStyle(item.color)}
-                              className="transition-transform duration-200 group-hover/nav:-rotate-6 group-hover/nav:scale-110"
-                            />
+                            <item.icon />
                             <span>
                               <Txt>{item.label}</Txt>
                             </span>
@@ -169,7 +151,7 @@ export function StaffShell({ user }: { user: User }) {
                         {item.to === '/desk/updates' && unread > 0 && (
                           <SidebarMenuBadge
                             aria-label={`${unread} ${t('unread')}`}
-                            className="top-1/2 right-3 h-6 min-w-6 -translate-y-1/2 rounded-full bg-sky text-[12px] font-extrabold text-white dark:text-[#131f24]"
+                            className="top-3 rounded-full bg-primary text-primary-foreground"
                           >
                             {unread}
                           </SidebarMenuBadge>
@@ -177,7 +159,7 @@ export function StaffShell({ user }: { user: User }) {
                         {item.to === '/desk/reports' && waiting > 0 && (
                           <SidebarMenuBadge
                             aria-label={`${waiting} ${t('waiting for review')}`}
-                            className="top-1/2 right-3 h-6 min-w-6 -translate-y-1/2 rounded-full bg-destructive text-[12px] font-extrabold text-white dark:text-[#131f24]"
+                            className="top-3 rounded-full bg-destructive text-white"
                           >
                             {waiting}
                           </SidebarMenuBadge>
@@ -188,56 +170,69 @@ export function StaffShell({ user }: { user: User }) {
                 </SidebarGroupContent>
               </SidebarGroup>
             ))}
-            {/* Live counts: the same numbers as the Overview tiles, so they show on every page but that one. */}
-            {current.to !== '/desk' && (
-              <div className={cn('space-y-1.5 px-3 pt-3', WIDE_ONLY)}>
-                {[
-                  {
-                    label: 'Waiting',
-                    value: waiting,
-                    color: 'var(--status-pending)',
-                    to: '/desk/reports?status=Pending',
-                  },
-                  {
-                    label: 'Working',
-                    value: count('Accepted', 'In Progress'),
-                    color: 'var(--status-progress)',
-                    to: '/desk/reports?status=In+Progress',
-                  },
-                  {
-                    label: 'Resolved',
-                    value: count('Resolved'),
-                    color: 'var(--status-resolved)',
-                    to: '/desk/reports?status=Resolved',
-                  },
-                ].map(stat => (
-                  // One row each, so a longer translation (Naghihintay, Ginagawa) never overflows a narrow tile.
-                  <Link
-                    key={stat.label}
-                    to={stat.to}
-                    className="edge flex items-center justify-between gap-3 rounded-xl px-3 py-2"
+            {/* Live counts: the same numbers as the Overview cards, one click from any page. */}
+            <div className={cn('grid grid-cols-3 gap-2 px-3 pt-2', WIDE_ONLY)}>
+              {[
+                {
+                  label: 'Waiting',
+                  value: waiting,
+                  color: 'var(--status-pending)',
+                  to: '/desk/reports?status=Pending',
+                },
+                {
+                  label: 'Working',
+                  value: count('Accepted', 'In Progress'),
+                  color: 'var(--status-progress)',
+                  to: '/desk/reports?status=In+Progress',
+                },
+                {
+                  label: 'Resolved',
+                  value: count('Resolved'),
+                  color: 'var(--status-resolved)',
+                  to: '/desk/reports?status=Resolved',
+                },
+              ].map(stat => (
+                <Link
+                  key={stat.label}
+                  to={stat.to}
+                  className="hairline rounded-xl bg-card px-2.5 py-2 transition-colors hover:bg-accent"
+                >
+                  <strong
+                    className="block text-[20px] leading-tight font-bold tabular-nums"
+                    style={{ color: stat.color }}
                   >
-                    <span className="min-w-0 text-[13px] font-bold text-muted-foreground">
-                      <Txt>{stat.label}</Txt>
-                    </span>
-                    <strong className="text-[20px] leading-tight tabular-nums" style={{ color: stat.color }}>
-                      {stat.value}
-                    </strong>
-                  </Link>
-                ))}
-              </div>
-            )}
+                    {stat.value}
+                  </strong>
+                  <span className="text-[12px] text-muted-foreground">
+                    <Txt>{stat.label}</Txt>
+                  </span>
+                </Link>
+              ))}
+            </div>
           </SidebarContent>
-          <SidebarFooter className="gap-3 p-3">
+          <SidebarFooter className="gap-3">
+            <Link
+              to="/desk/reports?status=Pending"
+              className={cn(
+                'mx-1 flex items-center gap-3 rounded-2xl bg-tint p-3 pr-4 transition-colors hover:bg-primary/15',
+                WIDE_ONLY,
+              )}
+            >
+              <Kap pose="clipboard" className="h-14 w-auto shrink-0" />
+              <span className="min-w-0">
+                <strong className="block text-[14px] font-semibold">
+                  {waiting} <Txt>waiting for review</Txt>
+                </strong>
+                <span className="text-[13px] text-primary">
+                  <Txt>Start reviewing</Txt> →
+                </span>
+              </span>
+            </Link>
             <SidebarMenu>
               <SidebarMenuItem>
                 <AccountMenu
                   trigger={
-                    <SidebarMenuButton
-                      size="lg"
-                      aria-label={t('Account and settings')}
-                      className="rounded-xl border-2 border-transparent hover:border-border hover:bg-muted"
-                    >
+                    <SidebarMenuButton size="lg" aria-label={t('Account and settings')}>
                       <AccountIdentity user={user} />
                     </SidebarMenuButton>
                   }
@@ -249,8 +244,8 @@ export function StaffShell({ user }: { user: User }) {
         <SidebarInset className="min-w-0">
           <header
             className={cn(
-              'sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b-2 bg-background px-5',
-              phone && 'top-[env(safe-area-inset-top)] mt-[env(safe-area-inset-top)] h-14 gap-2 px-2',
+              'flex h-14 shrink-0 items-center gap-2 border-b px-4',
+              phone && 'sticky top-[env(safe-area-inset-top)] z-30 mt-[env(safe-area-inset-top)] bg-background px-2',
             )}
           >
             {phone ? (
@@ -261,26 +256,18 @@ export function StaffShell({ user }: { user: User }) {
                   aria-label={t('Back')}
                   className="grid size-11 shrink-0 place-items-center rounded-full"
                 >
-                  <ArrowLeft className="size-5" strokeWidth={2.6} aria-hidden="true" />
+                  <ArrowLeft className="size-5" aria-hidden="true" />
                 </button>
               )
             ) : (
-              <SidebarTrigger aria-label={t('Toggle sidebar')} />
+              <>
+                <SidebarTrigger className="-ml-1" aria-label={t('Toggle sidebar')} />
+                <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
+              </>
             )}
-            <current.icon
-              className={cn('size-6 shrink-0', phone && pathname === '/desk' && 'ml-2')}
-              strokeWidth={2.3}
-              style={navIconStyle(current.color)}
-              aria-hidden="true"
-            />
-            <span className="label-caps min-w-0 truncate text-[14px] text-muted-foreground">
+            <span className={cn('text-[15px] font-semibold', phone && pathname === '/desk' && 'pl-2')}>
               <Txt>{current.label}</Txt>
             </span>
-            {user.role === 'administrator' && !phone && (
-              <span className="ml-auto rounded-lg border-2 border-[#ce82ff]/50 bg-[#ce82ff]/12 px-2.5 py-1 label-caps text-[11px] text-[#8a3fd1] dark:text-[#dcb1ff]">
-                <Txt>Administrator</Txt>
-              </span>
-            )}
             {phone && (
               <div className="ml-auto">
                 <AccountButton user={user} />

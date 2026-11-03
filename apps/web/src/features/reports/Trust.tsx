@@ -36,7 +36,7 @@ export function TrustChip({ flags, className }: { flags: TrustFlag[]; className?
     <span
       title={flags.map(text).join(' ')}
       className={cn(
-        'inline-flex h-6 items-center gap-1 rounded-full whitespace-nowrap border border-dashed border-[color-mix(in_oklab,var(--status-verifying)_45%,transparent)] px-2 text-[12.5px] font-semibold text-[var(--status-verifying)]',
+        'inline-flex h-6 items-center gap-1 rounded-full border border-dashed border-[color-mix(in_oklab,var(--status-verifying)_45%,transparent)] px-2 text-[12.5px] font-semibold text-[var(--status-verifying)]',
         className,
       )}
     >

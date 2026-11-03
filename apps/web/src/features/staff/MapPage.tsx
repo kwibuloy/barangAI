@@ -31,7 +31,7 @@ export function MapPage() {
     setParams(next, { replace: true })
   }
   return (
-    <div className="relative isolate h-[calc(100svh-var(--staff-chrome))]">
+    <div className="relative isolate h-[calc(100svh-var(--staff-chrome))] md:h-[calc(100svh-3.5rem-1rem)]">
       <StaffMap
         reports={visible}
         className="absolute inset-0 md:rounded-b-xl"

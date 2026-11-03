@@ -160,7 +160,7 @@ describe('AI suggestions', () => {
       hazards: ['blocks_road'],
     })
     render(<App />)
-    fireEvent.change(await screen.findByLabelText(/photo ng problema/i), { target: { files: [photo()] } })
+    fireEvent.change(await screen.findByLabelText(/larawan ng insidente/i), { target: { files: [photo()] } })
     await waitFor(() => expect(requests.some(request => request.url.endsWith('/reports/predict'))).toBe(true))
     const form = requests.find(request => request.url.endsWith('/reports/predict'))!.init!.body as FormData
     expect(form.get('language')).toBe('fil')
@@ -168,8 +168,8 @@ describe('AI suggestions', () => {
     fireEvent.change(await screen.findByLabelText(/latitude/i), { target: { value: '14.3' } })
     fireEvent.change(screen.getByLabelText(/longitude/i), { target: { value: '120.9' } })
     fireEvent.click(screen.getByRole('button', { name: /^susunod/i }))
-    expect(await screen.findByText('Hindi sigurado ang AI · i-check')).toBeInTheDocument()
-    const flag = screen.getByRole('button', { name: 'Harang sa daan' })
+    expect(await screen.findByText('Hindi tiyak ang AI · pakisuri')).toBeInTheDocument()
+    const flag = screen.getByRole('button', { name: 'Nakaharang sa daan' })
     expect(flag).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(flag)
     expect(flag).toHaveAttribute('aria-pressed', 'false')

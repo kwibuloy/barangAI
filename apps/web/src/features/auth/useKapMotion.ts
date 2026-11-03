@@ -1,17 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { emailEndPoint } from './emailEndPoint'
 
-/** Pointer movement changes only CSS variables, never React/form/password state. `onAim` hears each target point
-    (null when tracking stops) so Kap can choose the gaze frame that looks toward it. */
-export function useKapTracking(
-  root: RefObject<HTMLDivElement | null>,
-  active: boolean,
-  onAim?: (point: { x: number; y: number } | null) => void,
-) {
-  const aimed = useRef(onAim)
-  useLayoutEffect(() => {
-    aimed.current = onAim
-  })
+/** Pointer movement changes only CSS variables, never React/form/password state. */
+export function useKapTracking(root: RefObject<HTMLDivElement | null>, active: boolean) {
   useEffect(() => {
     const node = root.current
     if (!node) return
@@ -32,7 +23,6 @@ export function useKapTracking(
       for (const name of ['eye-x', 'eye-y', 'head-x', 'head-y']) node.style.setProperty(`--kap-${name}`, '0px')
       node.style.setProperty('--kap-head-tilt', '0deg')
       node.dataset.tracking = 'off'
-      aimed.current?.(null)
     }
     reset()
     if (!active) return
@@ -62,7 +52,6 @@ export function useKapTracking(
       targetX = Math.max(-1, Math.min(1, (x - box.left - box.width / 2) / (box.width * 1.5)))
       targetY = Math.max(-1, Math.min(1, (y - box.top - box.height / 2) / (box.height * 1.5)))
       node.dataset.tracking = source
-      aimed.current?.({ x, y })
       if (!frame) frame = requestAnimationFrame(update)
     }
     const email = () => {
@@ -108,7 +97,6 @@ export function useKapTracking(
       targetX = 0
       targetY = 0
       node.dataset.tracking = 'off'
-      aimed.current?.(null)
       if (!frame) frame = requestAnimationFrame(update)
     }
     window.addEventListener('pointermove', pointer, { passive: true })
