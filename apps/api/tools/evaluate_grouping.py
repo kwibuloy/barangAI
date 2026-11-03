@@ -27,7 +27,6 @@ from pathlib import Path
 
 API = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(API))
-os.environ.setdefault("CHECKER_MODEL_DIR", str(API / "models" / "mobileclip2-s0"))
 
 from barangai.cases import RADIUS_M, distance_m  # noqa: E402
 from barangai.duplicates import candidate_score  # noqa: E402
@@ -177,6 +176,8 @@ def report(summary):
 
 
 def main() -> None:
+    # Here, not at import: tests import this file, and the setting would then switch the checker on for later tests.
+    os.environ.setdefault("CHECKER_MODEL_DIR", str(API / "models" / "mobileclip2-s0"))
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--root", type=Path, required=True)

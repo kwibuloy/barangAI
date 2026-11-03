@@ -37,9 +37,6 @@ def threshold() -> float:
 
 @lru_cache(maxsize=1)
 def load_runtime(folder: str):
-    import numpy as np
-    import onnxruntime
-
     path = Path(folder)
     meta = json.loads((path / "checker.json").read_text(encoding="utf-8"))
     model = path / "visual.onnx"
@@ -48,6 +45,9 @@ def load_runtime(folder: str):
     keys = [item["key"] for item in meta["classes"]]
     if set(keys) - {"background"} != set(CATEGORIES):
         raise ValueError("Checker classes differ from the API categories")
+    import numpy as np  # Only the optional checker needs these, and a bad file is refused without them.
+    import onnxruntime
+
     options = onnxruntime.SessionOptions()
     options.intra_op_num_threads = int(os.environ.get("CHECKER_THREADS", "1"))
     options.inter_op_num_threads = 1
