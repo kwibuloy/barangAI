@@ -266,7 +266,7 @@ function ReportFacts({ detail }: { detail: Report }) {
                     </Txt>
                   </p>
                 )}
-                {event.note && <p className="mt-1 text-[15px]">{event.note}</p>}
+                {event.note && <p className="mt-1 text-[15px]">{t(event.note)}</p>}
               </li>
             )
           })}

@@ -1,6 +1,7 @@
 import {
   CircleHelp,
   Construction,
+  Flame,
   LampFloor,
   Signpost,
   Trash2,
@@ -20,6 +21,7 @@ const STYLE: Record<Category, { icon: (props: LucideProps) => React.ReactNode; c
   potholes: { icon: Construction, color: '#8a6a4a' },
   uncollected_garbage: { icon: Trash2, color: '#0f8a7e' },
   damaged_signage: { icon: Signpost, color: '#5b4fd6' },
+  fire_hazard: { icon: Flame, color: '#c92a2a' },
   other: { icon: CircleHelp, color: '#7a7670' },
 }
 

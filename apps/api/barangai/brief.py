@@ -30,10 +30,10 @@ OPEN = ("Pending", "Under Verification", "Accepted", "In Progress")
 LANGUAGES = {"en": "English", "fil": "Filipino"}
 NAMES = {
     "en": {"flooding": "flooding", "potholes": "pothole", "fallen_trees": "fallen tree",
-           "uncollected_garbage": "uncollected garbage", "damaged_signage": "damaged sign",
+           "fire_hazard": "fire or fire hazard", "uncollected_garbage": "uncollected garbage", "damaged_signage": "damaged sign",
            "broken_streetlights": "broken streetlight", "exposed_wiring": "exposed wiring", "other": "other concern"},
     "fil": {"flooding": "baha", "potholes": "lubak", "fallen_trees": "natumbang puno",
-            "uncollected_garbage": "basurang hindi nakolekta", "damaged_signage": "sirang karatula",
+            "fire_hazard": "sunog o panganib ng sunog", "uncollected_garbage": "basurang hindi nakolekta", "damaged_signage": "sirang karatula",
             "broken_streetlights": "sirang ilaw sa kalye", "exposed_wiring": "nakalantad na kable",
             "other": "ibang problema"},
 }

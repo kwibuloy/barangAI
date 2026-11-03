@@ -1,3 +1,4 @@
+import base64
 import logging
 import os
 from datetime import timedelta
@@ -143,6 +144,8 @@ def preview_prediction(
         "problem_seen": result.problem_seen,
         "suggested_description": result.description,
         "hazards": list(result.hazards),
+        # The copy that gets stored, so the form shows the resident what staff will see, with any faces it found blurred.
+        "preview_image": f"data:image/jpeg;base64,{base64.b64encode(sanitized).decode()}",
     }
 
 

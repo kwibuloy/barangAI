@@ -144,6 +144,7 @@ export function ReportForm() {
       .then(result => {
         if (controller.signal.aborted) return
         setPrediction(result)
+        if (result.preview_image) setPreview(result.preview_image)
         const filled = { ...NOT_FILLED }
         if (result.model_category) {
           setCategory(current => current || result.model_category!)

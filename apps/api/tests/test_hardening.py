@@ -662,3 +662,20 @@ def test_web_app_manifest_is_served_with_its_type(tmp_path, monkeypatch):
     monkeypatch.setenv("MEDIA_STORAGE", "local")
     with TestClient(site_app(create_app(), tmp_path)) as site:
         assert site.get("/manifest.webmanifest").headers["content-type"].startswith("application/manifest+json")
+
+
+def test_the_form_gets_the_blurred_copy_that_will_be_stored(client, photo, monkeypatch):
+    import base64
+
+    from barangai import media, privacy
+    from conftest import register
+
+    register(client)
+    media.clear_sanitized_cache()
+    monkeypatch.setattr(privacy, "find_faces", lambda _image: [(10, 10, 40, 40)])
+    files = {"image": ("p.jpg", photo, "image/jpeg")}
+    answer = client.post("/reports/predict", files=files, headers={"X-CSRF-Token": client.cookies.get("csrf_token", "")})
+    assert answer.status_code == 200, answer.text
+    shown = answer.json()["preview_image"]
+    assert shown.startswith("data:image/jpeg;base64,")
+    assert base64.b64decode(shown.split(",", 1)[1]) == media.sanitize_image(photo)

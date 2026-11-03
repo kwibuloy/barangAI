@@ -371,13 +371,18 @@ def test_invalid_previews_use_up_no_allowance(client, photo, monkeypatch):
 
 
 def test_residents_do_not_see_automatic_case_step_notes(client, photo):
+    from barangai.cases import GROUPED_NOTE
+
     first = accepted(client, photo)
     second = resident_report(client, jpeg("blue"), "ben@example.test")
     staff(client)
     client.post("/cases/link", headers=headers(client), json={"report_id": first, "other_report_id": second})
     assert any((event["note"] or "").startswith("Updated with case") for event in client.get(f"/reports/{second}").json()["events"])
     login(client, "ben@example.test")
-    assert all(not event["note"] for event in client.get(f"/reports/{second}").json()["events"])
+    notes = [event["note"] for event in client.get(f"/reports/{second}").json()["events"]]
+    assert not any((note or "").startswith("Updated with case") for note in notes)
+    assert notes[-1] == GROUPED_NOTE
+    assert not any(notes[:-1])
 
 
 def test_previews_are_capped_per_resident_per_day(client, photo, monkeypatch):

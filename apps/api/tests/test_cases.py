@@ -256,3 +256,55 @@ def test_everyone_in_the_case_sees_the_status_description(client, photo):
     assert last["note"] == "A crew will check this road"
     assert "actor_id" not in last
 
+
+def test_staff_correct_a_description_everywhere_and_keep_the_old_text_private(client, photo):
+    first, second = grouped_under_verification(client, photo)
+    body = {"status": "Accepted", "verified_category": "potholes", "note": "Ana Cruz told us about this road"}
+    assert client.post(f"/reports/{first}/status", json=body, headers=headers(client)).status_code == 200
+    event = client.get(f"/reports/{first}").json()["events"][-1]["id"]
+    path = f"/reports/{first}/events/{event}/note"
+    assert client.put(path, json={"note": "  "}, headers=headers(client)).status_code == 422
+    corrected = client.put(path, json={"note": "A crew will check this road"}, headers=headers(client))
+    assert corrected.status_code == 200, corrected.text
+    assert any("Ana Cruz" in action["note"] for action in corrected.json()["actions"])
+    pending = client.get(f"/reports/{first}").json()["events"][0]["id"]
+    assert client.put(f"/reports/{first}/events/{pending}/note", json={"note": "x"},
+                      headers=headers(client)).status_code == 409
+    assert client.put(f"/reports/{first}/events/not-an-event/note", json={"note": "x"},
+                      headers=headers(client)).status_code == 404
+    for email, report in (("ana@example.test", first), ("ben@example.test", second)):
+        login(client, email)
+        detail = client.get(f"/reports/{report}").json()
+        assert detail["events"][-1]["note"] == "A crew will check this road"
+        assert "Ana Cruz" not in str(detail)
+    assert client.put(path, json={"note": "x"}, headers=headers(client)).status_code == 403
+
+
+def test_fire_hazard_is_a_category_with_high_severity(client, photo):
+    from barangai.priority import SEVERITY
+
+    report = resident_report(client, photo, "ana@example.test")
+    staff_login(client)
+    walk(client, report, "Under Verification", "Accepted", category="fire_hazard")
+    assert client.get(f"/reports/{report}").json()["verified_category"] == "fire_hazard"
+    assert SEVERITY["fire_hazard"] == 3
+
+
+def test_a_correction_leaves_an_earlier_decision_with_the_same_words(client, photo):
+    from barangai.db import session_for_url
+    from barangai.models import ReportEvent
+
+    first, second = grouped_under_verification(client, photo)
+    body = {"status": "Accepted", "verified_category": "potholes", "note": "Checking this"}
+    assert client.post(f"/reports/{first}/status", json=body, headers=headers(client)).status_code == 200
+    with session_for_url() as db:
+        copy = db.query(ReportEvent).filter_by(report_id=second, to_status="Accepted").one()
+        copy.created_at = copy.created_at.replace(year=copy.created_at.year - 1)
+        db.commit()
+    event = client.get(f"/reports/{first}").json()["events"][-1]["id"]
+    assert client.put(f"/reports/{first}/events/{event}/note", json={"note": "A crew is coming"},
+                      headers=headers(client)).status_code == 200
+    assert client.get(f"/reports/{first}").json()["events"][-1]["note"] == "A crew is coming"
+    other = client.get(f"/reports/{second}").json()["events"]
+    assert next(item for item in other if item["to_status"] == "Accepted")["note"] == "Checking this"
+

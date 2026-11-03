@@ -23,7 +23,7 @@ OUT = Path(__file__).resolve().parents[1] / "models" / "mobileclip2-s0"
 MODEL, PRETRAINED, SIZE = "MobileCLIP2-S0", "dfndr2b", 256
 TEMPLATES = ["a photo of {}.", "a phone photo of {}.", "a close-up photo of {}.", "a street-level photo of {}."]
 # Each class is described several ways; background classes catch photos that show no barangay concern,
-# so the checker abstains instead of forcing one of the eight categories.
+# so the checker abstains instead of forcing one of its categories.
 PROMPTS = {
     "flooding": [
         "a flooded street",

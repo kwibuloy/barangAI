@@ -594,3 +594,31 @@ def test_staff_decide_deletion_requests_only_in_their_barangay(client, desk):
     with session_for_url() as db:
         assert db.get(Report, desk["south"]) is None
 
+
+def test_a_moved_report_tells_its_new_barangay_about_a_pending_deletion(client, photo):
+    from barangai.db import session_for_url
+    from barangai.models import Notification, Report, User
+
+    account("staff@example.test", "staff")
+    register(client)
+    first = submit(client, photo, **SOUTH).json()["id"]
+    login(client, "staff@example.test")
+    assert change(client, first, "Under Verification").status_code == 200
+    case_id = change(client, first, "Accepted", verified_category="flooding").json()["case_id"]
+    client.cookies.clear()
+    register(client, "neighbour@example.test")
+    linked = submit(client, photo, case_id=case_id, **NORTH).json()["id"]
+    assert post(client, f"/reports/{linked}/deletion-request", reason="Synthetic").status_code == 201
+    load_areas()
+    account("north@example.test", "staff", "North")
+    account("south@example.test", "staff", "South")
+    login(client, "admin@example.test")
+    assert post(client, f"/reports/{linked}/case/decision", decision="rejected").status_code == 200
+    with session_for_url() as db:
+        assert db.get(Report, linked).barangay.name == "North"
+        told = {
+            db.get(User, item.user_id).email
+            for item in db.query(Notification).filter_by(kind="deletion_request", report_id=linked).all()
+        }
+    assert "north@example.test" in told
+    assert "south@example.test" not in told

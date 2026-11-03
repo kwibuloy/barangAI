@@ -20,20 +20,33 @@ from . import barangays, duplicates
 from .auth import get_current_user, rate_limit, require_csrf, require_role
 from .db import get_db
 from .duplicates import candidate_score
-from .models import Case, DuplicateSuggestion, Notification, Report, ReportEvent, StaffAction, User, now, utc_iso
+from .models import (
+    Case,
+    DeletionRequest,
+    DuplicateSuggestion,
+    Notification,
+    Report,
+    ReportEvent,
+    StaffAction,
+    User,
+    now,
+    utc_iso,
+)
 from .reports import CASE_STEP_NOTE, authorized_report, serialize_report
 
 router = APIRouter()
 PATH = ("Pending", "Under Verification", "Accepted", "In Progress", "Resolved")
 # Statuses residents see on the shared map; only staff-accepted incidents are public.
 PUBLIC = ("Accepted", "In Progress", "Resolved")
+# Grouping is not a decision about the concern, so residents get this rather than a description from staff.
+GROUPED_NOTE = "Your report was grouped with others about the same concern, so it now shares their status."
 # Residents may add evidence while the barangay is still working on it.
 OPEN_FOR_EVIDENCE = ("Accepted", "In Progress")
 # Search radius (metres) for automatic suggestions. Small fixtures stand close together (neighbouring street
 # lights are separate faults); floods and garbage spread. Untuned starting values: check them on real reports.
 MANILA = timezone(timedelta(hours=8))
 RADIUS_M = {"broken_streetlights": 50, "damaged_signage": 50, "exposed_wiring": 50, "potholes": 50,
-            "fallen_trees": 100, "uncollected_garbage": 100, "flooding": 300, "other": 300}
+            "fallen_trees": 100, "fire_hazard": 100, "uncollected_garbage": 100, "flooding": 300, "other": 300}
 # Categories two residents may pick for one incident: garbage clogging a drain floods the street; a fallen tree
 # brings down wires and lights. Such pairs are suggested too, with a lower score, and staff still decide.
 RELATED = {"flooding": {"uncollected_garbage"}, "uncollected_garbage": {"flooding"},
@@ -156,7 +169,7 @@ def sync(db: Session, case: Case, actor_id: str):
     if verified:
         case.category = verified
     for report in reports:
-        bring_to(db, report, target, actor_id, case, verified)
+        bring_to(db, report, target, actor_id, case, verified, GROUPED_NOTE)
 
 
 def new_case(report: Report, actor_id: str):
@@ -315,7 +328,16 @@ def decide_evidence(report_id: str, body: CaseDecision, db: Session = Depends(ge
     else:
         report.case_id = None
         # Boundaries loaded while it was linked placed it with the case; on its own, its pin decides.
+        moved_from = report.barangay_id
         report.barangay_id = barangays.barangay_id_for(db, report.latitude, report.longitude)
+        if report.barangay_id and report.barangay_id != moved_from and db.scalar(
+            select(DeletionRequest.id).where(DeletionRequest.report_id == report.id, DeletionRequest.status == "pending")
+        ):
+            # Its new barangay's staff now decide this request, and administrators were told already.
+            for decider in db.scalars(
+                select(User.id).where(User.role == "staff", User.barangay_id == report.barangay_id)
+            ):
+                db.add(Notification(user_id=decider, report_id=report.id, status=report.status, kind="deletion_request"))
         log(db, report.id, user.id, f"Not the same incident as {reference}; reviewed on its own.{note}")
     db.commit()
     return case_data(db, report, user)

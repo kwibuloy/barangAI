@@ -19,11 +19,19 @@ REJECTION_REASONS = {"not_barangay_concern", "already_reported", "not_enough_det
                      "outside_area", "false_or_inappropriate", "other"}
 
 
+# A status change writes its copies across a grouped case within one request.
+SAME_CHANGE_SECONDS = 5
+
+
 class StatusInput(BaseModel):
     status: str
     verified_category: str | None = None
     note: str | None = Field(default=None, max_length=2000)
     rejection_reason: str | None = None
+
+
+class DescriptionInput(BaseModel):
+    note: str = Field(min_length=1, max_length=2000)
 
 
 class ActionInput(BaseModel):
@@ -84,6 +92,49 @@ def change_status(report_id: str, body: StatusInput, db: Session = Depends(get_d
                 ReportEvent.report_id.in_(select(Report.id).where(Report.case_id == report.case_id)),
             )
             .values(rejection_reason=body.rejection_reason)
+        )
+    db.commit()
+    db.expire_all()
+    return serialize_report(db.get(Report, report_id), detail=True, staff=True)
+
+
+@router.put("/{report_id}/events/{event_id}/note")
+def correct_description(
+    report_id: str, event_id: str, body: DescriptionInput, db: Session = Depends(get_db), user: User = Depends(require_csrf)
+):
+    """Replace what staff wrote about a status change, everywhere residents see it. The old text stays staff-only."""
+    require_role(user, {"staff", "administrator"})
+    report = authorized_report(report_id, db, user)
+    event = db.get(ReportEvent, event_id)
+    if not event or event.report_id != report.id:
+        raise HTTPException(404, "Status change not found")
+    old = event.note
+    if not event.from_status or not old or old.startswith(CASE_STEP_NOTE) or old == cases.GROUPED_NOTE:
+        raise HTTPException(409, "This status change has no description from staff")
+    note = body.note.strip()
+    if not note or note.startswith(CASE_STEP_NOTE):
+        raise HTTPException(422, "Describe the reason for this status change")
+    copies = [event]
+    if report.case_id:
+        # Only the copies from this one change: an earlier decision on another report may have used the same words.
+        matches = db.scalars(
+            select(ReportEvent).where(
+                ReportEvent.to_status == event.to_status,
+                ReportEvent.note == old,
+                ReportEvent.actor_id == event.actor_id,
+                ReportEvent.report_id.in_(select(Report.id).where(Report.case_id == report.case_id)),
+            )
+        ).all()
+        copies = [item for item in matches if abs((item.created_at - event.created_at).total_seconds()) < SAME_CHANGE_SECONDS]
+    for copy in copies:
+        copy.note = note
+        db.add(
+            StaffAction(
+                report_id=copy.report_id,
+                actor_id=user.id,
+                kind="system",
+                note=f"Status description for {event.to_status} corrected. It read: {old}",
+            )
         )
     db.commit()
     db.expire_all()

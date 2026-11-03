@@ -35,6 +35,10 @@ def threshold() -> float:
     return value
 
 
+# Added after this model was exported; only the vision model can suggest these.
+NOT_TRAINED = {"fire_hazard"}
+
+
 @lru_cache(maxsize=1)
 def load_runtime(folder: str):
     path = Path(folder)
@@ -43,7 +47,7 @@ def load_runtime(folder: str):
     if hashlib.sha256(model.read_bytes()).hexdigest() != meta["onnx_sha256"]:
         raise ValueError("Checker model does not match its recorded SHA-256")
     keys = [item["key"] for item in meta["classes"]]
-    if set(keys) - {"background"} != set(CATEGORIES):
+    if set(keys) - {"background"} != set(CATEGORIES) - NOT_TRAINED:
         raise ValueError("Checker classes differ from the API categories")
     import numpy as np  # Only the optional checker needs these, and a bad file is refused without them.
     import onnxruntime

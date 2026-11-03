@@ -6,6 +6,7 @@ export type Category =
   | 'potholes'
   | 'uncollected_garbage'
   | 'damaged_signage'
+  | 'fire_hazard'
   | 'other'
 export type Hazard = 'electrical_hazard' | 'blocks_road' | 'risk_to_people'
 export type Status = 'Pending' | 'Under Verification' | 'Accepted' | 'In Progress' | 'Resolved' | 'Rejected'
@@ -101,6 +102,8 @@ export type Prediction = {
   // false when the vision model looked and saw nothing wrong
   problem_seen?: boolean
   hazards?: Hazard[]
+  /** The copy that gets stored, with faces blurred. */
+  preview_image?: string
 }
 export type PriorityReason =
   | { code: 'category'; detail: Category; points: number }

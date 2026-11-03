@@ -16,6 +16,7 @@ from .models import Report
 # How serious each category usually is: live wires and floods endanger people, signs and garbage rarely do.
 SEVERITY = {
     "exposed_wiring": 3,
+    "fire_hazard": 3,
     "flooding": 3,
     "fallen_trees": 2,
     "potholes": 2,

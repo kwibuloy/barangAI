@@ -79,6 +79,18 @@ export const describePrompts: Record<Category, Prompt[]> = {
     },
     { question: 'Other problems?', answers: ['It smells bad.', 'It attracts animals or flies.'] },
   ],
+  fire_hazard: [
+    {
+      question: 'What do you see?',
+      answers: [
+        'There are flames.',
+        'There is smoke.',
+        'Something is smouldering or burnt.',
+        'Something could catch fire.',
+      ],
+    },
+    { question: 'Other problems?', answers: ['It is close to homes.', 'It is near electric wires.'] },
+  ],
   damaged_signage: [
     {
       question: 'What is wrong?',
