@@ -1,0 +1,1191 @@
+{
+ "images": 190632,
+ "groups": 59932,
+ "relations": {
+  "exact": 21486,
+  "near_or_mirror": 491459,
+  "embed": 4983,
+  "rf_stem": 74093
+ },
+ "degenerate_bucket_skips": 14,
+ "per_source": {
+  "floodimg": {
+   "images": 9296,
+   "groups": 4758
+  },
+  "kg_piles_of_garbage": {
+   "images": 393,
+   "groups": 371
+  },
+  "kg_road_anomaly": {
+   "images": 20169,
+   "groups": 9678
+  },
+  "rf_aaa_fallentrees": {
+   "images": 2956,
+   "groups": 1087
+  },
+  "rf_civic_issues": {
+   "images": 43908,
+   "groups": 22338
+  },
+  "rf_cloudcam_dumping": {
+   "images": 636,
+   "groups": 521
+  },
+  "rf_cos40007": {
+   "images": 6058,
+   "groups": 3099
+  },
+  "rf_damaged_traffic_signs": {
+   "images": 1371,
+   "groups": 1254
+  },
+  "rf_eryk_v1": {
+   "images": 360,
+   "groups": 351
+  },
+  "rf_eryk_v2": {
+   "images": 410,
+   "groups": 400
+  },
+  "rf_garbage_overflowing": {
+   "images": 377,
+   "groups": 143
+  },
+  "rf_graff_signs": {
+   "images": 671,
+   "groups": 648
+  },
+  "rf_jayke_signs_multilabel": {
+   "images": 1793,
+   "groups": 672
+  },
+  "rf_jayke_signs_o5qsa": {
+   "images": 1656,
+   "groups": 623
+  },
+  "rf_maty_signs_cls": {
+   "images": 7825,
+   "groups": 3994
+  },
+  "rf_maty_signs_det": {
+   "images": 4347,
+   "groups": 2430
+  },
+  "rf_myspace_dumping": {
+   "images": 7022,
+   "groups": 2260
+  },
+  "rf_ph_manila_bay": {
+   "images": 6696,
+   "groups": 2504
+  },
+  "rf_ph_pothole_audit": {
+   "images": 204,
+   "groups": 181
+  },
+  "rf_raez_dumping": {
+   "images": 4458,
+   "groups": 10
+  },
+  "rf_roadside_garbage": {
+   "images": 120,
+   "groups": 116
+  },
+  "rf_signdet_x0fra": {
+   "images": 516,
+   "groups": 358
+  },
+  "rf_signs_hind": {
+   "images": 2409,
+   "groups": 451
+  },
+  "rf_trash_taco": {
+   "images": 2290,
+   "groups": 1017
+  },
+  "road_issues_kaggle": {
+   "images": 9660,
+   "groups": 4586
+  },
+  "roadway_flooding_kaggle": {
+   "images": 441,
+   "groups": 438
+  },
+  "roadway_flooding_mendeley": {
+   "images": 441,
+   "groups": 438
+  },
+  "rome_road_damage": {
+   "images": 2009,
+   "groups": 1783
+  },
+  "urban_issues": {
+   "images": 47140,
+   "groups": 24188
+  },
+  "zn_normal_pothole": {
+   "images": 5000,
+   "groups": 4250
+  }
+ },
+ "pixel_overlap": {
+  "floodimg -> floodimg": {
+   "images_in_a_matched_in_b": 5584,
+   "share_of_a": 0.6007
+  },
+  "floodimg -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0001
+  },
+  "floodimg -> roadway_flooding_kaggle": {
+   "images_in_a_matched_in_b": 260,
+   "share_of_a": 0.028
+  },
+  "floodimg -> roadway_flooding_mendeley": {
+   "images_in_a_matched_in_b": 260,
+   "share_of_a": 0.028
+  },
+  "floodimg -> urban_issues": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0001
+  },
+  "kg_piles_of_garbage -> kg_piles_of_garbage": {
+   "images_in_a_matched_in_b": 25,
+   "share_of_a": 0.0636
+  },
+  "kg_piles_of_garbage -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0127
+  },
+  "kg_piles_of_garbage -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 81,
+   "share_of_a": 0.2061
+  },
+  "kg_piles_of_garbage -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 200,
+   "share_of_a": 0.5089
+  },
+  "kg_piles_of_garbage -> rf_roadside_garbage": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0025
+  },
+  "kg_piles_of_garbage -> rf_trash_taco": {
+   "images_in_a_matched_in_b": 47,
+   "share_of_a": 0.1196
+  },
+  "kg_piles_of_garbage -> urban_issues": {
+   "images_in_a_matched_in_b": 81,
+   "share_of_a": 0.2061
+  },
+  "kg_road_anomaly -> kg_piles_of_garbage": {
+   "images_in_a_matched_in_b": 6,
+   "share_of_a": 0.0003
+  },
+  "kg_road_anomaly -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 14007,
+   "share_of_a": 0.6945
+  },
+  "kg_road_anomaly -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 2005,
+   "share_of_a": 0.0994
+  },
+  "kg_road_anomaly -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 3329,
+   "share_of_a": 0.1651
+  },
+  "kg_road_anomaly -> rf_cos40007": {
+   "images_in_a_matched_in_b": 10,
+   "share_of_a": 0.0005
+  },
+  "kg_road_anomaly -> rf_eryk_v1": {
+   "images_in_a_matched_in_b": 192,
+   "share_of_a": 0.0095
+  },
+  "kg_road_anomaly -> rf_eryk_v2": {
+   "images_in_a_matched_in_b": 166,
+   "share_of_a": 0.0082
+  },
+  "kg_road_anomaly -> rf_garbage_overflowing": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0
+  },
+  "kg_road_anomaly -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0001
+  },
+  "kg_road_anomaly -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 173,
+   "share_of_a": 0.0086
+  },
+  "kg_road_anomaly -> rf_ph_pothole_audit": {
+   "images_in_a_matched_in_b": 7,
+   "share_of_a": 0.0003
+  },
+  "kg_road_anomaly -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0001
+  },
+  "kg_road_anomaly -> rf_roadside_garbage": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0001
+  },
+  "kg_road_anomaly -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 1248,
+   "share_of_a": 0.0619
+  },
+  "kg_road_anomaly -> urban_issues": {
+   "images_in_a_matched_in_b": 3445,
+   "share_of_a": 0.1708
+  },
+  "kg_road_anomaly -> zn_normal_pothole": {
+   "images_in_a_matched_in_b": 1391,
+   "share_of_a": 0.069
+  },
+  "rf_aaa_fallentrees -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 1598,
+   "share_of_a": 0.5406
+  },
+  "rf_aaa_fallentrees -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 1382,
+   "share_of_a": 0.4675
+  },
+  "rf_aaa_fallentrees -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 2951,
+   "share_of_a": 0.9983
+  },
+  "rf_aaa_fallentrees -> rf_cos40007": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0007
+  },
+  "rf_aaa_fallentrees -> rf_eryk_v1": {
+   "images_in_a_matched_in_b": 85,
+   "share_of_a": 0.0288
+  },
+  "rf_aaa_fallentrees -> rf_eryk_v2": {
+   "images_in_a_matched_in_b": 71,
+   "share_of_a": 0.024
+  },
+  "rf_aaa_fallentrees -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0007
+  },
+  "rf_aaa_fallentrees -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0003
+  },
+  "rf_aaa_fallentrees -> urban_issues": {
+   "images_in_a_matched_in_b": 2951,
+   "share_of_a": 0.9983
+  },
+  "rf_civic_issues -> floodimg": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0
+  },
+  "rf_civic_issues -> kg_piles_of_garbage": {
+   "images_in_a_matched_in_b": 105,
+   "share_of_a": 0.0024
+  },
+  "rf_civic_issues -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 2252,
+   "share_of_a": 0.0513
+  },
+  "rf_civic_issues -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 2970,
+   "share_of_a": 0.0676
+  },
+  "rf_civic_issues -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 14900,
+   "share_of_a": 0.3393
+  },
+  "rf_civic_issues -> rf_cos40007": {
+   "images_in_a_matched_in_b": 1647,
+   "share_of_a": 0.0375
+  },
+  "rf_civic_issues -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 4,
+   "share_of_a": 0.0001
+  },
+  "rf_civic_issues -> rf_eryk_v1": {
+   "images_in_a_matched_in_b": 141,
+   "share_of_a": 0.0032
+  },
+  "rf_civic_issues -> rf_eryk_v2": {
+   "images_in_a_matched_in_b": 111,
+   "share_of_a": 0.0025
+  },
+  "rf_civic_issues -> rf_garbage_overflowing": {
+   "images_in_a_matched_in_b": 24,
+   "share_of_a": 0.0005
+  },
+  "rf_civic_issues -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1092,
+   "share_of_a": 0.0249
+  },
+  "rf_civic_issues -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1157,
+   "share_of_a": 0.0264
+  },
+  "rf_civic_issues -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1243,
+   "share_of_a": 0.0283
+  },
+  "rf_civic_issues -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 19,
+   "share_of_a": 0.0004
+  },
+  "rf_civic_issues -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 10,
+   "share_of_a": 0.0002
+  },
+  "rf_civic_issues -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 775,
+   "share_of_a": 0.0177
+  },
+  "rf_civic_issues -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0001
+  },
+  "rf_civic_issues -> rf_roadside_garbage": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0001
+  },
+  "rf_civic_issues -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 1599,
+   "share_of_a": 0.0364
+  },
+  "rf_civic_issues -> rf_trash_taco": {
+   "images_in_a_matched_in_b": 196,
+   "share_of_a": 0.0045
+  },
+  "rf_civic_issues -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 6042,
+   "share_of_a": 0.1376
+  },
+  "rf_civic_issues -> rome_road_damage": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0
+  },
+  "rf_civic_issues -> urban_issues": {
+   "images_in_a_matched_in_b": 43899,
+   "share_of_a": 0.9998
+  },
+  "rf_civic_issues -> zn_normal_pothole": {
+   "images_in_a_matched_in_b": 600,
+   "share_of_a": 0.0137
+  },
+  "rf_cloudcam_dumping -> rf_cloudcam_dumping": {
+   "images_in_a_matched_in_b": 146,
+   "share_of_a": 0.2296
+  },
+  "rf_cloudcam_dumping -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0016
+  },
+  "rf_cos40007 -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0003
+  },
+  "rf_cos40007 -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0003
+  },
+  "rf_cos40007 -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 1262,
+   "share_of_a": 0.2083
+  },
+  "rf_cos40007 -> rf_cos40007": {
+   "images_in_a_matched_in_b": 1981,
+   "share_of_a": 0.327
+  },
+  "rf_cos40007 -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0005
+  },
+  "rf_cos40007 -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1432,
+   "share_of_a": 0.2364
+  },
+  "rf_cos40007 -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1793,
+   "share_of_a": 0.296
+  },
+  "rf_cos40007 -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1493,
+   "share_of_a": 0.2465
+  },
+  "rf_cos40007 -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 7,
+   "share_of_a": 0.0012
+  },
+  "rf_cos40007 -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0008
+  },
+  "rf_cos40007 -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0002
+  },
+  "rf_cos40007 -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 1103,
+   "share_of_a": 0.1821
+  },
+  "rf_cos40007 -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 2629,
+   "share_of_a": 0.434
+  },
+  "rf_cos40007 -> urban_issues": {
+   "images_in_a_matched_in_b": 1469,
+   "share_of_a": 0.2425
+  },
+  "rf_cos40007 -> zn_normal_pothole": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0008
+  },
+  "rf_damaged_traffic_signs -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_damaged_traffic_signs -> rf_cos40007": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_damaged_traffic_signs -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 83,
+   "share_of_a": 0.0605
+  },
+  "rf_damaged_traffic_signs -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_damaged_traffic_signs -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_damaged_traffic_signs -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_damaged_traffic_signs -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 78,
+   "share_of_a": 0.0569
+  },
+  "rf_damaged_traffic_signs -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 474,
+   "share_of_a": 0.3457
+  },
+  "rf_damaged_traffic_signs -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_damaged_traffic_signs -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_damaged_traffic_signs -> urban_issues": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0007
+  },
+  "rf_eryk_v1 -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 87,
+   "share_of_a": 0.2417
+  },
+  "rf_eryk_v1 -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 56,
+   "share_of_a": 0.1556
+  },
+  "rf_eryk_v1 -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 76,
+   "share_of_a": 0.2111
+  },
+  "rf_eryk_v1 -> rf_eryk_v1": {
+   "images_in_a_matched_in_b": 18,
+   "share_of_a": 0.05
+  },
+  "rf_eryk_v1 -> rf_eryk_v2": {
+   "images_in_a_matched_in_b": 313,
+   "share_of_a": 0.8694
+  },
+  "rf_eryk_v1 -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0028
+  },
+  "rf_eryk_v1 -> urban_issues": {
+   "images_in_a_matched_in_b": 76,
+   "share_of_a": 0.2111
+  },
+  "rf_eryk_v2 -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 75,
+   "share_of_a": 0.1829
+  },
+  "rf_eryk_v2 -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 48,
+   "share_of_a": 0.1171
+  },
+  "rf_eryk_v2 -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 65,
+   "share_of_a": 0.1585
+  },
+  "rf_eryk_v2 -> rf_eryk_v1": {
+   "images_in_a_matched_in_b": 314,
+   "share_of_a": 0.7659
+  },
+  "rf_eryk_v2 -> rf_eryk_v2": {
+   "images_in_a_matched_in_b": 20,
+   "share_of_a": 0.0488
+  },
+  "rf_eryk_v2 -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0024
+  },
+  "rf_eryk_v2 -> urban_issues": {
+   "images_in_a_matched_in_b": 65,
+   "share_of_a": 0.1585
+  },
+  "rf_garbage_overflowing -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0027
+  },
+  "rf_garbage_overflowing -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 18,
+   "share_of_a": 0.0477
+  },
+  "rf_garbage_overflowing -> rf_garbage_overflowing": {
+   "images_in_a_matched_in_b": 186,
+   "share_of_a": 0.4934
+  },
+  "rf_garbage_overflowing -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 32,
+   "share_of_a": 0.0849
+  },
+  "rf_garbage_overflowing -> urban_issues": {
+   "images_in_a_matched_in_b": 20,
+   "share_of_a": 0.0531
+  },
+  "rf_graff_signs -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 342,
+   "share_of_a": 0.5097
+  },
+  "rf_graff_signs -> rf_cos40007": {
+   "images_in_a_matched_in_b": 670,
+   "share_of_a": 0.9985
+  },
+  "rf_graff_signs -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0015
+  },
+  "rf_graff_signs -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 12,
+   "share_of_a": 0.0179
+  },
+  "rf_graff_signs -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 670,
+   "share_of_a": 0.9985
+  },
+  "rf_graff_signs -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 644,
+   "share_of_a": 0.9598
+  },
+  "rf_graff_signs -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.003
+  },
+  "rf_graff_signs -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.003
+  },
+  "rf_graff_signs -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 467,
+   "share_of_a": 0.696
+  },
+  "rf_graff_signs -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 670,
+   "share_of_a": 0.9985
+  },
+  "rf_graff_signs -> urban_issues": {
+   "images_in_a_matched_in_b": 343,
+   "share_of_a": 0.5112
+  },
+  "rf_jayke_signs_multilabel -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 772,
+   "share_of_a": 0.4306
+  },
+  "rf_jayke_signs_multilabel -> rf_cos40007": {
+   "images_in_a_matched_in_b": 1793,
+   "share_of_a": 1.0
+  },
+  "rf_jayke_signs_multilabel -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0017
+  },
+  "rf_jayke_signs_multilabel -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1432,
+   "share_of_a": 0.7987
+  },
+  "rf_jayke_signs_multilabel -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1406,
+   "share_of_a": 0.7842
+  },
+  "rf_jayke_signs_multilabel -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1492,
+   "share_of_a": 0.8321
+  },
+  "rf_jayke_signs_multilabel -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 7,
+   "share_of_a": 0.0039
+  },
+  "rf_jayke_signs_multilabel -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0028
+  },
+  "rf_jayke_signs_multilabel -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 1103,
+   "share_of_a": 0.6152
+  },
+  "rf_jayke_signs_multilabel -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 1793,
+   "share_of_a": 1.0
+  },
+  "rf_jayke_signs_multilabel -> urban_issues": {
+   "images_in_a_matched_in_b": 777,
+   "share_of_a": 0.4334
+  },
+  "rf_jayke_signs_o5qsa -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 833,
+   "share_of_a": 0.503
+  },
+  "rf_jayke_signs_o5qsa -> rf_cos40007": {
+   "images_in_a_matched_in_b": 1539,
+   "share_of_a": 0.9293
+  },
+  "rf_jayke_signs_o5qsa -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0012
+  },
+  "rf_jayke_signs_o5qsa -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1452,
+   "share_of_a": 0.8768
+  },
+  "rf_jayke_signs_o5qsa -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1539,
+   "share_of_a": 0.9293
+  },
+  "rf_jayke_signs_o5qsa -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1364,
+   "share_of_a": 0.8237
+  },
+  "rf_jayke_signs_o5qsa -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 8,
+   "share_of_a": 0.0048
+  },
+  "rf_jayke_signs_o5qsa -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 4,
+   "share_of_a": 0.0024
+  },
+  "rf_jayke_signs_o5qsa -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 1344,
+   "share_of_a": 0.8116
+  },
+  "rf_jayke_signs_o5qsa -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 1539,
+   "share_of_a": 0.9293
+  },
+  "rf_jayke_signs_o5qsa -> urban_issues": {
+   "images_in_a_matched_in_b": 839,
+   "share_of_a": 0.5066
+  },
+  "rf_maty_signs_cls -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0003
+  },
+  "rf_maty_signs_cls -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0003
+  },
+  "rf_maty_signs_cls -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 6,
+   "share_of_a": 0.0008
+  },
+  "rf_maty_signs_cls -> rf_cos40007": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0003
+  },
+  "rf_maty_signs_cls -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 76,
+   "share_of_a": 0.0097
+  },
+  "rf_maty_signs_cls -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0001
+  },
+  "rf_maty_signs_cls -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0003
+  },
+  "rf_maty_signs_cls -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0004
+  },
+  "rf_maty_signs_cls -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 412,
+   "share_of_a": 0.0527
+  },
+  "rf_maty_signs_cls -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 285,
+   "share_of_a": 0.0364
+  },
+  "rf_maty_signs_cls -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0001
+  },
+  "rf_maty_signs_cls -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0004
+  },
+  "rf_maty_signs_cls -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0003
+  },
+  "rf_maty_signs_cls -> urban_issues": {
+   "images_in_a_matched_in_b": 10,
+   "share_of_a": 0.0013
+  },
+  "rf_maty_signs_det -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 6,
+   "share_of_a": 0.0014
+  },
+  "rf_maty_signs_det -> rf_cos40007": {
+   "images_in_a_matched_in_b": 4,
+   "share_of_a": 0.0009
+  },
+  "rf_maty_signs_det -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 496,
+   "share_of_a": 0.1141
+  },
+  "rf_maty_signs_det -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0007
+  },
+  "rf_maty_signs_det -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 4,
+   "share_of_a": 0.0009
+  },
+  "rf_maty_signs_det -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0012
+  },
+  "rf_maty_signs_det -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 295,
+   "share_of_a": 0.0679
+  },
+  "rf_maty_signs_det -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 414,
+   "share_of_a": 0.0952
+  },
+  "rf_maty_signs_det -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0012
+  },
+  "rf_maty_signs_det -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 4,
+   "share_of_a": 0.0009
+  },
+  "rf_maty_signs_det -> urban_issues": {
+   "images_in_a_matched_in_b": 6,
+   "share_of_a": 0.0014
+  },
+  "rf_myspace_dumping -> kg_piles_of_garbage": {
+   "images_in_a_matched_in_b": 532,
+   "share_of_a": 0.0758
+  },
+  "rf_myspace_dumping -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 409,
+   "share_of_a": 0.0582
+  },
+  "rf_myspace_dumping -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 1623,
+   "share_of_a": 0.2311
+  },
+  "rf_myspace_dumping -> rf_cloudcam_dumping": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0004
+  },
+  "rf_myspace_dumping -> rf_garbage_overflowing": {
+   "images_in_a_matched_in_b": 59,
+   "share_of_a": 0.0084
+  },
+  "rf_myspace_dumping -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 6262,
+   "share_of_a": 0.8918
+  },
+  "rf_myspace_dumping -> rf_roadside_garbage": {
+   "images_in_a_matched_in_b": 10,
+   "share_of_a": 0.0014
+  },
+  "rf_myspace_dumping -> rf_trash_taco": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0007
+  },
+  "rf_myspace_dumping -> urban_issues": {
+   "images_in_a_matched_in_b": 1761,
+   "share_of_a": 0.2508
+  },
+  "rf_ph_manila_bay -> rf_ph_manila_bay": {
+   "images_in_a_matched_in_b": 2845,
+   "share_of_a": 0.4249
+  },
+  "rf_ph_pothole_audit -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 7,
+   "share_of_a": 0.0343
+  },
+  "rf_ph_pothole_audit -> rf_ph_pothole_audit": {
+   "images_in_a_matched_in_b": 34,
+   "share_of_a": 0.1667
+  },
+  "rf_raez_dumping -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0002
+  },
+  "rf_raez_dumping -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0002
+  },
+  "rf_raez_dumping -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0007
+  },
+  "rf_raez_dumping -> rf_cos40007": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0004
+  },
+  "rf_raez_dumping -> rf_eryk_v1": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0002
+  },
+  "rf_raez_dumping -> rf_eryk_v2": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0002
+  },
+  "rf_raez_dumping -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0004
+  },
+  "rf_raez_dumping -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 4389,
+   "share_of_a": 0.9845
+  },
+  "rf_raez_dumping -> urban_issues": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0007
+  },
+  "rf_roadside_garbage -> kg_piles_of_garbage": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0083
+  },
+  "rf_roadside_garbage -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0167
+  },
+  "rf_roadside_garbage -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.025
+  },
+  "rf_roadside_garbage -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 4,
+   "share_of_a": 0.0333
+  },
+  "rf_roadside_garbage -> rf_roadside_garbage": {
+   "images_in_a_matched_in_b": 8,
+   "share_of_a": 0.0667
+  },
+  "rf_roadside_garbage -> urban_issues": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.025
+  },
+  "rf_roadside_garbage -> zn_normal_pothole": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0083
+  },
+  "rf_signdet_x0fra -> rf_signdet_x0fra": {
+   "images_in_a_matched_in_b": 214,
+   "share_of_a": 0.4147
+  },
+  "rf_signs_hind -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 1312,
+   "share_of_a": 0.5446
+  },
+  "rf_signs_hind -> rf_cos40007": {
+   "images_in_a_matched_in_b": 1411,
+   "share_of_a": 0.5857
+  },
+  "rf_signs_hind -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0012
+  },
+  "rf_signs_hind -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1316,
+   "share_of_a": 0.5463
+  },
+  "rf_signs_hind -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1411,
+   "share_of_a": 0.5857
+  },
+  "rf_signs_hind -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1554,
+   "share_of_a": 0.6451
+  },
+  "rf_signs_hind -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 11,
+   "share_of_a": 0.0046
+  },
+  "rf_signs_hind -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 6,
+   "share_of_a": 0.0025
+  },
+  "rf_signs_hind -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 1650,
+   "share_of_a": 0.6849
+  },
+  "rf_signs_hind -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 1411,
+   "share_of_a": 0.5857
+  },
+  "rf_signs_hind -> urban_issues": {
+   "images_in_a_matched_in_b": 1329,
+   "share_of_a": 0.5517
+  },
+  "rf_trash_taco -> kg_piles_of_garbage": {
+   "images_in_a_matched_in_b": 46,
+   "share_of_a": 0.0201
+  },
+  "rf_trash_taco -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 168,
+   "share_of_a": 0.0734
+  },
+  "rf_trash_taco -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0013
+  },
+  "rf_trash_taco -> rf_trash_taco": {
+   "images_in_a_matched_in_b": 22,
+   "share_of_a": 0.0096
+  },
+  "rf_trash_taco -> urban_issues": {
+   "images_in_a_matched_in_b": 187,
+   "share_of_a": 0.0817
+  },
+  "road_issues_kaggle -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 396,
+   "share_of_a": 0.041
+  },
+  "road_issues_kaggle -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 5679,
+   "share_of_a": 0.5879
+  },
+  "road_issues_kaggle -> rf_cos40007": {
+   "images_in_a_matched_in_b": 2654,
+   "share_of_a": 0.2747
+  },
+  "road_issues_kaggle -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0003
+  },
+  "road_issues_kaggle -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1432,
+   "share_of_a": 0.1482
+  },
+  "road_issues_kaggle -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1793,
+   "share_of_a": 0.1856
+  },
+  "road_issues_kaggle -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1492,
+   "share_of_a": 0.1545
+  },
+  "road_issues_kaggle -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 7,
+   "share_of_a": 0.0007
+  },
+  "road_issues_kaggle -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.0005
+  },
+  "road_issues_kaggle -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 1103,
+   "share_of_a": 0.1142
+  },
+  "road_issues_kaggle -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 1989,
+   "share_of_a": 0.2059
+  },
+  "road_issues_kaggle -> urban_issues": {
+   "images_in_a_matched_in_b": 6326,
+   "share_of_a": 0.6549
+  },
+  "road_issues_kaggle -> zn_normal_pothole": {
+   "images_in_a_matched_in_b": 683,
+   "share_of_a": 0.0707
+  },
+  "roadway_flooding_kaggle -> floodimg": {
+   "images_in_a_matched_in_b": 256,
+   "share_of_a": 0.5805
+  },
+  "roadway_flooding_kaggle -> roadway_flooding_kaggle": {
+   "images_in_a_matched_in_b": 6,
+   "share_of_a": 0.0136
+  },
+  "roadway_flooding_kaggle -> roadway_flooding_mendeley": {
+   "images_in_a_matched_in_b": 441,
+   "share_of_a": 1.0
+  },
+  "roadway_flooding_mendeley -> floodimg": {
+   "images_in_a_matched_in_b": 256,
+   "share_of_a": 0.5805
+  },
+  "roadway_flooding_mendeley -> roadway_flooding_kaggle": {
+   "images_in_a_matched_in_b": 441,
+   "share_of_a": 1.0
+  },
+  "roadway_flooding_mendeley -> roadway_flooding_mendeley": {
+   "images_in_a_matched_in_b": 6,
+   "share_of_a": 0.0136
+  },
+  "rome_road_damage -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.001
+  },
+  "rome_road_damage -> rome_road_damage": {
+   "images_in_a_matched_in_b": 381,
+   "share_of_a": 0.1896
+  },
+  "rome_road_damage -> urban_issues": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.001
+  },
+  "urban_issues -> floodimg": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0
+  },
+  "urban_issues -> kg_piles_of_garbage": {
+   "images_in_a_matched_in_b": 106,
+   "share_of_a": 0.0022
+  },
+  "urban_issues -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 2389,
+   "share_of_a": 0.0507
+  },
+  "urban_issues -> rf_aaa_fallentrees": {
+   "images_in_a_matched_in_b": 2971,
+   "share_of_a": 0.063
+  },
+  "urban_issues -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 44693,
+   "share_of_a": 0.9481
+  },
+  "urban_issues -> rf_cos40007": {
+   "images_in_a_matched_in_b": 2410,
+   "share_of_a": 0.0511
+  },
+  "urban_issues -> rf_damaged_traffic_signs": {
+   "images_in_a_matched_in_b": 7,
+   "share_of_a": 0.0001
+  },
+  "urban_issues -> rf_eryk_v1": {
+   "images_in_a_matched_in_b": 141,
+   "share_of_a": 0.003
+  },
+  "urban_issues -> rf_eryk_v2": {
+   "images_in_a_matched_in_b": 111,
+   "share_of_a": 0.0024
+  },
+  "urban_issues -> rf_garbage_overflowing": {
+   "images_in_a_matched_in_b": 27,
+   "share_of_a": 0.0006
+  },
+  "urban_issues -> rf_graff_signs": {
+   "images_in_a_matched_in_b": 1605,
+   "share_of_a": 0.034
+  },
+  "urban_issues -> rf_jayke_signs_multilabel": {
+   "images_in_a_matched_in_b": 1701,
+   "share_of_a": 0.0361
+  },
+  "urban_issues -> rf_jayke_signs_o5qsa": {
+   "images_in_a_matched_in_b": 1826,
+   "share_of_a": 0.0387
+  },
+  "urban_issues -> rf_maty_signs_cls": {
+   "images_in_a_matched_in_b": 28,
+   "share_of_a": 0.0006
+  },
+  "urban_issues -> rf_maty_signs_det": {
+   "images_in_a_matched_in_b": 15,
+   "share_of_a": 0.0003
+  },
+  "urban_issues -> rf_myspace_dumping": {
+   "images_in_a_matched_in_b": 862,
+   "share_of_a": 0.0183
+  },
+  "urban_issues -> rf_raez_dumping": {
+   "images_in_a_matched_in_b": 3,
+   "share_of_a": 0.0001
+  },
+  "urban_issues -> rf_roadside_garbage": {
+   "images_in_a_matched_in_b": 8,
+   "share_of_a": 0.0002
+  },
+  "urban_issues -> rf_signs_hind": {
+   "images_in_a_matched_in_b": 2194,
+   "share_of_a": 0.0465
+  },
+  "urban_issues -> rf_trash_taco": {
+   "images_in_a_matched_in_b": 219,
+   "share_of_a": 0.0046
+  },
+  "urban_issues -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 7245,
+   "share_of_a": 0.1537
+  },
+  "urban_issues -> rome_road_damage": {
+   "images_in_a_matched_in_b": 1,
+   "share_of_a": 0.0
+  },
+  "urban_issues -> urban_issues": {
+   "images_in_a_matched_in_b": 16292,
+   "share_of_a": 0.3456
+  },
+  "urban_issues -> zn_normal_pothole": {
+   "images_in_a_matched_in_b": 619,
+   "share_of_a": 0.0131
+  },
+  "zn_normal_pothole -> kg_road_anomaly": {
+   "images_in_a_matched_in_b": 553,
+   "share_of_a": 0.1106
+  },
+  "zn_normal_pothole -> rf_civic_issues": {
+   "images_in_a_matched_in_b": 625,
+   "share_of_a": 0.125
+  },
+  "zn_normal_pothole -> rf_cos40007": {
+   "images_in_a_matched_in_b": 5,
+   "share_of_a": 0.001
+  },
+  "zn_normal_pothole -> rf_roadside_garbage": {
+   "images_in_a_matched_in_b": 2,
+   "share_of_a": 0.0004
+  },
+  "zn_normal_pothole -> road_issues_kaggle": {
+   "images_in_a_matched_in_b": 710,
+   "share_of_a": 0.142
+  },
+  "zn_normal_pothole -> urban_issues": {
+   "images_in_a_matched_in_b": 646,
+   "share_of_a": 0.1292
+  },
+  "zn_normal_pothole -> zn_normal_pothole": {
+   "images_in_a_matched_in_b": 1390,
+   "share_of_a": 0.278
+  }
+ }
+}

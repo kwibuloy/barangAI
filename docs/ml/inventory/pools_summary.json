@@ -1,0 +1,162 @@
+{
+ "images_considered": 190632,
+ "excluded_images_by_reason": [
+  [
+   "unknown licence; baked rotations defeat leakage control",
+   20169
+  ],
+  [
+   "not_ok mixes damaged/occluded/dirty",
+   4499
+  ],
+  [
+   "industrial truck CCTV (concept mismatch)",
+   4458
+  ],
+  [
+   "item-level litter (TACO taxonomy), not accumulation",
+   2290
+  ],
+  [
+   "Google Street View captures (rights C, litter not visible)",
+   1419
+  ],
+  [
+   "single rubbish item (isolated litter ambiguous)",
+   1197
+  ],
+  [
+   "occluded/dirty (environmental, not damage) or mixed",
+   564
+  ],
+  [
+   "mirror of roadway_flooding_mendeley",
+   441
+  ],
+  [
+   "no box",
+   319
+  ],
+  [
+   "dashcam; Philippine origin not verified",
+   204
+  ],
+  [
+   "multi-issue images, no per-image label",
+   191
+  ],
+  [
+   "dirty-sign or ambiguous road issue",
+   111
+  ],
+  [
+   "bottle close-up / none",
+   84
+  ],
+  [
+   "multi-hazard (sign + rubbish)",
+   1
+  ],
+  [
+   "unlabeled",
+   1
+  ]
+ ],
+ "unique_groups_training_pool": {
+  "flooding": 4502,
+  "garbage_accumulation": 6110,
+  "other": 27309,
+  "fallen_trees": 2393,
+  "damaged_signage": 2950,
+  "potholes": 1924
+ },
+ "unique_groups_eval_only_probes": {
+  "flooding": 438,
+  "potholes": 87,
+  "other": 14
+ },
+ "groups_by_label_and_source": {
+  "flooding": {
+   "floodimg": 4502
+  },
+  "garbage_accumulation": {
+   "urban_issues": 2559,
+   "rf_myspace_dumping": 2004,
+   "rf_cos40007": 588,
+   "rf_cloudcam_dumping": 517,
+   "kg_piles_of_garbage": 221,
+   "rf_garbage_overflowing": 111,
+   "rf_roadside_garbage": 110
+  },
+  "other": {
+   "urban_issues": 15912,
+   "zn_normal_pothole": 3721,
+   "rf_ph_manila_bay": 2504,
+   "rf_maty_signs_cls": 1848,
+   "rf_cos40007": 1397,
+   "rome_road_damage": 1045,
+   "rf_maty_signs_det": 478,
+   "rf_signdet_x0fra": 246,
+   "rf_eryk_v2": 90,
+   "kg_piles_of_garbage": 24,
+   "road_issues_kaggle": 20,
+   "rf_garbage_overflowing": 14,
+   "rf_civic_issues": 8,
+   "rf_eryk_v1": 2
+  },
+  "fallen_trees": {
+   "urban_issues": 2041,
+   "rf_eryk_v2": 308,
+   "rf_eryk_v1": 44
+  },
+  "damaged_signage": {
+   "rf_maty_signs_det": 1245,
+   "rf_damaged_traffic_signs": 1244,
+   "rf_cos40007": 332,
+   "rf_signdet_x0fra": 106,
+   "rf_jayke_signs_multilabel": 23
+  },
+  "potholes": {
+   "urban_issues": 1318,
+   "rome_road_damage": 606
+  }
+ },
+ "groups_by_label_and_rights_tier": {
+  "flooding": {
+   "B": 4502
+  },
+  "garbage_accumulation": {
+   "B": 6110
+  },
+  "other": {
+   "B": 23760,
+   "A": 3549
+  },
+  "fallen_trees": {
+   "B": 2393
+  },
+  "damaged_signage": {
+   "B": 2950
+  },
+  "potholes": {
+   "B": 1318,
+   "A": 606
+  }
+ },
+ "cross_label_conflict_groups": {
+  "other|potholes": 570,
+  "damaged_signage|other": 393,
+  "fallen_trees|other|potholes": 178,
+  "garbage_accumulation|other": 97,
+  "fallen_trees|other": 25,
+  "garbage_accumulation|other|potholes": 22,
+  "damaged_signage|garbage_accumulation|other|potholes": 3,
+  "damaged_signage|other|potholes": 3,
+  "fallen_trees|garbage_accumulation|other": 2,
+  "flooding|garbage_accumulation": 1,
+  "damaged_signage|fallen_trees|garbage_accumulation|other": 1,
+  "damaged_signage|fallen_trees|other|potholes": 1,
+  "damaged_signage|garbage_accumulation|other": 1
+ },
+ "note": "Counts are deduplicated candidate groups BEFORE human review; review acceptance rates apply."
+}
