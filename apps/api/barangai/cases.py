@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, undefer
 
-from . import barangays, duplicates
+from . import barangays, duplicates, points
 from .auth import get_current_user, rate_limit, require_csrf, require_role
 from .db import get_db
 from .duplicates import candidate_score
@@ -131,6 +131,8 @@ def bring_to(
         report.verified_category = verified
     report.updated_at = start
     db.add(Notification(user_id=report.resident_id, report_id=report.id, status=report.status))
+    db.flush()
+    points.settle(db, report)
 
 
 def members(db: Session, case_id: str, confirmed_only=True, lock=False):

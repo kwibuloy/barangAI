@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from . import cases
+from . import cases, points
 from .auth import require_csrf, require_role
 from .db import get_db
 from .models import Notification, Report, ReportEvent, StaffAction, User, now, utc_iso
@@ -93,6 +93,8 @@ def change_status(report_id: str, body: StatusInput, db: Session = Depends(get_d
             )
             .values(rejection_reason=body.rejection_reason)
         )
+    db.flush()
+    points.settle(db, report)
     db.commit()
     db.expire_all()
     return serialize_report(db.get(Report, report_id), detail=True, staff=True)

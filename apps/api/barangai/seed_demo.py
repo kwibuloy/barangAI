@@ -13,7 +13,7 @@ from . import trust
 from .auth import hasher
 from .db import database_url, session_for_url
 from .media import sanitize_image, save_image
-from .models import Case, Notification, Report, ReportAddendum, ReportEvent, StaffAction, User
+from .models import Barangay, Case, Notification, Report, ReportAddendum, ReportEvent, Reward, StaffAction, User
 from .reports import CATEGORIES
 from .workflow import NEXT
 
@@ -163,11 +163,51 @@ def pitch_story(db, staff, residents):
         report.image_path = save_image(report.id, sanitize_image(original) if report is moved else photo(200 + index))
 
 
+# Illustrative rewards and prices at 5 points to a peso, not any barangay's real offer. Staff replace them.
+SAMPLE_REWARDS = (
+    ("Certificate of Indigency", 100, None, None),
+    ("Barangay Certificate or Proof of Residency", 250, None, None),
+    ("Barangay ID", 250, None, None),
+    ("Affidavit of Loss", 250, None, None),
+    ("Employment Clearance", 250, None, None),
+    ("Legal or Loan Clearance", 500, None, None),
+    ("Construction Clearance discount", 500, None, None),
+    ("Free basketball court lights (one night)", 750, 4, None),
+    ("Partner store voucher", 250, 10, "Sample Partner Store"),
+)
+
+
+def seed_rewards() -> int:
+    """Gives every barangay with an empty shop the sample rewards. Safe to run again."""
+    added = 0
+    with session_for_url() as db:
+        for barangay in db.scalars(select(Barangay)).all():
+            if db.scalar(select(Reward.id).where(Reward.barangay_id == barangay.id).limit(1)):
+                continue
+            for name, cost, stock, partner in SAMPLE_REWARDS:
+                db.add(
+                    Reward(
+                        barangay_id=barangay.id,
+                        name=f"Sample: {name}",
+                        points_cost=cost,
+                        stock=stock,
+                        partner=partner,
+                        description="Sample reward and price for demos, not an offer from this barangay.",
+                    )
+                )
+                added += 1
+        db.commit()
+    return added
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create synthetic demo accounts and reports")
     parser.add_argument("--count", type=int, default=12)
+    parser.add_argument("--rewards-only", action="store_true", help="Only fill empty barangay shops with sample rewards")
     parser.add_argument("--allow-remote", action="store_true", help="Permit PostgreSQL or Supabase storage")
     args = parser.parse_args()
     if not args.allow_remote and (not is_local() or os.environ.get("MEDIA_STORAGE", "local") != "local"):
         raise SystemExit("Refusing to seed a remote database or storage without --allow-remote")
-    seed(os.environ.get("SEED_DEMO_PASSWORD") or getpass("Demo account password: "), args.count)
+    if not args.rewards_only:
+        seed(os.environ.get("SEED_DEMO_PASSWORD") or getpass("Demo account password: "), args.count)
+    print(f"{seed_rewards()} sample rewards added")

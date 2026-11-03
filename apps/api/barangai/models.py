@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, false
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -208,3 +208,51 @@ class DeletionRequest(Base):
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Reward(Base):
+    """Something in one barangay's shop, offered by the barangay or a partner. No stock means unlimited."""
+
+    __tablename__ = "rewards"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    barangay_id: Mapped[str] = mapped_column(ForeignKey("barangays.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    partner: Mapped[str | None] = mapped_column(String(120))
+    points_cost: Mapped[int] = mapped_column(Integer, nullable=False)
+    stock: Mapped[int | None] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true(), nullable=False)
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+
+
+class Voucher(Base):
+    """A single-use code for one reward: active, then used or expired."""
+
+    __tablename__ = "vouchers"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    code: Mapped[str] = mapped_column(String(16), unique=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    reward_id: Mapped[str] = mapped_column(ForeignKey("rewards.id"), nullable=False)
+    barangay_id: Mapped[str] = mapped_column(ForeignKey("barangays.id"), nullable=False)
+    points_cost: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="active", server_default="active", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+
+
+class PointEntry(Base):
+    """Append-only ledger; a balance is the sum. report_id has no foreign key, so entries outlive a deleted report."""
+
+    __tablename__ = "point_entries"
+    __table_args__ = (UniqueConstraint("user_id", "report_id", "kind", name="uq_point_entries_once"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    report_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    voucher_id: Mapped[str | None] = mapped_column(String(36))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+

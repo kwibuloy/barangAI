@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { ArrowLeft, Bell, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
+import { ArrowLeft, Bell, Gift, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -38,6 +38,7 @@ const NAV = [
   { to: '/desk/map', label: 'Map', icon: MapIcon },
   { to: '/desk/updates', label: 'Updates', icon: Bell },
   { to: '/desk/reports', label: 'Reports', icon: Inbox },
+  { to: '/desk/rewards', label: 'Rewards', icon: Gift },
 ]
 const SECTIONS = [
   { label: 'Dashboard', items: NAV.slice(0, 3) },

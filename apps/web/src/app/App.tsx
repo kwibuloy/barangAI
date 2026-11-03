@@ -19,6 +19,12 @@ import 'leaflet/dist/leaflet.css'
 import '../styles.css'
 
 // Residents never download the staff dashboard; chat loads when first opened.
+const RewardsPage = lazy(() =>
+  import('../features/rewards/RewardsPage').then(module => ({ default: module.RewardsPage })),
+)
+const RewardsDeskPage = lazy(() =>
+  import('../features/staff/RewardsDeskPage').then(module => ({ default: module.RewardsDeskPage })),
+)
 const StaffShell = lazy(() => import('../features/staff/StaffShell').then(module => ({ default: module.StaffShell })))
 const OverviewPage = lazy(() =>
   import('../features/staff/OverviewPage').then(module => ({ default: module.OverviewPage })),
@@ -92,6 +98,7 @@ function AppRoutes() {
             <Route path="desk/reports/:id" element={<QueuePage />} />
             <Route path="desk/map" element={<MapPage />} />
             <Route path="desk/updates" element={<UpdatesPage />} />
+            <Route path="desk/rewards" element={<RewardsDeskPage />} />
             <Route path="*" element={<Navigate to="/desk" replace />} />
           </Route>
         ) : (
@@ -103,6 +110,7 @@ function AppRoutes() {
             <Route path="community" element={<CommunityPage />} />
             <Route path="updates" element={<NotificationsPage />} />
             <Route path="help" element={<ChatPage />} />
+            <Route path="rewards" element={<RewardsPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Route>
         )}

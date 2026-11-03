@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from . import barangays
+from . import barangays, points
 from . import delete_report as deletion
 from .auth import MAX_PASSWORD, current_session, hash_password, password_matches, rate_limit, require_csrf, require_role
 from .db import get_db
@@ -82,6 +82,7 @@ def delete_account(
     images = []
     for report in db.scalars(select(Report).where(Report.resident_id == user_id)).all():
         images += deletion.erase_rows(db, report)
+    points.erase_account(db, user_id)
     for model, column in (
         (Notification, Notification.user_id),
         (DeletionRequest, DeletionRequest.requester_id),

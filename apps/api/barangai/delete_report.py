@@ -11,6 +11,7 @@ from uuid import UUID
 from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import delete, func, or_, select, update
 
+from . import points
 from .auth import hasher
 from .cases import members
 from .db import session_for_url
@@ -72,6 +73,7 @@ def erase_rows(db, report):
     # Added photos first: a storage failure among them leaves the report's own photo for a retry.
     images = [*db.scalars(select(ReportAddendum.image_path).where(
         ReportAddendum.report_id == report_id, ReportAddendum.image_path.is_not(None))), own_image]
+    points.reverse_report(db, report_id, report.resident_id)
     for model, condition in dependents(report_id):
         db.execute(delete(model).where(condition))
     db.execute(delete(Report).where(Report.id == report_id))

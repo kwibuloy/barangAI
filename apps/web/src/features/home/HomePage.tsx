@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { m } from 'motion/react'
-import { ChevronRight, ClipboardList, Map as MapIcon, Phone, SquarePen } from 'lucide-react'
+import { ChevronRight, ClipboardList, Gift, Map as MapIcon, Phone, SquarePen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Kap } from '@/components/Kap'
 import { Group, LargeTitle, LinkRow, Row, Segmented } from '@/components/page'
@@ -190,11 +190,34 @@ export function HomePage() {
           <div className="hairline mb-5 overflow-hidden rounded-2xl bg-card">
             {tab === 'open' ? <OpenRows reports={active} /> : <UpdateRows notices={items} byId={byId} />}
           </div>
+          <RewardsCard />
           <CommunityCard />
           <EmergencyCard />
         </>
       )}
     </div>
+  )
+}
+
+function RewardsCard() {
+  return (
+    <Link
+      to="/rewards"
+      className="hairline mb-3 flex items-center gap-3 rounded-2xl bg-card p-3.5 transition-colors active:bg-accent"
+    >
+      <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-primary text-primary-foreground">
+        <Gift className="size-5" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <strong className="block text-[16px] font-semibold">
+          <Txt>Rewards</Txt>
+        </strong>
+        <span className="text-[14px] text-muted-foreground">
+          <Txt>Earn points for valid reports and spend them in any barangay's shop.</Txt>
+        </span>
+      </span>
+      <ChevronRight className="size-4 text-muted-foreground/70" aria-hidden="true" />
+    </Link>
   )
 }
 
