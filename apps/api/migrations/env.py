@@ -1,8 +1,7 @@
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-
-from barangai import models
+from barangai import models  # noqa: F401  Registers the tables on Base.metadata.
 from barangai.db import Base, database_url
+from sqlalchemy import engine_from_config, pool
 
 config = context.config
 # ConfigParser treats percent signs as interpolation; passwords may be URL encoded.

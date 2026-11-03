@@ -14,14 +14,14 @@ from datetime import UTC, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, undefer
 
-from . import barangays
+from . import barangays, duplicates
 from .auth import get_current_user, rate_limit, require_csrf, require_role
 from .db import get_db
 from .duplicates import candidate_score
 from .models import Case, DuplicateSuggestion, Notification, Report, ReportEvent, StaffAction, User, now, utc_iso
-from .reports import authorized_report, serialize_report
+from .reports import CASE_STEP_NOTE, authorized_report, serialize_report
 
 router = APIRouter()
 PATH = ("Pending", "Under Verification", "Accepted", "In Progress", "Resolved")
@@ -57,7 +57,7 @@ def suggest_duplicates(db: Session, report: Report):
     radius = RADIUS_M.get(report.resident_category, 300)
     lat_span = radius / 111_320
     lon_span = radius / (111_320 * max(math.cos(math.radians(report.latitude)), 0.01))
-    nearby = db.scalars(select(Report).where(
+    nearby = db.scalars(select(Report).options(undefer(Report.image_embedding)).where(
         Report.id != report.id, Report.embedding_model_version == version,
         # Same barangay only, since grouped reports share one status. Before barangays are loaded, all ids are empty.
         Report.barangay_id == report.barangay_id,
@@ -94,7 +94,7 @@ def bring_to(db: Session, report: Report, target: str, actor_id: str, case: Case
         steps = list(PATH[rank(report.status) + 1:rank(target) + 1]) if 0 <= rank(report.status) < rank(target) else []
     if not steps:
         return
-    note = f"Updated with case #{case.id[:8].upper()}"
+    note = f"{CASE_STEP_NOTE}{case.id[:8].upper()}"
     start = now()
     for index, step in enumerate(steps):
         # Distinct times keep the history in order.
@@ -201,12 +201,29 @@ def open_case_for_evidence(db: Session, case_id: str):
 
 
 def log(db, report_id, actor_id, note):
-    db.add(StaffAction(report_id=report_id, actor_id=actor_id, kind="action", note=note))
+    db.add(StaffAction(report_id=report_id, actor_id=actor_id, kind="system", note=note))
 
 
 @router.get("/reports/{report_id}/case")
 def report_case(report_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return case_data(db, authorized_report(report_id, db, user), user)
+
+
+def in_jurisdiction(db: Session, user: User, result: dict):
+    """duplicates.py is frozen and compares across barangays; staff only get suggestions they could open."""
+    return {**result, "suggestions": [
+        item for item in result["suggestions"]
+        if barangays.may_see(db, user, db.get(Report, item["candidate_report_id"]))]}
+
+
+@router.get("/reports/{report_id}/duplicates")
+def duplicate_candidates(report_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return in_jurisdiction(db, user, duplicates.duplicate_candidates(report_id, db, user))
+
+
+@router.post("/reports/{report_id}/duplicates/generate")
+def generate_duplicates(report_id: str, db: Session = Depends(get_db), user: User = Depends(require_csrf)):
+    return in_jurisdiction(db, user, duplicates.generate_duplicates(report_id, db, user))
 
 
 class LinkInput(BaseModel):
@@ -294,9 +311,10 @@ def decide_evidence(report_id: str, body: CaseDecision, db: Session = Depends(ge
 
 @router.get("/cases/map")
 def community_map(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Accepted cases for the shared map. No photos, descriptions or names; pins rounded to about 10 metres."""
+    """Accepted cases for the shared map. No photos, descriptions or names; pins rounded to about 10 metres. No AI
+    hazard flags either: no person has confirmed them."""
     rows = db.execute(select(Report.case_id, Report.status, Report.resident_id, Report.created_at,
-                             Report.hazards, Report.case_confirmed).where(Report.case_id.is_not(None))).all()
+                             Report.case_confirmed).where(Report.case_id.is_not(None))).all()
     grouped = {}
     for row in rows:
         grouped.setdefault(row.case_id, []).append(row)
@@ -316,7 +334,6 @@ def community_map(db: Session = Depends(get_db), user: User = Depends(get_curren
             # Days only (Philippine time): exact times could single out a neighbour.
             "first_reported_on": day(min(dates)), "last_reported_on": day(max(dates)),
             "contributors": len({item.resident_id for item in confirmed}),
-            "hazards": sorted({hazard for item in confirmed for hazard in item.hazards or []}),
             "open_for_evidence": status in OPEN_FOR_EVIDENCE,
             # Includes an "I see this too" report staff have not checked yet.
             "contributed": any(item.resident_id == user.id for item in items),

@@ -7,7 +7,7 @@ services:
     region: singapore
     dockerfilePath: ./deploy/Dockerfile.render
     dockerContext: .
-    autoDeployTrigger: "off"
+    autoDeployTrigger: commit
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
@@ -28,6 +28,14 @@ services:
         value: "5000000"
       - key: MAX_REQUEST_BYTES
         value: "6000000"
+      # Read the number from the Render log after the first request; see docs/deployment.md.
+      - key: TRUSTED_PROXY_HOPS
+        sync: false
+      # Named in the terms and privacy notice; the pages say they are unpublished until these are set.
+      - key: OPERATOR_NAME
+        sync: false
+      - key: PRIVACY_CONTACT
+        sync: false
       # Report AI and sign-in, each optional: leave a value blank and that feature stays off.
       - key: CLOUDFLARE_ACCOUNT_ID
         sync: false

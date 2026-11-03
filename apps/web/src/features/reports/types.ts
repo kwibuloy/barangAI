@@ -10,7 +10,7 @@ export type Category =
 export type Hazard = 'electrical_hazard' | 'blocks_road' | 'risk_to_people'
 export type Status = 'Pending' | 'Under Verification' | 'Accepted' | 'In Progress' | 'Resolved' | 'Rejected'
 export type ReportEvent = { id?: string; to_status?: Status; created_at?: string; note?: string }
-export type StaffAction = { id: string; kind: 'action' | 'coordination'; note: string; created_at: string }
+export type StaffAction = { id: string; kind: 'action' | 'coordination' | 'system'; note: string; created_at: string }
 export type Duplicate = {
   id: string
   candidate_report_id: string
@@ -47,6 +47,14 @@ export type Report = {
   created_at?: string
   events?: ReportEvent[]
   actions?: StaffAction[]
+  /** The latest request to delete this report, if any. */
+  deletion_request?: {
+    id: string
+    status: 'pending' | 'approved' | 'declined'
+    reason: string | null
+    note: string | null
+    created_at: string
+  } | null
 }
 export type TrustFlag =
   | { code: 'pin_far_from_photo'; detail: number }
@@ -126,7 +134,6 @@ export type CommunityCase = {
   first_reported_on: string
   last_reported_on: string
   contributors: number
-  hazards: Hazard[]
   open_for_evidence: boolean
   contributed: boolean
 }

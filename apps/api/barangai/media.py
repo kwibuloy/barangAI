@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import threading
+import time
 from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -41,6 +42,12 @@ def validate_storage_config():
             raise ValueError("Invalid SUPABASE_STORAGE_BUCKET")
 
 
+# A page of photos should not ask Supabase about the bucket once per photo. Only a private answer is remembered.
+BUCKET_CHECK_SECONDS = 300
+_bucket_checked: dict[str, float] = {}
+_bucket_lock = threading.Lock()
+
+
 def storage_client():
     return httpx.Client(timeout=20, follow_redirects=False)
 
@@ -62,12 +69,18 @@ def storage_request(method, path, **kwargs):
 
 def private_bucket():
     bucket = os.environ.get("SUPABASE_STORAGE_BUCKET", "incident-photos")
+    with _bucket_lock:
+        checked = _bucket_checked.get(bucket)
+    if checked and time.monotonic() - checked < BUCKET_CHECK_SECONDS:
+        return bucket
     try:
         metadata = storage_request("GET", f"bucket/{bucket}").json()
     except ValueError:
         raise HTTPException(503, "Private image storage unavailable. Please try again.") from None
     if not isinstance(metadata, dict) or metadata.get("public") is not False:
         raise HTTPException(503, "Incident photo storage must be private")
+    with _bucket_lock:
+        _bucket_checked[bucket] = time.monotonic()
     return bucket
 
 
@@ -173,3 +186,5 @@ def sanitize_image(data: bytes) -> bytes:
 def clear_sanitized_cache():
     with _sanitized_lock:
         _sanitized.clear()
+    with _bucket_lock:
+        _bucket_checked.clear()

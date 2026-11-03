@@ -168,7 +168,8 @@ def written(data, language):
         body = response.json() if response.status_code == 200 else None
     except (httpx.HTTPError, ValueError):
         return None
-    answer = body.get("result", {}).get("response") if isinstance(body, dict) and body.get("success") else None
+    result = body.get("result") if isinstance(body, dict) and body.get("success") else None
+    answer = result.get("response") if isinstance(result, dict) else None
     if not isinstance(answer, str):
         return None
     answer = answer.strip()

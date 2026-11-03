@@ -7,8 +7,15 @@ set -eu
 : "${SUPABASE_SECRET_KEY:?Set a server-only Supabase secret key}"
 : "${SUPABASE_STORAGE_BUCKET:?Set the private incident photo bucket}"
 case "$DATABASE_URL" in
-  postgresql://*|postgresql+psycopg2://*) ;;
+  postgres://*|postgresql://*|postgresql+psycopg2://*) ;;
   *) echo "Render requires an external PostgreSQL DATABASE_URL" >&2; exit 1 ;;
+esac
+case "$DATABASE_URL" in
+  *YOUR-PASSWORD*|*'['*']'*'@'*) echo "DATABASE_URL still holds the placeholder password from Supabase; see docs/supabase-setup.md" >&2; exit 1 ;;
+esac
+case "$DATABASE_URL" in
+  *sslmode=require*|*sslmode=verify-full*) ;;
+  *) echo "Warning: DATABASE_URL has no sslmode=require or verify-full, so the database connection may not be encrypted" >&2 ;;
 esac
 if [ "${MEDIA_STORAGE:-}" != "supabase" ] || [ "${COOKIE_SECURE:-}" != "true" ]; then
   echo "Render requires MEDIA_STORAGE=supabase and COOKIE_SECURE=true" >&2

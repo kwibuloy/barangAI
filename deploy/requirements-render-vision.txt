@@ -1,5 +1,5 @@
 # The category checker runs on ONNX Runtime alone (no PyTorch): small enough for Render Free.
 onnxruntime==1.31.1
 numpy==2.5.4
-# Face blurring before storage (privacy.py); its bundled Haar cascade needs no model download.
+# Face blurring before storage (privacy.py); runs the YuNet model in apps/api/models/yunet.
 opencv-python-headless==4.13.0.92

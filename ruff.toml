@@ -7,3 +7,6 @@ exclude = ["ml"]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["B008", "E501"]  # FastAPI Depends() defaults; the formatter owns line length.
 unfixable = ["F401"]  # Report unused imports, never delete them: some imports register models or routes.
+
+[lint.per-file-ignores]
+"apps/api/barangai/duplicates.py" = ["B905"]  # Frozen file.

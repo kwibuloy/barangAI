@@ -38,7 +38,7 @@ import { MapPicker } from './MapPicker'
 import { photoCoordinates, useBarangayAt, useStreetName, type LocationSource } from './location'
 import { compressPhoto, MAX_PICK_BYTES, MAX_UPLOAD_BYTES, photoDetails, type PhotoDetails } from './photo'
 import { findNearby, reportKeys, useCommunityCases, useSubmitReport } from './queries'
-import type { Category, Nearby, Prediction, Report } from './types'
+import type { Category, Hazard, Nearby, Prediction, Report } from './types'
 
 const UNAVAILABLE: Prediction = { prediction_available: false, model_category: null, confidence: null }
 const NOT_FILLED = { category: false, description: false }
@@ -76,6 +76,7 @@ export function ReportForm() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState('')
   const [prediction, setPrediction] = useState<Prediction | null>(null)
+  const [dismissedHazards, setDismissedHazards] = useState<Hazard[]>([])
   const [category, setCategory] = useState<Category | ''>('')
   const [description, setDescription] = useState('')
   const [latitude, setLatitude] = useState('')
@@ -294,6 +295,7 @@ export function ReportForm() {
     if (description.trim()) form.set('description', description.trim())
     if (caseId) form.set('case_id', caseId)
     if (locationSource) form.set('location_source', locationSource)
+    dismissedHazards.forEach(hazard => form.append('dismissed_hazards', hazard))
     if (details?.takenAt) form.set('photo_taken_at', details.takenAt)
     if (details?.camera) form.set('photo_camera', '1')
     if (photoGps) {
@@ -335,6 +337,7 @@ export function ReportForm() {
     setPhoto(null)
     setPreview('')
     setPrediction(null)
+    setDismissedHazards([])
     setCategory('')
     setDescription('')
     setLatitude('')
@@ -382,6 +385,9 @@ export function ReportForm() {
           </button>
         </div>
       )}
+      <p className="mb-3 px-1 text-[13px] text-muted-foreground">
+        <Txt>Not for emergencies. If anyone is in danger, call 911.</Txt>
+      </p>
       {/* Desktop: the steps on the left, a live summary of the report on the right. */}
       <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start xl:gap-10">
         <div>
@@ -591,21 +597,40 @@ export function ReportForm() {
                       </Txt>
                     </p>
                   )}
-                  {hazards.some(hazard => hazard !== 'electrical_hazard') && (
-                    <p className="flex flex-wrap items-center gap-1.5 px-1 text-[13px] text-muted-foreground">
-                      <Sparkles className="size-3.5" aria-hidden="true" />
-                      <Txt>The AI noticed:</Txt>
-                      {hazards
-                        .filter(hazard => hazard !== 'electrical_hazard')
-                        .map(hazard => (
-                          <span
-                            key={hazard}
-                            className="rounded-full bg-[color-mix(in_oklab,var(--status-progress)_13%,transparent)] px-2 py-0.5 font-medium text-[var(--status-progress)]"
-                          >
-                            <Txt>{hazardLabels[hazard] ?? hazard}</Txt>
-                          </span>
-                        ))}
-                    </p>
+                  {hazards.length > 0 && (
+                    <div className="space-y-1 px-1 text-[13px] text-muted-foreground">
+                      <p className="flex flex-wrap items-center gap-1.5">
+                        <Sparkles className="size-3.5" aria-hidden="true" />
+                        <Txt>The AI noticed:</Txt>
+                        {hazards.map(hazard => {
+                          const kept = !dismissedHazards.includes(hazard)
+                          return (
+                            <button
+                              key={hazard}
+                              type="button"
+                              aria-pressed={kept}
+                              onClick={() =>
+                                setDismissedHazards(current =>
+                                  kept ? [...current, hazard] : current.filter(item => item !== hazard),
+                                )
+                              }
+                              className={cn(
+                                'inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 font-medium',
+                                kept
+                                  ? 'bg-[color-mix(in_oklab,var(--status-progress)_13%,transparent)] text-[var(--status-progress)]'
+                                  : 'border border-dashed line-through',
+                              )}
+                            >
+                              <Txt>{hazardLabels[hazard] ?? hazard}</Txt>
+                              {kept && <X className="size-3" aria-hidden="true" />}
+                            </button>
+                          )
+                        })}
+                      </p>
+                      <p>
+                        <Txt>Tap any that are wrong to remove them.</Txt>
+                      </p>
+                    </div>
                   )}
                   <AnimatePresence>
                     {showSafety && (
@@ -1158,6 +1183,9 @@ function SuccessView({ report, onAnother }: { report: Report; onAnother: () => v
       </h1>
       <p role="status" className="mt-1 max-w-sm text-[16px] text-muted-foreground">
         <Txt>Report submitted. Barangay personnel will review it.</Txt>
+      </p>
+      <p className="mt-2 max-w-sm text-[13px] text-muted-foreground">
+        <Txt>Sending a report does not guarantee a response or a date. If anyone is in danger, call 911.</Txt>
       </p>
       <div className="hairline mt-4 w-full rounded-2xl bg-card p-4 text-left">
         <span className="text-[13px] text-muted-foreground">

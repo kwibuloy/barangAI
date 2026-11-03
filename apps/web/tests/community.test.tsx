@@ -24,7 +24,6 @@ const openCase = {
   first_reported_on: '2026-10-20',
   last_reported_on: '2026-10-28',
   contributors: 3,
-  hazards: ['electrical_hazard'],
   open_for_evidence: true,
   contributed: false,
 }

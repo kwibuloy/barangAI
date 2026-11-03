@@ -10,10 +10,12 @@ from . import ai, barangays, geo, priority, trust
 from .auth import get_current_user, rate_limit, require_csrf, require_role
 from .db import get_db
 from .media import delete_image, image_response, sanitize_image, save_image
-from .models import CATEGORIES, Report, ReportAddendum, ReportEvent, User, now, utc_iso
+from .models import CATEGORIES, DeletionRequest, Report, ReportAddendum, ReportEvent, User, now, uid, utc_iso
 from .notifications import notify_staff
+from .usage import limit_setting, period_key, take
 
 router = APIRouter(prefix="/reports")
+CASE_STEP_NOTE = "Updated with case #"
 
 
 def serialize_addendum(report, addendum):
@@ -48,28 +50,40 @@ def serialize_report(report, detail=False, staff=False):
         result["barangay"] = report.barangay.name if report.barangay_id else None
     if detail:
         result["addenda"] = [serialize_addendum(report, item) for item in report.addenda]
+        # Residents see what was done, not who did it, and not outside coordination or automatic grouping logs.
         result["events"] = [
             {
                 "id": event.id,
                 "from_status": event.from_status,
                 "to_status": event.to_status,
-                "actor_id": event.actor_id,
-                "note": event.note,
+                # A case's automatic step note is for staff; residents still see the step itself.
+                "note": event.note if staff or not (event.note or "").startswith(CASE_STEP_NOTE) else None,
                 "created_at": utc_iso(event.created_at),
+                **({"actor_id": event.actor_id} if staff else {}),
             }
             for event in report.events
         ]
         result["actions"] = [
             {
                 "id": action.id,
-                "actor_id": action.actor_id,
                 "kind": action.kind,
                 "note": action.note,
                 "created_at": utc_iso(action.created_at),
+                **({"actor_id": action.actor_id} if staff else {}),
             }
             for action in report.actions
+            if staff or action.kind == "action"
         ]
     return result
+
+
+def deletion_request_data(db: Session, report_id: str):
+    item = db.scalar(select(DeletionRequest).where(DeletionRequest.report_id == report_id)
+                     .order_by(DeletionRequest.created_at.desc()).limit(1))
+    if not item:
+        return None
+    return {"id": item.id, "status": item.status, "reason": item.reason, "note": item.note,
+            "created_at": utc_iso(item.created_at)}
 
 
 def authorized_report(report_id: str, db: Session, user: User):
@@ -87,30 +101,38 @@ def sanitized_upload(image: UploadFile):
     return sanitize_image(read_upload(image))
 
 
-def daily_limit(name, default):
-    try:
-        return max(1, int(os.environ.get(name, default)))
-    except ValueError:
-        return default
-
-
 def within_daily_cap(db: Session, model, author_column, user_id: str, name: str, default: int,
                      message="Daily report limit reached"):
     """Counted in the database, so a restart or a second device does not reset it."""
     since = now() - timedelta(days=1)
     sent = db.scalar(select(func.count()).select_from(model).where(author_column == user_id, model.created_at >= since))
-    if sent >= daily_limit(name, default):
+    if sent >= limit_setting(name, default):
         raise HTTPException(429, message)
 
 
 @router.post("/predict")
 def preview_prediction(
-    request: Request, image: UploadFile = File(...), language: str = Form("en"), user: User = Depends(require_csrf)
+    request: Request,
+    image: UploadFile = File(...),
+    language: str = Form("en"),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_csrf),
 ):
     """What the AI can fill in from the photo; the resident reviews and edits all of it."""
     require_role(user, {"resident"})
     rate_limit(request, "preview", 20, key=user.id)
-    result = ai.analyze(sanitized_upload(image), language if language in {"en", "fil", "taglish"} else "en")
+    resident_id = user.id
+    db.commit()  # The face check is slow, and a few uploads must not use up the small connection pool.
+    # Checked first, so invalid uploads use up no allowance.
+    sanitized = sanitized_upload(image)
+    if not take(db, period_key(f"preview:{resident_id}"), limit_setting("MAX_PREVIEWS_PER_DAY", 40)):
+        raise HTTPException(429, "Daily limit for photo suggestions reached")
+    # About 5 neurons each, so the default leaves room for the chatbot in Cloudflare's 10,000 a day. Past it, the
+    # local checker answers alone.
+    vision_allowed = take(db, period_key("preview_vision"), limit_setting("MAX_SITE_VISION_PER_DAY", 1500))
+    db.commit()  # No database connection waits on the models.
+    result = ai.analyze(sanitized, language if language in {"en", "fil", "taglish"} else "en",
+                        use_vision=vision_allowed)
     return {
         "prediction_available": result.available,
         "model_category": result.category,
@@ -133,6 +155,8 @@ def submit_report(
     description: str | None = Form(None),
     case_id: str | None = Form(None),
     location_source: str | None = Form(None),
+    # AI hazard flags the resident removed from the suggestion; the flags themselves stay server-side.
+    dismissed_hazards: list[str] | None = Form(None),
     # Read by the browser from the original photo, before it shrank it and dropped these details (trust.py).
     photo_taken_at: str | None = Form(None),
     photo_camera: str | None = Form(None),
@@ -151,52 +175,61 @@ def submit_report(
     within_daily_cap(db, Report, Report.resident_id, user.id, "MAX_REPORTS_PER_DAY", 10)
     from . import cases  # Imported here: cases.py builds on this module.
 
-    case = cases.open_case_for_evidence(db, case_id) if case_id else None
+    resident_id = user.id
     raw = read_upload(image)
+    db.commit()  # The face check is slow, and a few uploads must not use up the small connection pool.
     sanitized = sanitize_image(raw)
+    case = cases.open_case_for_evidence(db, case_id) if case_id else None
     # The upload's own details win; the browser's reading fills in what shrinking removed.
     facts = {**trust.client_facts(photo_taken_at, photo_camera, photo_latitude, photo_longitude),
              **trust.photo_facts(raw)}
-    # The model's category, hazards, embedding and street name come from the server, never the client.
-    analysis = ai.for_submission(sanitized)
     barangay_id = barangays.barangay_id_for(db, latitude, longitude)
     # A case stays in one barangay. Across a border the report stands alone, and its own barangay's staff review it.
     if case and cases.barangay_of(db, case) != barangay_id:
         case = None
+    joined_case = case.id if case else None
+    # Accounts need no email check, so a cap per resident alone would not protect the 1 GB photo bucket. Counted only
+    # now, so one resident's invalid uploads cannot use up the whole site's allowance.
+    if not take(db, period_key("reports"), limit_setting("MAX_SITE_REPORTS_PER_DAY", 300)):
+        raise HTTPException(429, "The service has reached today's report limit. Please try again tomorrow.")
+    db.commit()  # The slow steps below hold no database connection, so a few uploads cannot use up the small pool.
+    # The model's category, hazards, embedding and street name come from the server, never the client.
+    analysis = ai.for_submission(sanitized)
+    location_label = geo.lookup(latitude, longitude) if geo.enabled() else None
+    hazards = [hazard for hazard in analysis.hazards if hazard not in (dismissed_hazards or [])]
+    report_id = uid()
+    location = save_image(report_id, sanitized)
     report = Report(
-        resident_id=user.id,
+        id=report_id,
+        resident_id=resident_id,
         latitude=latitude,
         longitude=longitude,
         resident_category=resident_category,
         description=description or None,
-        image_path="",
-        location_label=geo.lookup(latitude, longitude) if geo.enabled() else None,
+        image_path=location,
+        location_label=location_label,
         model_category=analysis.category,
-        hazards=list(analysis.hazards) or None,
+        hazards=hazards or None,
         image_embedding=analysis.embedding,
         embedding_model_version=analysis.embedding_version,
         # "I see this too": linked to the case, counted only after staff confirm it.
-        case_id=case.id if case else None,
+        case_id=joined_case,
         location_source=location_source if location_source in trust.SOURCES else None,
         trust_flags=trust.flags(facts, latitude, longitude) or None,
         barangay_id=barangay_id,
     )
-    db.add(report)
-    db.flush()
-    db.add(ReportEvent(report_id=report.id, from_status=None, to_status="Pending", actor_id=user.id))
-    notify_staff(db, report, "new_report")
-    location = None
     try:
-        location = save_image(report.id, sanitized)
-        report.image_path = location
+        db.add(report)
+        db.flush()
+        db.add(ReportEvent(report_id=report_id, from_status=None, to_status="Pending", actor_id=resident_id))
+        notify_staff(db, report, "new_report")
         db.commit()
     except Exception:
         db.rollback()
-        if location:
-            try:
-                delete_image(location)
-            except Exception:
-                logging.getLogger(__name__).error("Could not clean up image for rolled-back report %s", report.id)
+        try:
+            delete_image(location)
+        except Exception:
+            logging.getLogger(__name__).error("Could not clean up image for rolled-back report %s", report_id)
         raise
     db.refresh(report)
     try:
@@ -210,7 +243,8 @@ def submit_report(
 
 @router.get("")
 def list_reports(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    query = select(Report).order_by(Report.created_at.desc())
+    # The newest 2,000: the website filters and maps this list, and the Render instance has 512 MB.
+    query = select(Report).order_by(Report.created_at.desc()).limit(2000)
     if user.role == "resident":
         query = query.where(Report.resident_id == user.id)
         return [serialize_report(report) for report in db.scalars(query)]
@@ -223,9 +257,10 @@ def list_reports(db: Session = Depends(get_db), user: User = Depends(get_current
 @router.get("/{report_id}")
 def report_detail(report_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     report = authorized_report(report_id, db, user)
+    deletion = deletion_request_data(db, report.id)
     if user.role == "resident":
-        return serialize_report(report, detail=True)
-    return {**serialize_report(report, detail=True, staff=True),
+        return {**serialize_report(report, detail=True), "deletion_request": deletion}
+    return {**serialize_report(report, detail=True, staff=True), "deletion_request": deletion,
             "priority": priority.for_reports(db, [report])[report.id]}
 
 
@@ -253,16 +288,21 @@ def add_details(
     rate_limit(request, "addendum", key=user.id)
     within_daily_cap(db, ReportAddendum, ReportAddendum.author_id, user.id, "MAX_ADDENDA_PER_DAY", 20,
                      "Daily limit for added details reached")
+    author_id, addendum_id = user.id, uid()
+    db.commit()  # No database connection waits on the face check or the photo upload.
     sanitized = sanitized_upload(image) if image is not None and image.filename else None
-    addendum = ReportAddendum(report_id=report.id, author_id=user.id, note=note)
-    db.add(addendum)
-    db.flush()
-    notify_staff(db, report, "addendum")
-    location = None
+    location = save_image(addendum_id, sanitized) if sanitized else None
+    # The report may have been closed or deleted during the upload.
+    report = db.get(Report, report_id)
+    if not report or report.status in CLOSED:
+        if location:
+            delete_image(location)
+        raise HTTPException(409 if report else 404, "This report is closed" if report else "Report not found")
+    addendum = ReportAddendum(id=addendum_id, report_id=report_id, author_id=author_id, note=note, image_path=location)
     try:
-        if sanitized:
-            location = save_image(addendum.id, sanitized)
-            addendum.image_path = location
+        db.add(addendum)
+        db.flush()
+        notify_staff(db, report, "addendum")
         db.commit()
     except Exception:
         db.rollback()
@@ -283,10 +323,13 @@ def addendum_image(report_id: str, addendum_id: str, db: Session = Depends(get_d
     addendum = db.get(ReportAddendum, addendum_id)
     if not addendum or addendum.report_id != report.id or not addendum.image_path:
         raise HTTPException(404, "Image not found")
-    return image_response(addendum.image_path)
+    location = addendum.image_path
+    db.rollback()  # Read only; the database connection goes back while the photo downloads.
+    return image_response(location)
 
 
 @router.get("/{report_id}/image")
 def report_image(report_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    report = authorized_report(report_id, db, user)
-    return image_response(report.image_path)
+    location = authorized_report(report_id, db, user).image_path
+    db.rollback()  # Read only; the database connection goes back while the photo downloads.
+    return image_response(location)

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { CheckCircle2, MapPin, ShieldCheck, TriangleAlert, Users } from 'lucide-react'
+import { CheckCircle2, MapPin, ShieldCheck, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DateText } from '@/components/DateText'
 import { Alert, EmptyState, LargeTitle, Segmented } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { Txt, useText } from '../../lib/i18n'
 import { ResidentAccount } from '../../app/ResidentShell'
-import { hazardLabels, label } from '../reports/categories'
+import { label } from '../reports/categories'
 import { CategoryTile } from '../reports/CategoryIcon'
 import { useCommunityCases } from '../reports/queries'
 import { StatusBadge } from '../reports/StatusBadge'
@@ -36,6 +36,9 @@ export function CommunityPage() {
         subtitle={t('Issues your barangay has accepted, and how many residents reported each.')}
         trailing={<ResidentAccount />}
       />
+      <p className="mb-4 px-1 text-[13px] text-muted-foreground">
+        <Txt>Details may be out of date. A pin does not mean a place is safe or unsafe.</Txt>
+      </p>
       {cases.error && (
         <Alert className="mb-4">
           <Txt>{cases.error.message}</Txt>
@@ -155,19 +158,6 @@ function CaseCard({ item }: { item: CommunityCase }) {
           </dd>
         </div>
       </dl>
-      {item.hazards.length > 0 && (
-        <p className="flex flex-wrap gap-1.5">
-          {item.hazards.map(hazard => (
-            <span
-              key={hazard}
-              className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_oklab,var(--status-progress)_13%,transparent)] px-2 py-0.5 text-[13px] font-medium text-[var(--status-progress)]"
-            >
-              <TriangleAlert className="size-3" aria-hidden="true" />
-              <Txt>{hazardLabels[hazard] ?? hazard}</Txt>
-            </span>
-          ))}
-        </p>
-      )}
       {item.contributed ? (
         <p className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--status-resolved)]">
           <CheckCircle2 className="size-4" aria-hidden="true" />

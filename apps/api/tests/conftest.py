@@ -46,4 +46,4 @@ def photo():
 
 
 def register(client, email="resident@example.test", password="correct horse battery staple"):
-    return client.post("/auth/register", json={"email": email, "password": password})
+    return client.post("/auth/register", json={"email": email, "password": password, "accepted_terms": True})

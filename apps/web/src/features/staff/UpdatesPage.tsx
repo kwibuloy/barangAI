@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { FilePlus2, MessageSquarePlus } from 'lucide-react'
+import { FilePlus2, MessageSquarePlus, Trash2 } from 'lucide-react'
 import { DateText } from '@/components/DateText'
 import { Alert, EmptyState } from '@/components/page'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ import { StatusBadge } from '../reports/StatusBadge'
 const KIND = {
   new_report: { text: 'New report', icon: FilePlus2 },
   addendum: { text: 'A resident added details', icon: MessageSquarePlus },
+  deletion_request: { text: 'A resident asked to delete a report', icon: Trash2 },
 } as const
 
 /** Staff inbox: new reports and details residents added, newest first. Opening one marks it read. */
@@ -23,7 +24,7 @@ export function UpdatesPage() {
   const markRead = useMarkRead()
   const byId = new Map((reports.data ?? []).map(report => [report.id, report]))
   const items = (Array.isArray(notices.data) ? notices.data : []).filter(
-    item => item.kind === 'new_report' || item.kind === 'addendum',
+    item => item.kind === 'new_report' || item.kind === 'addendum' || item.kind === 'deletion_request',
   )
   const unread = items.filter(item => !item.read_at)
   return (

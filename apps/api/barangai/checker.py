@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-import numpy as np
 from PIL import Image, ImageOps
 
 from .models import CATEGORIES
@@ -38,8 +37,6 @@ def threshold() -> float:
 
 @lru_cache(maxsize=1)
 def load_runtime(folder: str):
-    import onnxruntime
-
     path = Path(folder)
     meta = json.loads((path / "checker.json").read_text(encoding="utf-8"))
     model = path / "visual.onnx"
@@ -48,6 +45,9 @@ def load_runtime(folder: str):
     keys = [item["key"] for item in meta["classes"]]
     if set(keys) - {"background"} != set(CATEGORIES):
         raise ValueError("Checker classes differ from the API categories")
+    import numpy as np  # Only the optional checker needs these, and a bad file is refused without them.
+    import onnxruntime
+
     options = onnxruntime.SessionOptions()
     options.intra_op_num_threads = int(os.environ.get("CHECKER_THREADS", "1"))
     options.inter_op_num_threads = 1
@@ -63,8 +63,10 @@ def validate_configured_checker() -> None:
         threshold()
 
 
-def pixels(image_bytes: bytes, size: int, mean, std) -> np.ndarray:
+def pixels(image_bytes: bytes, size: int, mean, std):
     import io
+
+    import numpy as np
 
     with Image.open(io.BytesIO(image_bytes)) as image:
         image = ImageOps.exif_transpose(image).convert("RGB")
@@ -83,6 +85,8 @@ def check(sanitized_image: bytes) -> CheckerResult | None:
     folder = os.environ.get("CHECKER_MODEL_DIR")
     if not folder:
         return None
+    import numpy as np  # Only the optional checker needs it, so a base install still starts.
+
     session, meta, keys, classes = load_runtime(folder)
     try:
         embedding = session.run(

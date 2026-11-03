@@ -9,12 +9,24 @@ from pathlib import Path
 from uuid import UUID
 
 from argon2.exceptions import InvalidHashError, VerificationError
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 
 from .auth import hasher
+from .cases import members
 from .db import session_for_url
 from .media import delete_image
-from .models import DuplicateSuggestion, Notification, Report, ReportAddendum, ReportEvent, StaffAction, User, now
+from .models import (
+    Case,
+    DeletionRequest,
+    DuplicateSuggestion,
+    Notification,
+    Report,
+    ReportAddendum,
+    ReportEvent,
+    StaffAction,
+    User,
+    now,
+)
 
 REASONS = ("resident-request", "retention-expired", "synthetic-demo-cleanup")
 
@@ -23,6 +35,54 @@ class ReceiptWriteError(RuntimeError):
     def __init__(self, receipt):
         super().__init__("Deletion succeeded, but the receipt could not be saved; preserve the printed recovery receipt.")
         self.receipt = receipt
+
+
+def dependents(report_id):
+    return (
+        (Notification, Notification.report_id == report_id),
+        (DuplicateSuggestion, or_(DuplicateSuggestion.report_id == report_id,
+                                  DuplicateSuggestion.candidate_report_id == report_id)),
+        (StaffAction, StaffAction.report_id == report_id),
+        (ReportEvent, ReportEvent.report_id == report_id),
+        (ReportAddendum, ReportAddendum.report_id == report_id),
+    )
+
+
+def settle_case(db, case_id, latitude, longitude):
+    """A case holds a report's location for the shared map, so it must not outlive that report. With no confirmed
+    reports left it goes, and any unchecked "I see this too" reports stand alone. If it sat on the deleted report's pin
+    it moves to the earliest confirmed report: an unchecked pin must never reach the map."""
+    case = db.get(Case, case_id)
+    confirmed = members(db, case_id)
+    if not confirmed:
+        for report in members(db, case_id, confirmed_only=False):
+            report.case_id = None
+        db.flush()
+        db.delete(case)
+    elif (case.latitude, case.longitude) == (latitude, longitude):
+        case.latitude, case.longitude = confirmed[0].latitude, confirmed[0].longitude
+        case.location_label = confirmed[0].location_label
+
+
+def erase_rows(db, report):
+    """Removes a report and everything about it, uncommitted, and returns its photos for the caller to delete."""
+    report_id, case_id, latitude, longitude = report.id, report.case_id, report.latitude, report.longitude
+    # Locked, so details added at this moment cannot lose their row and leave a photo behind (PostgreSQL row locks).
+    own_image = db.scalar(select(Report.image_path).where(Report.id == report_id).with_for_update())
+    # Added photos first: a storage failure among them leaves the report's own photo for a retry.
+    images = [*db.scalars(select(ReportAddendum.image_path).where(
+        ReportAddendum.report_id == report_id, ReportAddendum.image_path.is_not(None))), own_image]
+    for model, condition in dependents(report_id):
+        db.execute(delete(model).where(condition))
+    db.execute(delete(Report).where(Report.id == report_id))
+    db.execute(update(DeletionRequest).where(DeletionRequest.report_id == report_id, DeletionRequest.status == "pending")
+               .values(status="approved", decided_at=now()))
+    db.execute(update(DeletionRequest).where(DeletionRequest.report_id == report_id).values(reason=None, note=None))
+    if case_id:
+        settle_case(db, case_id, latitude, longitude)
+    db.flush()
+    db.expire_all()
+    return images
 
 
 def delete_report(report_id, email, password, *, confirm=None, receipt_path=None, reason=None):
@@ -47,14 +107,7 @@ def delete_report(report_id, email, password, *, confirm=None, receipt_path=None
         report = db.scalar(select(Report).where(Report.id == report_id).with_for_update())
         if report is None:
             raise ValueError("Report not found; no deletion performed")
-        dependencies = (
-            (Notification, Notification.report_id == report_id),
-            (DuplicateSuggestion, or_(DuplicateSuggestion.report_id == report_id,
-                                      DuplicateSuggestion.candidate_report_id == report_id)),
-            (StaffAction, StaffAction.report_id == report_id),
-            (ReportEvent, ReportEvent.report_id == report_id),
-            (ReportAddendum, ReportAddendum.report_id == report_id),
-        )
+        dependencies = dependents(report_id)
         # Photos residents added later are deleted with the report's own.
         extra_images = list(db.scalars(select(ReportAddendum.image_path).where(
             ReportAddendum.report_id == report_id, ReportAddendum.image_path.is_not(None))))
@@ -75,14 +128,13 @@ def delete_report(report_id, email, password, *, confirm=None, receipt_path=None
         # Open before changing data so an unusable operator path fails safely.
         descriptor = os.open(receipt_file, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
         with os.fdopen(descriptor, "a", encoding="utf-8") as output:
-            for model, condition in dependencies:
-                db.execute(delete(model).where(condition))
-            db.execute(delete(Report).where(Report.id == report_id))
+            own_image = report.image_path
+            erase_rows(db, report)
             # SQL changes are still uncommitted if private storage rejects deletion. Added photos go first, so a
             # failure among them leaves the report's own photo and rows intact for a retry.
             for location in extra_images:
                 delete_image(location)
-            delete_image(report.image_path)
+            delete_image(own_image)
             db.commit()
             receipt = {"action": "report-deleted", "report_id": report_id,
                        "administrator_id": admin_id, "time": now().isoformat(), "reason": reason}

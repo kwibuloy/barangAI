@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory() as directory:
         files = {"image": ("synthetic.jpg", photo, "image/jpeg")}
         assert client.post("/api/reports/predict", files=files).status_code == 401
         response = client.post("/api/auth/register", json={
-            "email": "container-resident@example.test", "password": "synthetic demo password"})
+            "email": "container-resident@example.test", "password": "synthetic demo password", "accepted_terms": True})
         assert response.status_code == 201, response.text
         headers = {"X-CSRF-Token": client.cookies["csrf_token"]}
         timings = []

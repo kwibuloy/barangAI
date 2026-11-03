@@ -1,11 +1,11 @@
 import argparse
 from getpass import getpass
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from .auth import hasher
 from .db import session_for_url
-from .models import Barangay, User
+from .models import Barangay, LoginSession, User
 
 
 def find_barangay(db, name: str) -> Barangay:
@@ -39,14 +39,30 @@ def assign_barangay(email: str, barangay: str):
         db.commit()
 
 
+def reset_password(email: str, password: str):
+    """For someone who forgot their password: the site sends no email, so an administrator runs this."""
+    if len(password) < 12:
+        raise ValueError("A password of at least 12 characters required")
+    with session_for_url() as db:
+        user = db.scalar(select(User).where(User.email == email.lower()))
+        if not user:
+            raise ValueError("No account with that email")
+        user.password_hash = hasher.hash(password)
+        db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
+        db.commit()
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Create a staff or administrator account, or move staff to a barangay")
+    parser = argparse.ArgumentParser(description="Create a staff or administrator account, move staff to a barangay, or reset a password")
     parser.add_argument("email")
     parser.add_argument("--role", choices=["staff", "administrator"], default="staff")
     parser.add_argument("--barangay", help="Barangay name, required for staff once barangays are loaded")
     parser.add_argument("--assign", action="store_true", help="Move an existing staff account to --barangay")
+    parser.add_argument("--reset-password", action="store_true", help="Set a new password and sign the account out")
     args = parser.parse_args()
-    if args.assign:
+    if args.reset_password:
+        reset_password(args.email, getpass("New password: "))
+    elif args.assign:
         if not args.barangay:
             parser.error("--assign needs --barangay")
         assign_barangay(args.email, args.barangay)

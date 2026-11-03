@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router'
 import { LazyMotion, MotionConfig } from 'motion/react'
 import { LoaderCircle } from 'lucide-react'
 import { ApiError } from '../lib/api'
@@ -32,6 +32,7 @@ const CommunityPage = lazy(() =>
   import('../features/community/CommunityPage').then(module => ({ default: module.CommunityPage })),
 )
 const ChatPage = lazy(() => import('../features/chat/ChatPage').then(module => ({ default: module.ChatPage })))
+const LegalPage = lazy(() => import('../features/legal/LegalPage').then(module => ({ default: module.LegalPage })))
 const motionFeatures = () => import('./motionFeatures').then(module => module.default)
 
 /** Retry flaky mobile networks and server errors, never client errors such as 401 or 404. */
@@ -56,6 +57,14 @@ function Lazy({ children }: { children: ReactNode }) {
 
 function AppRoutes() {
   const me = useMe()
+  const { pathname } = useLocation()
+  // Readable before signing up, and the same page for every role.
+  if (pathname === '/terms' || pathname === '/privacy')
+    return (
+      <Lazy>
+        <LegalPage page={pathname === '/terms' ? 'terms' : 'privacy'} />
+      </Lazy>
+    )
   if (me.isPending)
     return (
       <div className="loading-screen">

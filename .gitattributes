@@ -1,0 +1,2 @@
+# The image runs this with sh, which cannot read Windows line endings.
+*.sh text eol=lf

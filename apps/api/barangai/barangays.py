@@ -12,6 +12,7 @@ geometry library. Load or replace them with: python -m barangai.barangays <file.
 import argparse
 import json
 import math
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -126,6 +127,11 @@ def display_ring(ring: list) -> list:
     return [[round(point[0], 5), round(point[1], 5)] for point in (points if len(points) >= 4 else ring)]
 
 
+@lru_cache(maxsize=256)
+def display_json(boundary: str) -> str:
+    return json.dumps(display_boundary(json.loads(boundary)))
+
+
 def display_boundary(boundary: dict) -> dict:
     shapes = [[display_ring(ring) for ring in polygon] for polygon in polygons(boundary)]
     return {"type": boundary["type"], "coordinates": shapes[0] if boundary["type"] == "Polygon" else shapes}
@@ -141,7 +147,7 @@ def boundaries(
     return {
         "type": "FeatureCollection",
         "features": [
-            {"type": "Feature", "properties": {"name": area.name}, "geometry": display_boundary(area.boundary)}
+            {"type": "Feature", "properties": {"name": area.name}, "geometry": json.loads(display_json(json.dumps(area.boundary)))}
             for area in all_barangays(db)
         ],
     }

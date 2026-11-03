@@ -124,7 +124,10 @@ describe('AI suggestions', () => {
     fireEvent.change(screen.getByLabelText(/longitude/i), { target: { value: '120.9' } })
     fireEvent.click(screen.getByRole('button', { name: /^susunod/i }))
     expect(await screen.findByText('Hindi tiyak ang AI · pakisuri')).toBeInTheDocument()
-    expect(screen.getByText('Nakaharang sa daan')).toBeInTheDocument()
+    const flag = screen.getByRole('button', { name: 'Nakaharang sa daan' })
+    expect(flag).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(flag)
+    expect(flag).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('textbox')).toHaveValue('May malalim na lubak sa kalsada.')
   })
 
