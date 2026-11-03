@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { AnimatePresence, m } from 'motion/react'
 import { Camera, Eye, EyeOff, LoaderCircle, MapPin, ShieldCheck } from 'lucide-react'
 import { Wordmark } from '@/components/BrandMark'
@@ -8,6 +8,7 @@ import { Alert } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LanguageSwitch, Txt, useText } from '../../lib/i18n'
+import { LegalLinks } from '../legal/LegalPage'
 import { useGoogleConfig, useSignIn } from './queries'
 
 const GOOGLE_ERRORS: Record<string, string> = {
@@ -54,6 +55,7 @@ export function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [agreed, setAgreed] = useState(false)
   const t = useText()
   const [redirectError, setRedirectError] = useState('')
   const [params, setParams] = useSearchParams()
@@ -68,7 +70,7 @@ export function AuthPage() {
   function submit(event: FormEvent) {
     event.preventDefault()
     setRedirectError('')
-    signIn.mutate({ mode, email, password })
+    signIn.mutate({ mode, email, password, ...(mode === 'register' ? { accepted_terms: agreed } : {}) })
   }
   const error = signIn.error?.message ?? redirectError
   return (
@@ -176,6 +178,28 @@ export function AuthPage() {
               </small>
             )}
           </div>
+          {mode === 'register' && (
+            <label className="flex items-start gap-2.5 text-[14px]">
+              <input
+                type="checkbox"
+                required
+                checked={agreed}
+                onChange={event => setAgreed(event.target.checked)}
+                className="mt-0.5 size-5 shrink-0 accent-primary"
+              />
+              <span>
+                <Txt>I agree to the</Txt>{' '}
+                <Link to="/terms" className="font-medium text-primary underline underline-offset-2">
+                  <Txt>Terms and conditions</Txt>
+                </Link>{' '}
+                <Txt>and the</Txt>{' '}
+                <Link to="/privacy" className="font-medium text-primary underline underline-offset-2">
+                  <Txt>Privacy notice</Txt>
+                </Link>
+                .
+              </span>
+            </label>
+          )}
           {error && (
             <Alert>
               <Txt>{error}</Txt>
@@ -212,6 +236,9 @@ export function AuthPage() {
                   <Txt>Continue with Google</Txt>
                 </a>
               </Button>
+              <p className="text-center text-[13px] text-muted-foreground">
+                <Txt>By continuing with Google, you agree to the terms and privacy notice for new accounts.</Txt>
+              </p>
             </>
           )}
           <button
@@ -225,6 +252,10 @@ export function AuthPage() {
           >
             <Txt>{mode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in'}</Txt>
           </button>
+          <p className="text-center text-[13px] text-muted-foreground">
+            <Txt>Not for emergencies. If anyone is in danger, call 911.</Txt>
+          </p>
+          <LegalLinks className="text-center" />
         </m.form>
       </section>
     </main>

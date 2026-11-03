@@ -16,9 +16,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .auth import create_session, hasher, rate_limit
+from .auth import TERMS_VERSION, create_session, hash_password, rate_limit, same
 from .db import get_db
-from .models import OAuthIdentity, User
+from .models import OAuthIdentity, User, now
+from .usage import limit_setting, period_key, take
 
 router = APIRouter(prefix="/auth/google")
 STATE_COOKIE = "google_oauth_state"
@@ -123,7 +124,7 @@ def callback(request: Request, db: Session = Depends(get_db)):
     rate_limit(request, "google_callback", count=20)
     state = request.query_params.get("state", "")
     cookie = request.cookies.get(STATE_COOKIE, "")
-    if not state or not cookie or not secrets.compare_digest(state, cookie):
+    if not state or not cookie or not same(state, cookie):
         return finish("google_invalid_state")
     with pending_lock:
         transaction = pending.pop(state, None)
@@ -136,7 +137,7 @@ def callback(request: Request, db: Session = Depends(get_db)):
         return finish("google_failed")
     try:
         claims = exchange_code(code, transaction["verifier"], config)
-        if not isinstance(claims.get("nonce"), str) or not secrets.compare_digest(claims["nonce"], transaction["nonce"]):
+        if not isinstance(claims.get("nonce"), str) or not same(claims["nonce"], transaction["nonce"]):
             return finish("google_failed")
         if claims.get("email_verified") is not True:
             return finish("google_email_unverified")
@@ -159,7 +160,11 @@ def callback(request: Request, db: Session = Depends(get_db)):
     else:
         if db.scalar(select(User).where(User.email == email.lower())):
             return finish("google_account_exists")
-        user = User(email=email.lower(), password_hash=hasher.hash(secrets.token_urlsafe(48)), role="resident")
+        if not take(db, period_key("signups", hourly=True), limit_setting("MAX_SIGNUPS_PER_HOUR", 100)):
+            return finish("google_failed")
+        # The sign-in page says that continuing with Google means agreeing to the terms and privacy notice.
+        user = User(email=email.lower(), password_hash=hash_password(secrets.token_urlsafe(48)), role="resident",
+                    terms_accepted_at=now(), terms_version=TERMS_VERSION)
         db.add(user)
         try:
             db.flush()

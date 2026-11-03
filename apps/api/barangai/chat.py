@@ -13,6 +13,7 @@ from .auth import rate_limit, require_csrf, require_role
 from .db import get_db
 from .models import User
 from .reports import authorized_report
+from .usage import limit_setting, period_key, take
 
 router = APIRouter()
 
@@ -107,7 +108,8 @@ def chat(body: ChatInput, request: Request, db: Session = Depends(get_db), user:
         report = authorized_report(body.report_id, db, user)
         status = FILIPINO_STATUSES.get(report.status, report.status) if body.language == "fil" else report.status
         reply = STATUS[body.language].format(status=status)
-    else:
+    # Shares Cloudflare's free daily allowance with the photo previews, so past this count the fixed guidance answers.
+    elif take(db, period_key("chat_ai"), limit_setting("MAX_SITE_CHAT_AI_PER_DAY", 500)):
         generated = workers_ai_guidance(body.message, body.language)
         if generated is not None:
             reply = generated

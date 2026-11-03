@@ -1,6 +1,7 @@
 """Street names for report pins, via OpenStreetMap's Nominatim reverse geocoder.
 
-Server-side so residents' browsers never contact a third party, and so Nominatim's usage policy holds: an
+Server-side so the browser does not send pins to Nominatim (map images do come from OpenStreetMap's tile servers,
+loaded by the browser), and so Nominatim's usage policy holds: an
 identifying user agent, at most one request a second, cached answers. Coordinates are rounded to about 11 m
 before they leave the server. Opt-in with GEOCODER=nominatim; set GEOCODER_CONTACT to an email address for the
 user agent. Without it, residents and staff see coordinates only.

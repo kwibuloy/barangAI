@@ -1,16 +1,20 @@
+import base64
+import hashlib
 import mimetypes
 import os
+import re
 from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .accounts import router as accounts_router
 from .auth import attempts
 from .auth import router as auth_router
 from .barangays import guard_duplicate_decision
 from .barangays import router as barangays_router
-from .body_limit import ReportBodyLimitMiddleware
+from .body_limit import RequestBodyLimitMiddleware
 from .brief import router as brief_router
 from .cases import router as cases_router
 from .chat import router as chat_router
@@ -28,7 +32,9 @@ from .workflow import router as workflow_router
 def create_app():
     validate_configured_checker()
     validate_storage_config()
-    app = FastAPI(title="BarangAI API", root_path=os.environ.get("API_ROOT_PATH", ""))
+    # The public site does not advertise its API; local development keeps the docs.
+    hosted = {"docs_url": None, "redoc_url": None, "openapi_url": None} if os.environ.get("STATIC_SITE_DIR") else {}
+    app = FastAPI(title="BarangAI API", root_path=os.environ.get("API_ROOT_PATH", ""), **hosted)
     attempts.clear()
 
     if database_url().startswith("sqlite"):
@@ -37,14 +43,16 @@ def create_app():
     app.include_router(google_router)
     app.include_router(reports_router)
     app.include_router(workflow_router)
+    app.include_router(accounts_router)
     app.include_router(chat_router)
-    app.include_router(duplicates_router, dependencies=[Depends(guard_duplicate_decision)])
+    # Before duplicates_router: cases.py answers its two read routes, limited to the caller's barangay.
     app.include_router(cases_router)
+    app.include_router(duplicates_router, dependencies=[Depends(guard_duplicate_decision)])
     app.include_router(notifications_router)
     app.include_router(geo_router)
     app.include_router(barangays_router)
     app.include_router(brief_router)
-    app.add_middleware(ReportBodyLimitMiddleware)
+    app.add_middleware(RequestBodyLimitMiddleware)
 
     @app.get("/health", include_in_schema=False)
     def health():
@@ -73,11 +81,25 @@ class SiteFiles(StaticFiles):
             return await super().get_response("index.html", scope)
 
 
+def content_policy(index_html: str) -> str:
+    """Scripts and styles from this site only, plus the small theme script in index.html, allowed by its hash. Styles
+    may be inline because the animation and chart libraries set them. Map tiles come from OpenStreetMap."""
+    hashes = [base64.b64encode(hashlib.sha256(body.encode()).digest()).decode()
+              for body in re.findall(r"<script>(.*?)</script>", index_html, re.S)]
+    scripts = " ".join(f"'sha256-{value}'" for value in hashes)
+    return ("default-src 'self'; "
+            f"script-src 'self' {scripts}; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.tile.openstreetmap.org; "
+            "connect-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; object-src 'none'; "
+            "base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+
+
 def site_app(api, directory):
     directory = Path(directory)
     if not (directory / "index.html").is_file():
         raise ValueError("STATIC_SITE_DIR must contain a built website")
     site = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    policy = content_policy((directory / "index.html").read_text(encoding="utf-8"))
 
     @site.middleware("http")
     async def security_headers(request, call_next):
@@ -85,6 +107,9 @@ def site_app(api, directory):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = policy
+        if os.environ.get("COOKIE_SECURE", "true").lower() == "true":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
         return response

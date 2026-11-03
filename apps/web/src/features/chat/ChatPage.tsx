@@ -68,6 +68,12 @@ export function ChatPage() {
         subtitle={<Txt>Get reporting guidance in English, Filipino, or Taglish.</Txt>}
         trailing={<ResidentAccount />}
       />
+      <p className="mb-3 px-1 text-[13px] text-muted-foreground">
+        <Txt>
+          Automated general guidance, which can be wrong. It is not official advice and it does not send anything to
+          staff. If anyone is in danger, call 911.
+        </Txt>
+      </p>
       <div className="mb-4 grid grid-cols-[1fr_auto] gap-2">
         <label className="sr-only" htmlFor="chat-report">
           <Txt>Report to track (optional)</Txt>

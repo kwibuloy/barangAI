@@ -19,8 +19,10 @@ import { DateText } from '@/components/DateText'
 import { Alert } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { Txt, useText } from '../../lib/i18n'
+import { useMe } from '../auth/queries'
 import { categories, hazardLabels, label } from './categories'
 import { CategoryTile } from './CategoryIcon'
+import { DeletionReview, RequestDeletion } from './DeletionPanels'
 import { compressPhoto } from './photo'
 import { PriorityPanel } from './Priority'
 import { TrustPanel } from './Trust'
@@ -102,6 +104,7 @@ export function ReportView({ id, staff }: { id: string; staff: boolean }) {
   const t = useText()
   const report = useReport(id)
   const detail: Report | undefined = report.data
+  const me = useMe()
   const [imageError, setImageError] = useState(false)
   const facts = (
     <>
@@ -125,6 +128,7 @@ export function ReportView({ id, staff }: { id: string; staff: boolean }) {
       {detail && !staff && !report.isPlaceholderData && !['Resolved', 'Rejected'].includes(detail.status) && (
         <AddDetails key={detail.id} id={detail.id} />
       )}
+      {detail && !staff && !report.isPlaceholderData && <RequestDeletion key={`delete-${detail.id}`} detail={detail} />}
     </>
   )
   return (
@@ -132,6 +136,9 @@ export function ReportView({ id, staff }: { id: string; staff: boolean }) {
       <div className="space-y-5">{facts}</div>
       {staff && (
         <div className="space-y-5 xl:sticky xl:top-4">
+          {detail && !report.isPlaceholderData && (
+            <DeletionReview key={`delete-${detail.id}`} detail={detail} canDecide={me.data?.role === 'administrator'} />
+          )}
           {/* Seed staff choices from the full report, never the list row, and reset them per report. */}
           {/* An unchecked "I see this too" gets its case decision first; the API refuses status changes until then. */}
           {detail && !report.isPlaceholderData && !(detail.case_id && !detail.case_confirmed) && (
@@ -264,7 +271,13 @@ function ReportFacts({ detail }: { detail: Report }) {
             {detail.actions.map(action => (
               <li key={action.id} className="border-t pt-3 first:border-t-0 first:pt-0">
                 <strong className="block text-[15px] font-semibold">
-                  <Txt>{action.kind === 'coordination' ? 'External coordination' : 'Staff action'}</Txt>
+                  <Txt>
+                    {action.kind === 'coordination'
+                      ? 'External coordination'
+                      : action.kind === 'system'
+                        ? 'Automatic note'
+                        : 'Staff action'}
+                  </Txt>
                 </strong>
                 <small className="text-[13px] text-muted-foreground">
                   <DateText value={action.created_at} />

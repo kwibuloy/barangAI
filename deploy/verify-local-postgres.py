@@ -87,16 +87,16 @@ def main():
                 cur.execute("SELECT email FROM users WHERE id='legacy-synthetic'")
                 assert cur.fetchone() == ("legacy@example.test",)
                 cur.execute("SELECT version_num FROM alembic_version")
-                assert cur.fetchone() == ("0005",)
+                assert cur.fetchone() == ("0010",)
                 cur.execute("SELECT rolname,rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user")
                 assert cur.fetchone() == ("barangai_owner", False, False)
                 cur.execute("SELECT c.relname,c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'")
                 tables = dict(cur.fetchall())
-                assert len(tables) == 9 and all(tables.values())
+                assert len(tables) == 14 and all(tables.values())
                 cur.execute("SELECT count(*) FROM pg_policies WHERE schemaname='public'")
                 assert cur.fetchone() == (0,)
         proof["checks"]["migrations"] = {"fresh_to_0003_then_head": True, "legacy_row_preserved": True,
-                                          "head_repeat_safe": True, "revision": "0005", "rls_tables": tables,
+                                          "head_repeat_safe": True, "revision": "0010", "rls_tables": tables,
                                           "server_is_non_superuser_table_owner": True}
         with connect(port, admin_password, database="barangai_verify") as db:
             with db.cursor() as cur:
@@ -129,7 +129,7 @@ def main():
             report_ids = []
             with TestClient(create_app()) as client:
                 assert client.post("/reports").status_code == 401
-                assert client.post("/auth/register", json={"email": "upload@example.test", "password": password}).status_code == 201
+                assert client.post("/auth/register", json={"accepted_terms": True, "email": "upload@example.test", "password": password}).status_code == 201
                 headers = {"X-CSRF-Token": client.cookies["csrf_token"]}
                 for fmt, mime in (("JPEG", "image/jpeg"), ("PNG", "image/png"), ("WEBP", "image/webp")):
                     buffer = io.BytesIO()
@@ -156,7 +156,7 @@ def main():
                 assert len(list(Path(media).glob("*"))) == 3
                 assert client.post("/auth/logout", headers=headers).status_code == 204
                 assert client.get(f'/reports/{report_ids[0]}/image').status_code == 401
-                assert client.post("/auth/register", json={"email": "other-upload@example.test", "password": password}).status_code == 201
+                assert client.post("/auth/register", json={"accepted_terms": True, "email": "other-upload@example.test", "password": password}).status_code == 201
                 assert client.get(f'/reports/{report_ids[0]}/image').status_code == 404
                 assert client.get(f'/reports/{report_ids[0]}').status_code == 404
             docker("restart", container)

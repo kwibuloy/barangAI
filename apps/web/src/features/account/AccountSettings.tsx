@@ -6,6 +6,8 @@ import { Segmented } from '@/components/page'
 import { useTheme, type ThemeChoice } from '../../lib/theme'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { useSignOut, type User } from '../auth/queries'
+import { LegalLinks } from '../legal/LegalPage'
+import { AccountSecurity } from './AccountSecurity'
 
 export const ROLE = { resident: 'Resident', staff: 'Barangay staff', administrator: 'Administrator' } as const
 
@@ -66,6 +68,7 @@ export function AccountSettings({ user }: { user: User }) {
           <Txt>{theme === 'system' ? 'Matches your device setting.' : 'Stays this way on this device.'}</Txt>
         </p>
       </div>
+      <AccountSecurity user={user} />
       {signOut.error && (
         <p role="alert" className="text-[14px] text-destructive">
           <Txt>{signOut.error.message}</Txt>
@@ -81,6 +84,7 @@ export function AccountSettings({ user }: { user: User }) {
         <LogOut />
         <Txt>Sign out</Txt>
       </Button>
+      <LegalLinks className="text-center" />
     </div>
   )
 }

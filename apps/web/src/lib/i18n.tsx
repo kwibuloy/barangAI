@@ -541,6 +541,63 @@ const filipino: Record<string, string> = {
   'Latest report': 'Pinakabagong ulat',
   'You reported this issue.': 'Iniulat mo ang isyung ito.',
   'I see this too': 'Nakikita ko rin ito',
+  'Terms and conditions': 'Mga tuntunin at kundisyon',
+  'Privacy notice': 'Abiso sa privacy',
+  'I agree to the': 'Sumasang-ayon ako sa',
+  'and the': 'at sa',
+  'Back to BarangAI': 'Bumalik sa BarangAI',
+  'Who runs this service': 'Sino ang nagpapatakbo ng serbisyong ito',
+  "The operator's name and contact details have not been published yet.":
+    'Hindi pa nailalathala ang pangalan at contact ng operator.',
+  'Not for emergencies. If anyone is in danger, call 911.':
+    'Hindi para sa emergency. Kung may nasa panganib, tumawag sa 911.',
+  'By continuing with Google, you agree to the terms and privacy notice for new accounts.':
+    'Sa pagpapatuloy gamit ang Google, sumasang-ayon ka sa mga tuntunin at abiso sa privacy para sa bagong account.',
+  'Please agree to the terms and privacy notice': 'Mangyaring sumang-ayon sa mga tuntunin at abiso sa privacy.',
+  'Too many new accounts right now. Please try again later.':
+    'Masyadong maraming bagong account ngayon. Subukan ulit mamaya.',
+  'Daily limit for photo suggestions reached': 'Naabot na ang limitasyon ng mungkahi sa larawan para sa araw na ito.',
+  "The service has reached today's report limit. Please try again tomorrow.":
+    'Naabot na ng serbisyo ang limitasyon ng ulat ngayong araw. Subukan ulit bukas.',
+  'Change password': 'Palitan ang password',
+  'Current password': 'Kasalukuyang password',
+  'New password': 'Bagong password',
+  'Use at least 12 characters. Your other devices will be signed out.':
+    'Gumamit ng hindi bababa sa 12 titik. Masa-sign out ang iba mong device.',
+  'Password changed.': 'Napalitan na ang password.',
+  'Current password is incorrect': 'Mali ang kasalukuyang password.',
+  'This account signs in with Google': 'Google ang gamit ng account na ito sa pag-sign in.',
+  'Delete my account': 'Burahin ang aking account',
+  'This permanently deletes your account and all your reports and photos, including reports staff are still working on. It cannot be undone.':
+    'Permanente nitong buburahin ang iyong account at lahat ng ulat at larawan mo, kasama ang mga inaasikaso pa ng kawani. Hindi na ito maibabalik.',
+  'Type your email address to confirm': 'I-type ang iyong email address para kumpirmahin',
+  'You asked for this report to be deleted. An administrator will review it.':
+    'Humiling ka na burahin ang ulat na ito. Susuriin ito ng administrator.',
+  'An administrator declined your deletion request.': 'Tinanggihan ng administrator ang hiling mong magbura.',
+  'Why should it be deleted? (optional)': 'Bakit ito dapat burahin? (opsiyonal)',
+  'For example: my face or house is visible in the photo.': 'Halimbawa: kita sa larawan ang mukha o bahay ko.',
+  'Send request': 'Ipadala ang hiling',
+  'Ask to delete this report': 'Hilinging burahin ang ulat na ito',
+  'The resident asked to delete this report': 'Hiniling ng residente na burahin ang ulat na ito',
+  'Approving permanently deletes the report, its photos and its history.':
+    'Kapag inaprubahan, permanenteng mabubura ang ulat, mga larawan at kasaysayan nito.',
+  'Note to the resident if you decline (optional)': 'Tala sa residente kung tatanggihan (opsiyonal)',
+  Decline: 'Tanggihan',
+  'Approve and delete': 'Aprubahan at burahin',
+  'An administrator will decide.': 'Ang administrator ang magpapasya.',
+  'Deletion was already requested': 'Nakahiling na ng pagbura.',
+  'Daily limit for deletion requests reached': 'Naabot na ang limitasyon ng hiling na magbura para sa araw na ito.',
+  'A resident asked to delete a report': 'May residenteng humiling na burahin ang ulat',
+  'Automatic note': 'Awtomatikong tala',
+  'Tap any that are wrong to remove them.': 'I-tap ang mga mali para maalis.',
+  'Details may be out of date. A pin does not mean a place is safe or unsafe.':
+    'Maaaring luma na ang detalye. Hindi ibig sabihin ng pin na ligtas o hindi ligtas ang lugar.',
+  'Automated general guidance, which can be wrong. It is not official advice and it does not send anything to staff. If anyone is in danger, call 911.':
+    'Awtomatiko at pangkalahatang gabay ito na maaaring magkamali. Hindi ito opisyal na payo at wala itong ipinapadala sa kawani. Kung may nasa panganib, tumawag sa 911.',
+  'An automatic summary. Check the reports themselves before you act.':
+    'Awtomatikong buod ito. Suriin muna ang mismong mga ulat bago kumilos.',
+  'Sending a report does not guarantee a response or a date. If anyone is in danger, call 911.':
+    'Hindi tinitiyak ng pagpapadala ng ulat na may tutugon o kung kailan. Kung may nasa panganib, tumawag sa 911.',
   'See what neighbours reported. Seen it too? Add your photo.':
     'Tingnan ang iniulat ng mga kapitbahay. Nakita mo rin? Idagdag ang iyong larawan.',
 }

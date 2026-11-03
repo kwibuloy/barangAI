@@ -2,17 +2,20 @@ import os
 
 from fastapi.responses import JSONResponse
 
+JSON_LIMIT = 64_000  # Every other route takes a small JSON body, and nothing else should fill the memory.
 
-class ReportBodyLimitMiddleware:
+
+class RequestBodyLimitMiddleware:
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "").removeprefix(scope.get("root_path", ""))
-        if scope["type"] != "http" or scope["method"] != "POST" or not (
-            path in {"/reports", "/reports/predict"} or (path.startswith("/reports/") and path.endswith("/addenda"))):
+        if scope["type"] != "http" or scope["method"] not in {"POST", "PUT", "PATCH"}:
             return await self.app(scope, receive, send)
-        limit = int(os.environ.get("MAX_REQUEST_BYTES", int(os.environ.get("MAX_IMAGE_BYTES", 5_000_000)) + 1_000_000))
+        uploads = path in {"/reports", "/reports/predict"} or (path.startswith("/reports/") and path.endswith("/addenda"))
+        limit = (int(os.environ.get("MAX_REQUEST_BYTES", int(os.environ.get("MAX_IMAGE_BYTES", 5_000_000)) + 1_000_000))
+                 if uploads else JSON_LIMIT)
         headers = dict(scope["headers"])
         try:
             announced = int(headers.get(b"content-length", b"0"))

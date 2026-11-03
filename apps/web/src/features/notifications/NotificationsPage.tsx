@@ -17,7 +17,7 @@ export type Notice = {
   report_id: string
   status: Status
   /** "status" for residents; "new_report" and "addendum" tell staff something arrived. */
-  kind?: 'status' | 'new_report' | 'addendum'
+  kind?: 'status' | 'new_report' | 'addendum' | 'deletion_request' | 'deletion_declined'
   created_at: string
   read_at: string | null
 }
@@ -109,7 +109,11 @@ export function NotificationsPage() {
                         </small>
                       </span>
                       <span className="mt-0.5 block text-[15px] text-muted-foreground">
-                        <Txt>{SENTENCE[item.status]}</Txt>
+                        <Txt>
+                          {item.kind === 'deletion_declined'
+                            ? 'An administrator declined your deletion request.'
+                            : SENTENCE[item.status]}
+                        </Txt>
                       </span>
                     </Link>
                     <div className="mt-2.5 flex min-h-8 items-center justify-between gap-3">

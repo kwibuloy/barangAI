@@ -60,6 +60,14 @@ function useReportMutation<Input, Output>(mutationFn: (input: Input) => Promise<
   return useMutation({ mutationFn, onSuccess: () => client.invalidateQueries({ queryKey: reportKeys.all }) })
 }
 
+export const useRequestDeletion = (id: string) =>
+  useReportMutation((reason: string) => post(`/reports/${id}/deletion-request`, reason ? { reason } : {}))
+
+export const useDecideDeletion = (id: string) =>
+  useReportMutation((body: { decision: 'approved' | 'declined'; note?: string }) =>
+    post(`/reports/${id}/deletion-request/decision`, body),
+  )
+
 export const useSubmitReport = () => useReportMutation((form: FormData) => post<Report>('/reports', form))
 
 export const useChangeStatus = (id: string) =>

@@ -335,6 +335,11 @@ function BriefCard() {
         <p className={cn('max-w-[75ch] text-[15.5px] leading-relaxed', !data && 'shimmer h-12 rounded-lg')}>
           {data?.summary}
         </p>
+        {data && (
+          <p className="text-[12.5px] text-muted-foreground">
+            <Txt>An automatic summary. Check the reports themselves before you act.</Txt>
+          </p>
+        )}
         {data && data.facts.high_priority.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {data.facts.high_priority.map(item => (

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint, false
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -53,6 +53,10 @@ class User(Base):
     # Staff only: the barangay whose reports they handle.
     barangay_id: Mapped[str | None] = mapped_column(ForeignKey("barangays.id", name="fk_users_barangay_id"))
     barangay: Mapped[Barangay | None] = relationship()
+    # When this account agreed to the terms and privacy notice, and which version. Empty for older accounts.
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    terms_version: Mapped[str | None] = mapped_column(String(20))
+    identities: Mapped[list["OAuthIdentity"]] = relationship(viewonly=True)
 
 
 class LoginSession(Base):
@@ -97,7 +101,8 @@ class Report(Base):
     verified_category: Mapped[str | None] = mapped_column(String(40))
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="Pending")
     image_path: Mapped[str] = mapped_column(Text, nullable=False)
-    image_embedding: Mapped[list[float] | None] = mapped_column(JSON)
+    # Deferred: about 512 numbers per report, needed only when comparing photos.
+    image_embedding: Mapped[list[float] | None] = mapped_column(JSON, deferred=True)
     embedding_model_version: Mapped[str | None] = mapped_column(String(100))
     # Street name for the pin, from reverse geocoding; shown to the resident before submitting.
     location_label: Mapped[str | None] = mapped_column(String(200))
@@ -176,6 +181,29 @@ class DuplicateSuggestion(Base):
     score: Mapped[float] = mapped_column(Float, nullable=False)
     decision: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     actor_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Usage(Base):
+    """A counter per period (usage.py), kept in the database so a restart or Render's sleep does not reset it."""
+    __tablename__ = "daily_usage"
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+
+
+class DeletionRequest(Base):
+    """A resident asking an administrator to delete a report. Outlives the report as the record of the decision, so
+    report_id is not a foreign key, and an approved request keeps no reason or other content."""
+    __tablename__ = "deletion_requests"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    report_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    requester_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    decided_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

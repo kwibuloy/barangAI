@@ -2,7 +2,7 @@
 
 The prepared configuration builds React and FastAPI into one container. Render serves the website at `/` and the API at `/api` on the same HTTPS origin. Supabase holds PostgreSQL data and private incident photos. Local development keeps its existing storage and proxy setup.
 
-The existing demo runs at [BarangAI](https://barangai-watch.onrender.com). The reviewed AI image (`5f37888`) is live, and three authenticated synthetic prediction previews passed on 21 October 2026. Future publishing and deployment still require user authorization. For a new installation, creating a Blueprint starts its initial deployment, so perform that step only when authorized.
+The site runs at [BarangAI](https://barangai-watch.onrender.com). On 3 November 2026 its website files and API routes matched commit `e5fcb04` on `main`. Future publishing and deployment still require user authorization. For a new installation, creating a Blueprint starts its initial deployment, so perform that step only when authorized.
 
 ## 1. Accounts and source
 
@@ -16,11 +16,13 @@ Enter these values in the Render Blueprint setup prompts. They are marked `sync:
 
 | Setting | Value |
 | --- | --- |
-| `DATABASE_URL` | Supabase PostgreSQL URL using SQLAlchemy's `postgresql+psycopg2://` scheme, URL-encoded password, and `sslmode=require`. Use the session pooler from the Supabase Connect dialog if direct IPv6 is unavailable; see the Supabase guide. |
+| `DATABASE_URL` | Supabase PostgreSQL URL in the form shown in the Supabase guide: `postgresql://`, the `postgres.PROJECT_REF` user, a percent-encoded password and `sslmode=require`. Use the session pooler from the Supabase Connect dialog if direct IPv6 is unavailable; see the Supabase guide. |
 | `SUPABASE_URL` | The project's `https://<project-ref>.supabase.co` URL. |
 | `SUPABASE_SECRET_KEY` | A server-only `sb_secret_...` key. Never place it in a `VITE_` variable, frontend code, or a public document. |
 | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_TOKEN` | Optional. The Cloudflare account ID and a Workers AI API token, for photo descriptions and the chatbot. Keep the account on the Workers Free plan so usage never bills. |
 | `GEOCODER_CONTACT` | Optional. A contact email for OpenStreetMap's usage policy; street names work without it. |
+| `TRUSTED_PROXY_HOPS` | The number of proxies in front of the app. Leave blank at first; see [limits](deployment.md#data-and-operating-limits). |
+| `OPERATOR_NAME`, `PRIVACY_CONTACT` | Who runs the service and how to reach them. Shown on the terms and privacy pages, which say the details are unpublished until these are set. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Optional, for resident Google sign-in. The redirect URI is `https://<service>.onrender.com/api/auth/google/callback`. |
 
 The Blueprint sets `MEDIA_STORAGE=supabase`, `SUPABASE_STORAGE_BUCKET=incident-photos`, `COOKIE_SECURE=true`, and `STATIC_SITE_DIR=/app/static`. If you choose a different private bucket name, update that setting before deployment. Leave `API_ROOT_PATH` unset; the application mounts `/api` itself. The image supplies the checker's model path, its hash checks, the duplicate-embedding version and `GEOCODER=nominatim`. Keep optional paid services unset.
@@ -29,9 +31,11 @@ The Blueprint sets `MEDIA_STORAGE=supabase`, `SUPABASE_STORAGE_BUCKET=incident-p
 
 In Render, choose **New → Blueprint** and select the published repository. Review the resource list before creating it: one Docker web service, **Free**, Singapore. Enter the private settings above. If the name `barangai-watch` already belongs to another service, choose an unused name rather than applying this Blueprint to an unrelated service.
 
-Automatic code deployments are disabled with `autoDeployTrigger: "off"`. Blueprint creation still deploys the initial service. For subsequent approved releases, use **Manual Deploy** and select the intended commit. Do not enable automatic Blueprint sync unless changes to the infrastructure are also authorized. See [Render deployment controls](https://render.com/docs/deploys).
+`autoDeployTrigger: commit` deploys every commit on the connected branch, so merging to `main` puts it live. Work on a branch and merge only what is ready. Do not enable automatic Blueprint sync unless changes to the infrastructure are also authorized. See [Render deployment controls](https://render.com/docs/deploys).
 
 The image builds with `deploy/Dockerfile.render`. Startup checks the required environment, upgrades the database with Alembic, and starts one application worker on Render's `PORT`. The free service has no paid pre-deploy step, so migrations run at startup. Keep schema changes compatible with the previous release; rolling back an application image does not undo database migrations. Never run a schema downgrade against live data without a reviewed backup and explicit authorization.
+
+**If startup fails with `password authentication failed`:** the password in `DATABASE_URL` is wrong or badly encoded. Reset it in Supabase if unsure, percent-encode it (`@` becomes `%40`, `#` becomes `%23`, `/` becomes `%2F`), and check the user is `postgres.PROJECT_REF`, not `postgres`. Startup refuses Supabase's `[YOUR-PASSWORD]` placeholder and warns when `sslmode` is missing.
 
 Create the initial staff account from a trusted local terminal connected to this database with `python -m barangai.bootstrap_staff <staff-email>` inside `apps/api`. It prompts privately for the password. Once barangays are loaded (see [deployment guide](deployment.md#staff-jurisdiction)), staff accounts also need `--barangay "<name>"`. Render's free service does not provide an interactive shell. Use synthetic accounts and reports for the demonstration.
 

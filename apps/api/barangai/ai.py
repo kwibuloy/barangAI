@@ -83,11 +83,11 @@ def safely(model, *args):
         return None
 
 
-def analyze(sanitized_image: bytes, language: str = "en") -> Analysis:
+def analyze(sanitized_image: bytes, language: str = "en", use_vision: bool = True) -> Analysis:
     """Preview: both models run side by side; the result waits in the cache for submission."""
-    seen = _pool.submit(safely, vision.describe, sanitized_image, language)
+    seen = _pool.submit(safely, vision.describe, sanitized_image, language) if use_vision else None
     checked = _pool.submit(safely, checker.check, sanitized_image)
-    result = combine(seen.result(), checked.result())
+    result = combine(seen.result() if seen else None, checked.result())
     with _lock:
         now = time.monotonic()
         for key in [key for key, (stamp, _) in _cache.items() if now - stamp > CACHE_SECONDS]:

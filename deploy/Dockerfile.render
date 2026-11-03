@@ -18,9 +18,9 @@ COPY apps/api/pyproject.toml ./
 COPY apps/api/barangai ./barangai
 COPY apps/api/alembic.ini ./
 COPY apps/api/migrations ./migrations
-COPY deploy/requirements-render-vision.txt /tmp/requirements-render-vision.txt
-RUN pip install --no-cache-dir -r /tmp/requirements-render-vision.txt \
-    && pip install --no-cache-dir . \
+COPY deploy/requirements-render-vision.txt deploy/constraints-render.txt /tmp/
+RUN pip install --no-cache-dir -c /tmp/constraints-render.txt -r /tmp/requirements-render-vision.txt \
+    && pip install --no-cache-dir -c /tmp/constraints-render.txt . \
     && useradd --uid 10001 --create-home app
 COPY apps/api/models/mobileclip2-s0 ./models/mobileclip2-s0
 RUN printf '%s  %s\n%s  %s\n' "$CHECKER_ONNX_SHA256" "$CHECKER_MODEL_DIR/visual.onnx" \

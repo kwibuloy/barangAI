@@ -1,30 +1,63 @@
 import hashlib
+import logging
 import os
 import secrets
+import threading
 import time
 from collections import defaultdict, deque
-from datetime import timedelta
+from datetime import UTC, timedelta
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import VerificationError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .db import get_db
 from .models import LoginSession, User, now
+from .usage import limit_setting, period_key, take
 
 router = APIRouter(prefix="/auth")
 hasher = PasswordHasher()
 attempts = defaultdict(deque)
+log = logging.getLogger(__name__)
+# Each hash or check takes about 64 MB, so a burst of logins could otherwise run the 512 MB Render instance out of memory.
+_hashing = threading.BoundedSemaphore(2)
+_decoy = hasher.hash(secrets.token_urlsafe(16))
+_chains_logged = set()
+MAX_PASSWORD = 128
+TERMS_VERSION = "2026-11-03"
+
+
+def hash_password(password: str) -> str:
+    with _hashing:
+        return hasher.hash(password)
+
+
+def password_matches(stored: str | None, password: str) -> bool:
+    """Checks a decoy when the account does not exist, so response time does not reveal which emails are registered.
+    Callers release their database connection first (db.rollback()), because this can wait for a free slot."""
+    if len(password) > MAX_PASSWORD:
+        return False
+    try:
+        with _hashing:
+            return hasher.verify(stored or _decoy, password) and stored is not None
+    except VerificationError:
+        return False
+
+
+def same(first: str, second: str) -> bool:
+    """Constant-time comparison that also accepts text outside ASCII, which compare_digest refuses for str."""
+    return secrets.compare_digest(first.encode("utf-8", "replace"), second.encode("utf-8", "replace"))
 
 
 class Credentials(BaseModel):
     # Extra fields are kept so a supplied role can be refused explicitly rather than silently dropped.
     model_config = ConfigDict(extra="allow")
     email: str = Field(min_length=3, max_length=320, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-    password: str = Field(min_length=12, max_length=128)
+    password: str = Field(min_length=12, max_length=MAX_PASSWORD)
+    accepted_terms: bool = False
 
 
 class LoginCredentials(BaseModel):
@@ -44,7 +77,14 @@ def user_data(user):
     saved = user.preferences if isinstance(user.preferences, dict) else {}
     preferences = {key: saved[key] for key, allowed in PREFERENCES.items() if saved.get(key) in allowed}
     return {"id": user.id, "email": user.email, "role": user.role, "preferences": preferences,
-            "barangay": user.barangay.name if user.barangay_id else None}
+            "barangay": user.barangay.name if user.barangay_id else None, "google": bool(user.identities)}
+
+
+def proxy_hops():
+    try:
+        return max(0, int(os.environ.get("TRUSTED_PROXY_HOPS", "0") or 0))
+    except ValueError:
+        return 0
 
 
 def client_ip(request):
@@ -54,20 +94,34 @@ def client_ip(request):
     address the outermost one recorded is used. Entries left of it are client-supplied and never trusted (unlike
     uvicorn's --forwarded-allow-ips="*", which takes the leftmost, spoofable entry).
     """
-    try:
-        hops = int(os.environ.get("TRUSTED_PROXY_HOPS", "0") or 0)
-    except ValueError:
-        hops = 0
+    hops = proxy_hops()
     forwarded = [part.strip() for part in request.headers.get("x-forwarded-for", "").split(",") if part.strip()]
     if hops > 0 and len(forwarded) >= hops:
         return forwarded[-hops]
     return request.client.host if request.client else "unknown"
 
 
+def address_known(request):
+    """False behind a proxy before TRUSTED_PROXY_HOPS is set: every caller then looks like the proxy. Each new chain
+    length is logged, with the count only. A client can add entries but not remove them, so the operator sets the hop
+    count to the smallest number logged."""
+    if proxy_hops():
+        return True
+    forwarded = [part for part in request.headers.get("x-forwarded-for", "").split(",") if part.strip()]
+    if forwarded and len(forwarded) not in _chains_logged and len(_chains_logged) < 32:
+        _chains_logged.add(len(forwarded))
+        log.warning("X-Forwarded-For has %d entries and TRUSTED_PROXY_HOPS is unset", len(forwarded))
+    return not forwarded
+
+
 def rate_limit(request, action, count=10, key=None):
     """At most `count` calls a minute per caller. Pass `key` (a user id or email) for signed-in actions, so residents
     sharing one network address (a proxy, school Wi-Fi) do not use up each other's allowance. In memory: a restart
     clears it, so lasting limits (reports per day) are counted in the database instead."""
+    # While callers cannot be told apart, this is one shared limit, so loosen it: it stops a flood, and one client
+    # should not reach it by ordinary use.
+    if not key and not address_known(request):
+        count *= 10
     bucket_key = (action, key or client_ip(request))
     current = time.monotonic()
     if len(attempts) > 10_000:
@@ -84,6 +138,7 @@ def rate_limit(request, action, count=10, key=None):
 def create_session(response, db, user):
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)
+    db.execute(delete(LoginSession).where(LoginSession.expires_at < now()))
     db.add(
         LoginSession(
             token_hash=hashlib.sha256(token.encode()).hexdigest(),
@@ -103,7 +158,11 @@ def current_session(request: Request, db: Session):
     if not token:
         raise HTTPException(401, "Authentication required")
     session = db.get(LoginSession, hashlib.sha256(token.encode()).hexdigest())
-    if not session or session.expires_at.replace(tzinfo=None) < now().replace(tzinfo=None):
+    if not session:
+        raise HTTPException(401, "Authentication required")
+    # SQLite returns these without a timezone; PostgreSQL returns them in the connection's.
+    expires = session.expires_at
+    if (expires if expires.tzinfo else expires.replace(tzinfo=UTC)) < now():
         raise HTTPException(401, "Authentication required")
     return session
 
@@ -122,8 +181,8 @@ def require_csrf(request: Request, db: Session = Depends(get_db)):
     supplied = request.headers.get("X-CSRF-Token", "")
     if (
         not supplied
-        or not secrets.compare_digest(supplied, session.csrf_token)
-        or not secrets.compare_digest(request.cookies.get("csrf_token", ""), supplied)
+        or not same(supplied, session.csrf_token)
+        or not same(request.cookies.get("csrf_token", ""), supplied)
     ):
         raise HTTPException(403, "Invalid CSRF token")
     return session.user
@@ -134,10 +193,16 @@ def register(credentials: Credentials, request: Request, response: Response, db:
     rate_limit(request, "register", 20)
     if any(key.strip().casefold() == "role" for key in credentials.model_extra or {}):
         raise HTTPException(403, "Role cannot be selected")
+    if not credentials.accepted_terms:
+        raise HTTPException(422, "Please agree to the terms and privacy notice")
     email = credentials.email.lower()
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already registered")
-    user = User(email=email, password_hash=hasher.hash(credentials.password), role="resident")
+    # Counted across the whole site, because accounts need no email check and each one has its own report allowance.
+    if not take(db, period_key("signups", hourly=True), limit_setting("MAX_SIGNUPS_PER_HOUR", 100)):
+        raise HTTPException(429, "Too many new accounts right now. Please try again later.")
+    user = User(email=email, password_hash=hash_password(credentials.password), role="resident",
+                terms_accepted_at=now(), terms_version=TERMS_VERSION)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -151,15 +216,14 @@ def login(credentials: LoginCredentials, request: Request, response: Response, d
     # out; a looser per-account cap stops guessing spread over many addresses, and a per-address cap stops one
     # machine trying many accounts. (On Render all callers share an address until TRUSTED_PROXY_HOPS is set.)
     email = credentials.email.strip().lower()[:320]
-    rate_limit(request, "login", key=f"{email}|{client_ip(request)}")
+    if address_known(request):  # Otherwise this would be per account, and strangers could lock out the owner.
+        rate_limit(request, "login", key=f"{email}|{client_ip(request)}")
     rate_limit(request, "login_account", 50, key=email)
     rate_limit(request, "login_address", 60)
     user = db.scalar(select(User).where(User.email == credentials.email.lower()))
-    try:
-        valid = bool(user and hasher.verify(user.password_hash, credentials.password))
-    except VerifyMismatchError:
-        valid = False
-    if not valid:
+    stored = user.password_hash if user else None
+    db.rollback()
+    if not password_matches(stored, credentials.password):
         raise HTTPException(401, "Invalid credentials")
     create_session(response, db, user)
     return user_data(user)

@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-import numpy as np
 from PIL import Image, ImageOps
 
 from .models import CATEGORIES
@@ -38,6 +37,7 @@ def threshold() -> float:
 
 @lru_cache(maxsize=1)
 def load_runtime(folder: str):
+    import numpy as np
     import onnxruntime
 
     path = Path(folder)
@@ -63,8 +63,10 @@ def validate_configured_checker() -> None:
         threshold()
 
 
-def pixels(image_bytes: bytes, size: int, mean, std) -> np.ndarray:
+def pixels(image_bytes: bytes, size: int, mean, std):
     import io
+
+    import numpy as np
 
     with Image.open(io.BytesIO(image_bytes)) as image:
         image = ImageOps.exif_transpose(image).convert("RGB")
@@ -83,6 +85,8 @@ def check(sanitized_image: bytes) -> CheckerResult | None:
     folder = os.environ.get("CHECKER_MODEL_DIR")
     if not folder:
         return None
+    import numpy as np  # Only the optional checker needs it, so a base install still starts.
+
     session, meta, keys, classes = load_runtime(folder)
     try:
         embedding = session.run(
