@@ -1,0 +1,137 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router'
+import { AnimatePresence, m } from 'motion/react'
+import { DateText } from '@/components/DateText'
+import { Alert, EmptyState, LargeTitle } from '@/components/page'
+import { api, post } from '../../lib/api'
+import { Txt, useText } from '../../lib/i18n'
+import { ResidentAccount } from '../../app/ResidentShell'
+import { label } from '../reports/categories'
+import { CategoryTile } from '../reports/CategoryIcon'
+import { useReports } from '../reports/queries'
+import { StatusBadge } from '../reports/StatusBadge'
+import type { Status } from '../reports/types'
+
+export type Notice = {
+  id: string
+  report_id: string
+  status: Status
+  /** "status" for residents; "new_report" and "addendum" tell staff something arrived. */
+  kind?: 'status' | 'new_report' | 'addendum'
+  created_at: string
+  read_at: string | null
+}
+const noticeKey = ['notifications'] as const
+
+/** Refetches when the resident returns to the tab (Query's focus refetch), as status changes arrive. */
+export function useNotifications() {
+  return useQuery({ queryKey: noticeKey, queryFn: () => api<Notice[]>('/notifications') })
+}
+
+export function useMarkRead() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => post<Notice>(`/notifications/${id}/read`),
+    onSuccess: saved =>
+      client.setQueryData<Notice[]>(noticeKey, items => items?.map(item => (item.id === saved.id ? saved : item))),
+  })
+}
+
+const SENTENCE: Record<Status, string> = {
+  Pending: 'Your report was received.',
+  'Under Verification': 'Barangay staff are checking your report.',
+  Accepted: 'Your report was accepted.',
+  'In Progress': 'Work on your report has started.',
+  Resolved: 'Your report was resolved.',
+  Rejected: 'Your report was not accepted.',
+}
+
+export function NotificationsPage() {
+  const t = useText()
+  const notices = useNotifications()
+  const reports = useReports()
+  const markRead = useMarkRead()
+  const items = notices.data ?? []
+  const unread = items.filter(item => !item.read_at).length
+  const byId = new Map((reports.data ?? []).map(report => [report.id, report]))
+  return (
+    <div className="lg:mx-auto lg:max-w-3xl">
+      <LargeTitle
+        title={t('Updates')}
+        subtitle={unread > 0 ? `${unread} ${t('unread')}` : undefined}
+        trailing={<ResidentAccount />}
+      />
+      {notices.error && (
+        <Alert className="mb-4">
+          <Txt>{notices.error.message}</Txt>
+        </Alert>
+      )}
+      {notices.isSuccess && items.length === 0 ? (
+        <EmptyState
+          pose="arms"
+          title={t('No updates yet.')}
+          body={t('We will tell you here when your reports move.')}
+        />
+      ) : (
+        <ul className="hairline overflow-hidden rounded-2xl bg-card">
+          <AnimatePresence initial={false}>
+            {items.map(item => {
+              const report = byId.get(item.report_id)
+              return (
+                <m.li
+                  layout
+                  key={item.id}
+                  className="flex items-start gap-3.5 py-4 pl-4 [&+&]:border-t"
+                  data-unread={!item.read_at || undefined}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`mt-[14px] size-2.5 shrink-0 rounded-full transition-colors ${item.read_at ? 'bg-transparent' : 'bg-primary'}`}
+                  />
+                  {report && <CategoryTile category={report.resident_category} />}
+                  <div className="min-w-0 flex-1 pr-4">
+                    {/* The whole message opens the report (and counts as read), like a Mail row. */}
+                    <Link
+                      to={report ? `/reports/${item.report_id}` : '/updates'}
+                      onClick={() => !item.read_at && markRead.mutate(item.id)}
+                      className="block rounded-lg"
+                    >
+                      <span className="flex items-baseline justify-between gap-2">
+                        <strong className={`truncate text-[16px] ${item.read_at ? 'font-medium' : 'font-semibold'}`}>
+                          {report ? (
+                            <Txt>{label(report.resident_category)}</Txt>
+                          ) : (
+                            `${t('Report')} ${item.report_id.slice(0, 8)}`
+                          )}
+                        </strong>
+                        <small className="shrink-0 text-[13px] text-muted-foreground">
+                          <DateText value={item.created_at} compact />
+                        </small>
+                      </span>
+                      <span className="mt-0.5 block text-[15px] text-muted-foreground">
+                        <Txt>{SENTENCE[item.status]}</Txt>
+                      </span>
+                    </Link>
+                    <div className="mt-2.5 flex min-h-8 items-center justify-between gap-3">
+                      <StatusBadge status={item.status} />
+                      {!item.read_at && (
+                        <button
+                          type="button"
+                          disabled={markRead.isPending}
+                          onClick={() => markRead.mutate(item.id)}
+                          className="-my-1.5 -mr-2 inline-flex min-h-11 items-center px-2 text-[14px] font-medium text-primary"
+                        >
+                          <Txt>Mark read</Txt>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </m.li>
+              )
+            })}
+          </AnimatePresence>
+        </ul>
+      )}
+    </div>
+  )
+}

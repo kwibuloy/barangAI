@@ -1,0 +1,105 @@
+import { Link } from 'react-router'
+import { FilePlus2, MessageSquarePlus } from 'lucide-react'
+import { DateText } from '@/components/DateText'
+import { Alert, EmptyState } from '@/components/page'
+import { cn } from '@/lib/utils'
+import { Txt, useText } from '../../lib/i18n'
+import { useMarkRead, useNotifications } from '../notifications/NotificationsPage'
+import { label } from '../reports/categories'
+import { CategoryTile } from '../reports/CategoryIcon'
+import { useReports } from '../reports/queries'
+import { StatusBadge } from '../reports/StatusBadge'
+
+const KIND = {
+  new_report: { text: 'New report', icon: FilePlus2 },
+  addendum: { text: 'A resident added details', icon: MessageSquarePlus },
+} as const
+
+/** Staff inbox: new reports and details residents added, newest first. Opening one marks it read. */
+export function UpdatesPage() {
+  const t = useText()
+  const notices = useNotifications()
+  const reports = useReports()
+  const markRead = useMarkRead()
+  const byId = new Map((reports.data ?? []).map(report => [report.id, report]))
+  const items = (Array.isArray(notices.data) ? notices.data : []).filter(
+    item => item.kind === 'new_report' || item.kind === 'addendum',
+  )
+  const unread = items.filter(item => !item.read_at)
+  return (
+    <div className="mx-auto max-w-3xl space-y-5 p-5 md:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[28px] leading-tight font-bold">
+            <Txt>Updates</Txt>
+          </h1>
+          <p className="text-[14px] text-muted-foreground">
+            {unread.length} {t('unread')}
+          </p>
+        </div>
+        {unread.length > 0 && (
+          <button
+            type="button"
+            className="min-h-11 px-2 text-[14px] font-medium text-primary"
+            onClick={() => unread.forEach(item => markRead.mutate(item.id))}
+          >
+            <Txt>Mark all read</Txt>
+          </button>
+        )}
+      </div>
+      {notices.error && (
+        <Alert>
+          <Txt>{notices.error.message}</Txt>
+        </Alert>
+      )}
+      {notices.isSuccess && items.length === 0 ? (
+        <EmptyState
+          pose="clipboard"
+          title={t('No updates yet.')}
+          body={t('New reports and details residents add will appear here.')}
+        />
+      ) : (
+        <ul className="hairline overflow-hidden rounded-2xl bg-card">
+          {items.map(item => {
+            const report = byId.get(item.report_id)
+            const kind = KIND[item.kind as keyof typeof KIND]
+            return (
+              <li key={item.id} className="[&+&]:border-t">
+                <Link
+                  to={`/desk/reports/${item.report_id}`}
+                  onClick={() => !item.read_at && markRead.mutate(item.id)}
+                  className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-accent"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn('size-2.5 shrink-0 rounded-full', item.read_at ? 'bg-transparent' : 'bg-primary')}
+                  />
+                  {report && <CategoryTile category={report.resident_category} />}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 text-[15px]">
+                      <kind.icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <strong className={item.read_at ? 'font-medium' : 'font-semibold'}>
+                        <Txt>{kind.text}</Txt>
+                      </strong>
+                    </span>
+                    <span className="block truncate text-[14px] text-muted-foreground">
+                      {report ? t(label(report.resident_category)) : t('Report')} · #
+                      {item.report_id.slice(0, 8).toUpperCase()}
+                      {report?.location_label ? ` · ${report.location_label}` : ''}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <small className="text-[13px] text-muted-foreground">
+                      <DateText value={item.created_at} compact />
+                    </small>
+                    {report && <StatusBadge status={report.status} />}
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,389 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------ tokens
+   Apple-like: system font, warm neutral greys, one blue matched to Kap's vest.
+   Status colours carry meaning only and always pair with an icon. */
+:root {
+  --background: #f5f4f1;
+  --foreground: #1c1b19;
+  --card: #ffffff;
+  --card-foreground: #1c1b19;
+  --popover: #ffffff;
+  --popover-foreground: #1c1b19;
+  --primary: #1d64d8;
+  --primary-foreground: #ffffff;
+  --secondary: #ecebe7;
+  --secondary-foreground: #1c1b19;
+  --muted: #ecebe7;
+  --muted-foreground: #6b6761;
+  --accent: #eeede9;
+  --accent-foreground: #1c1b19;
+  --destructive: #d1242f;
+  --border: #e2e0db;
+  --input: #dcdad4;
+  --ring: #1d64d8;
+  --straw: #a87b3f;
+  --straw-soft: #f3e9d8;
+  --tint: color-mix(in oklab, var(--primary) 11%, transparent);
+
+  --status-pending: #9a5b00;
+  --status-verifying: #5b4fd6;
+  --status-accepted: #0b7a8f;
+  --status-progress: #c2410c;
+  --status-resolved: #1a7f3c;
+  --status-rejected: #c0262d;
+
+  --chart-1: #1d64d8;
+  --chart-2: #0b7a8f;
+  --chart-3: #a87b3f;
+  --chart-4: #5b4fd6;
+  --chart-5: #c2410c;
+
+  --sidebar: #efeeea;
+  --sidebar-foreground: #1c1b19;
+  --sidebar-primary: #1d64d8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3e1dc;
+  --sidebar-accent-foreground: #1c1b19;
+  --sidebar-border: #e2e0db;
+  --sidebar-ring: #1d64d8;
+
+  --radius: 0.875rem;
+  --tabbar: 64px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0e0e0d;
+  --foreground: #f4f2ee;
+  --card: #1b1a19;
+  --card-foreground: #f4f2ee;
+  --popover: #232220;
+  --popover-foreground: #f4f2ee;
+  --primary: #4a8dff;
+  --primary-foreground: #ffffff;
+  --secondary: #2a2927;
+  --secondary-foreground: #f4f2ee;
+  --muted: #262523;
+  --muted-foreground: #a6a29b;
+  --accent: #2a2927;
+  --accent-foreground: #f4f2ee;
+  --destructive: #ff5a5f;
+  --border: #2e2d2a;
+  --input: #3a3935;
+  --ring: #4a8dff;
+  --straw: #d6aa6a;
+  --straw-soft: #33291b;
+
+  --status-pending: #f0b14a;
+  --status-verifying: #9d94ff;
+  --status-accepted: #4cc6d9;
+  --status-progress: #ff8a4c;
+  --status-resolved: #4ccf7a;
+  --status-rejected: #ff6b6b;
+
+  --chart-1: #4a8dff;
+  --chart-2: #4cc6d9;
+  --chart-3: #d6aa6a;
+  --chart-4: #9d94ff;
+  --chart-5: #ff8a4c;
+
+  --sidebar: #151514;
+  --sidebar-foreground: #f4f2ee;
+  --sidebar-primary: #4a8dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #262523;
+  --sidebar-accent-foreground: #f4f2ee;
+  --sidebar-border: #2a2927;
+  --sidebar-ring: #4a8dff;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-heading:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-tint: var(--tint);
+  --color-straw: var(--straw);
+  --color-straw-soft: var(--straw-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.7);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.15);
+  --radius-2xl: calc(var(--radius) * 1.4);
+  --radius-3xl: calc(var(--radius) * 1.8);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 1rem;
+    line-height: 1.47;
+    letter-spacing: -0.006em;
+    font-synthesis: none;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading text-balance;
+    letter-spacing: -0.022em;
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a[href],
+  label:has(input[type='radio']),
+  summary {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ------------------------------------------------------------------ surfaces */
+@utility glass {
+  background: color-mix(in oklab, var(--card) 74%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+@utility hairline {
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Backdrop: survey-map contour rings (the barangay on a map) over a soft blue-and-straw light, and the
+   vest's sun turning slowly in the top corner. Masks take their colour from the theme, so dark mode works.
+   Fixed behind everything; cards stay solid on top. Redraw the contours with scripts/backdrop.py. */
+body::before,
+body::after,
+.app-sun {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+body::before {
+  inset: 0;
+  background:
+    radial-gradient(56rem 30rem at 6% -8%, color-mix(in oklab, var(--primary) 16%, transparent), transparent 70%),
+    radial-gradient(44rem 26rem at 100% 0%, color-mix(in oklab, var(--straw) 22%, transparent), transparent 70%),
+    radial-gradient(50rem 30rem at 50% 110%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 70%);
+}
+body::after {
+  inset: 0;
+  background-color: color-mix(in oklab, var(--primary) 15%, transparent);
+  mask: url('./assets/backdrop-contours.svg') center / cover no-repeat;
+}
+.dark body::after {
+  background-color: color-mix(in oklab, var(--primary) 22%, transparent);
+}
+.app-sun {
+  top: -13rem;
+  right: -13rem;
+  width: 34rem;
+  aspect-ratio: 1;
+  background-color: color-mix(in oklab, var(--straw) 20%, transparent);
+  mask: url('./assets/backdrop-sun.svg') center / contain no-repeat;
+  animation: sun-turn 160s linear infinite;
+}
+@media (max-width: 1023px) {
+  .app-sun {
+    top: -9rem;
+    right: -9rem;
+    width: 22rem;
+  }
+}
+@keyframes sun-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* Thin overlay scroll bar for panels that scroll on their own (My reports, the staff queue): a slim rounded
+   thumb in the card's ink colour that darkens on hover, on no track, like macOS. */
+@utility scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--foreground) 22%, transparent) transparent;
+  &::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    border: 4px solid transparent;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--foreground) 22%, transparent) padding-box;
+  }
+  &:hover {
+    scrollbar-color: color-mix(in oklab, var(--foreground) 38%, transparent) transparent;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--foreground) 38%, transparent);
+  }
+}
+
+/* Tab bar height plus the home indicator; content and sticky footers sit above it. */
+.resident-shell {
+  --tab-offset: calc(var(--tabbar) + env(safe-area-inset-bottom));
+}
+
+/* ------------------------------------------------------------------ motion */
+@keyframes kap-greet {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-5deg);
+  }
+  30% {
+    transform: rotate(4deg);
+  }
+  45% {
+    transform: rotate(-4deg);
+  }
+  60% {
+    transform: rotate(3deg);
+  }
+  75% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes kap-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.kap-greet {
+  transform-origin: 50% 92%;
+  animation:
+    kap-greet 1.8s var(--ease-out) 0.35s 2 both,
+    kap-float 4.5s ease-in-out 4s infinite;
+}
+.kap-float {
+  animation: kap-float 4.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, var(--tint) 50%, transparent 100%) var(--muted);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes pin-drop {
+  0% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(2px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.pin-drop {
+  animation: pin-drop 0.42s var(--ease-out) both;
+}
+
+@keyframes gps-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+.gps-pulse {
+  animation: gps-pulse 1.3s ease-out infinite;
+}
+
+/* ------------------------------------------------------------------ leaflet */
+.leaflet-container {
+  font: inherit;
+  background: var(--muted);
+}
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6);
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
