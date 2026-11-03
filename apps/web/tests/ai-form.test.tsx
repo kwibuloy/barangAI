@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/app/App'
 
@@ -44,6 +44,51 @@ afterEach(() => {
   vi.unstubAllGlobals()
   exif.gps.mockReset()
   localStorage.clear()
+})
+
+describe('faces on screen', () => {
+  function servePreview(answer: () => Promise<Response>) {
+    const created = vi.fn(() => 'blob:original')
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: created, revokeObjectURL: vi.fn() }))
+    const requests: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        requests.push(url)
+        if (url.endsWith('/auth/me'))
+          return Response.json({ id: 'r1', email: 'resident@example.test', role: 'resident' })
+        if (url.endsWith('/reports/photo-preview')) return answer()
+        if (url.endsWith('/reports/predict')) return Response.json(nothing)
+        return Response.json([])
+      }),
+    )
+    return requests
+  }
+  const shown = () => screen.findAllByAltText('Preview of incident photo')
+
+  it('keeps the original blurred until the blurred copy replaces it, then asks the AI', async () => {
+    let finish = (_response: Response) => {}
+    const requests = servePreview(() => new Promise(resolve => (finish = resolve)))
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText(/incident photo/i), { target: { files: [photo()] } })
+    expect((await shown())[0]).toHaveClass('blur-2xl')
+    expect(screen.getAllByText('Hiding faces…').length).toBeGreaterThan(0)
+    expect(requests.some(url => url.endsWith('/reports/predict'))).toBe(false)
+    finish(Response.json({ preview_image: 'data:image/jpeg;base64,AAAA' }))
+    await waitFor(() => expect(screen.getAllByAltText('Preview of incident photo')[0]).not.toHaveClass('blur-2xl'))
+    expect(screen.getAllByAltText('Preview of incident photo')[0]).toHaveAttribute('src', 'data:image/jpeg;base64,AAAA')
+    await waitFor(() => expect(requests.some(url => url.endsWith('/reports/predict'))).toBe(true))
+  })
+
+  it('stays blurred when the blurred copy cannot be fetched, and still asks the AI', async () => {
+    const requests = servePreview(async () => Response.json({ detail: 'down' }, { status: 503 }))
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText(/incident photo/i), { target: { files: [photo()] } })
+    expect((await screen.findAllByText(/Preview hidden/)).length).toBeGreaterThan(0)
+    expect((await shown())[0]).toHaveClass('blur-2xl')
+    await waitFor(() => expect(requests.some(url => url.endsWith('/reports/predict'))).toBe(true))
+  })
 })
 
 describe('location without typing', () => {
@@ -359,49 +404,5 @@ describe('choices made while the photo is checked', () => {
     await new Promise(resolve => setTimeout(resolve, 50))
     expect(screen.getByRole('radio', { name: 'Potholes' })).toBeChecked()
     expect(screen.queryByText(/Filled by AI|AI unsure/)).toBeNull()
-  })
-})
-
-describe('help me describe it', () => {
-  it('adds, swaps and removes answers without touching what the resident typed', async () => {
-    exif.gps.mockResolvedValue(undefined)
-    serve(nothing)
-    render(<App />)
-    fireEvent.change(await screen.findByLabelText(/incident photo/i), { target: { files: [photo()] } })
-    // The photo is shrunk in the background before it counts as chosen.
-    await waitFor(() => expect(screen.getByRole('button', { name: /^next/i })).toBeEnabled())
-    next()
-    fireEvent.change(await screen.findByLabelText(/latitude/i), { target: { value: '14.3' } })
-    fireEvent.change(screen.getByLabelText(/longitude/i), { target: { value: '120.9' } })
-    next()
-    expect(screen.queryByText('Help me describe it')).toBeNull() // no questions before a category
-    fireEvent.click(await screen.findByRole('radio', { name: 'Flooding' }))
-    const description = screen.getByRole('textbox')
-    fireEvent.change(description, { target: { value: 'Near the chapel.' } })
-    const depth = within(screen.getByRole('group', { name: 'How deep?' }))
-    fireEvent.click(depth.getByRole('button', { name: /ankle-deep/i }))
-    expect(description).toHaveValue('Near the chapel. The water is ankle-deep.')
-    fireEvent.click(depth.getByRole('button', { name: /knee-deep/i }))
-    expect(description).toHaveValue('Near the chapel. The water is knee-deep.')
-    expect(depth.getByRole('button', { name: /knee-deep/i })).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(depth.getByRole('button', { name: /knee-deep/i }))
-    expect(description).toHaveValue('Near the chapel.')
-  })
-
-  it('adds the answer in Filipino when the app is in Filipino', async () => {
-    localStorage.setItem('barangai-language', 'fil')
-    exif.gps.mockResolvedValue(undefined)
-    serve(nothing)
-    render(<App />)
-    fireEvent.change(await screen.findByLabelText(/larawan ng insidente/i), { target: { files: [photo()] } })
-    // The photo is shrunk in the background before it counts as chosen.
-    await waitFor(() => expect(screen.getByRole('button', { name: /^susunod/i })).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: /^susunod/i }))
-    fireEvent.change(await screen.findByLabelText(/latitude/i), { target: { value: '14.3' } })
-    fireEvent.change(screen.getByLabelText(/longitude/i), { target: { value: '120.9' } })
-    fireEvent.click(screen.getByRole('button', { name: /^susunod/i }))
-    fireEvent.click(await screen.findByRole('radio', { name: /baha/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Hanggang tuhod ang tubig' }))
-    expect(screen.getByRole('textbox')).toHaveValue('Hanggang tuhod ang tubig.')
   })
 })

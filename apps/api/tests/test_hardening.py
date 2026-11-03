@@ -674,8 +674,17 @@ def test_the_form_gets_the_blurred_copy_that_will_be_stored(client, photo, monke
     media.clear_sanitized_cache()
     monkeypatch.setattr(privacy, "find_faces", lambda _image: [(10, 10, 40, 40)])
     files = {"image": ("p.jpg", photo, "image/jpeg")}
-    answer = client.post("/reports/predict", files=files, headers={"X-CSRF-Token": client.cookies.get("csrf_token", "")})
+    token = {"X-CSRF-Token": client.cookies.get("csrf_token", "")}
+    answer = client.post("/reports/photo-preview", files=files, headers=token)
     assert answer.status_code == 200, answer.text
     shown = answer.json()["preview_image"]
     assert shown.startswith("data:image/jpeg;base64,")
     assert base64.b64decode(shown.split(",", 1)[1]) == media.sanitize_image(photo)
+    assert "preview_image" not in client.post("/reports/predict", files=files, headers=token).json()
+    assert client.post("/reports/photo-preview", files={"image": ("p.txt", b"nope", "image/jpeg")},
+                       headers=token).status_code == 422
+    monkeypatch.setenv("MAX_IMAGE_BYTES", "10")
+    assert client.post("/reports/photo-preview", files=files, headers=token).status_code == 413
+    monkeypatch.delenv("MAX_IMAGE_BYTES")
+    client.cookies.clear()
+    assert client.post("/reports/photo-preview", files=files).status_code in {401, 403}

@@ -112,6 +112,21 @@ def within_daily_cap(db: Session, model, author_column, user_id: str, name: str,
         raise HTTPException(429, message)
 
 
+@router.post("/photo-preview")
+def photo_preview(
+    request: Request,
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_csrf),
+):
+    """The copy that gets stored, with any faces it found blurred, so the form never shows a sharp face. Sent apart
+    from the slower AI answer; /predict and the submission then reuse this result."""
+    require_role(user, {"resident"})
+    rate_limit(request, "photo-preview", 30, key=user.id)
+    db.commit()  # The face check is slow, and a few uploads must not use up the small connection pool.
+    return {"preview_image": f"data:image/jpeg;base64,{base64.b64encode(sanitized_upload(image)).decode()}"}
+
+
 @router.post("/predict")
 def preview_prediction(
     request: Request,
@@ -144,8 +159,6 @@ def preview_prediction(
         "problem_seen": result.problem_seen,
         "suggested_description": result.description,
         "hazards": list(result.hazards),
-        # The copy that gets stored, so the form shows the resident what staff will see, with any faces it found blurred.
-        "preview_image": f"data:image/jpeg;base64,{base64.b64encode(sanitized).decode()}",
     }
 
 

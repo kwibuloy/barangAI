@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { Bell, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import { ArrowLeft, Bell, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -23,9 +23,12 @@ import { Wordmark } from '@/components/BrandMark'
 import { PageSpinner } from '@/components/page'
 import { Kap } from '@/components/Kap'
 import { Button } from '@/components/ui/button'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
 import { cn } from '@/lib/utils'
 import { Txt, useText } from '../../lib/i18n'
 import { AccountIdentity, AccountMenu } from '../account/AccountMenu'
+import { AccountButton } from '../account/AccountSettings'
 import type { User } from '../auth/queries'
 import { useNotifications } from '../notifications/NotificationsPage'
 import { useReports } from '../reports/queries'
@@ -43,10 +46,52 @@ const SECTIONS = [
 // Hidden when the sidebar collapses to icons.
 const WIDE_ONLY = 'group-data-[collapsible=icon]:hidden'
 
-/** Desktop-first staff dashboard: sidebar navigation, content on an inset card. */
+/** Phones: the sections stay one tap away at the bottom, as in the resident app. */
+function StaffTabBar({ current, unread, waiting }: { current: string; unread: number; waiting: number }) {
+  const t = useText()
+  return (
+    <nav
+      aria-label={t('Staff sections')}
+      className="tab-bar glass pb-safe fixed inset-x-0 bottom-0 z-40 shadow-[0_-0.5px_0_var(--border)]"
+    >
+      <ul className="flex h-[var(--tabbar)] items-stretch">
+        {NAV.map(item => {
+          const badge = item.to === '/desk/updates' ? unread : item.to === '/desk/reports' ? waiting : 0
+          return (
+            <li key={item.to} className="flex-1">
+              <NavLink
+                to={item.to}
+                end={item.to === '/desk'}
+                className={cn(
+                  'flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors',
+                  current === item.to ? 'text-primary' : 'text-muted-foreground',
+                )}
+              >
+                <span className="relative">
+                  <item.icon className="size-6" aria-hidden="true" />
+                  {badge > 0 && (
+                    <span className="absolute -top-1 -right-2.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-destructive px-1 text-[11px] leading-none font-semibold text-white">
+                      {badge}
+                    </span>
+                  )}
+                </span>
+                <Txt>{item.label}</Txt>
+              </NavLink>
+            </li>
+          )
+        })}
+      </ul>
+    </nav>
+  )
+}
+
+/** Desktop-first staff dashboard: sidebar navigation, content on an inset card. On phones: bottom tabs and a top bar. */
 export function StaffShell({ user }: { user: User }) {
   const t = useText()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const phone = useIsMobile()
+  useKeyboardMark()
   const reports = useReports()
   const all = reports.data ?? []
   const count = (...statuses: string[]) => all.filter(report => statuses.includes(report.status)).length
@@ -57,6 +102,13 @@ export function StaffShell({ user }: { user: User }) {
     ? notices.data.filter(item => item.kind !== 'status' && !item.read_at).length
     : 0
   const current = [...NAV].reverse().find(item => pathname.startsWith(item.to)) ?? NAV[0]
+  // These two size themselves to fit between the top bar and the tabs.
+  const fullHeight = current.to === '/desk/map' || current.to === '/desk/reports'
+  function back() {
+    // A link opened directly has no history to return to, so go up instead.
+    if ((window.history.state?.idx ?? 0) > 0) void navigate(-1)
+    else void navigate(pathname === current.to ? '/desk' : current.to)
+  }
   return (
     <TooltipProvider delayDuration={300}>
       <SidebarProvider>
@@ -189,19 +241,50 @@ export function StaffShell({ user }: { user: User }) {
           </SidebarFooter>
         </Sidebar>
         <SidebarInset className="min-w-0">
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" aria-label={t('Toggle sidebar')} />
-            <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
-            <span className="text-[15px] font-semibold">
+          <header
+            className={cn(
+              'flex h-14 shrink-0 items-center gap-2 border-b px-4',
+              phone && 'sticky top-[env(safe-area-inset-top)] z-30 mt-[env(safe-area-inset-top)] bg-background px-2',
+            )}
+          >
+            {phone ? (
+              pathname !== '/desk' && (
+                <button
+                  type="button"
+                  onClick={back}
+                  aria-label={t('Back')}
+                  className="grid size-11 shrink-0 place-items-center rounded-full"
+                >
+                  <ArrowLeft className="size-5" aria-hidden="true" />
+                </button>
+              )
+            ) : (
+              <>
+                <SidebarTrigger className="-ml-1" aria-label={t('Toggle sidebar')} />
+                <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
+              </>
+            )}
+            <span className={cn('text-[15px] font-semibold', phone && pathname === '/desk' && 'pl-2')}>
               <Txt>{current.label}</Txt>
             </span>
+            {phone && (
+              <div className="ml-auto">
+                <AccountButton user={user} />
+              </div>
+            )}
           </header>
-          <div className="min-w-0 flex-1">
+          <div
+            className={cn(
+              'min-w-0 flex-1',
+              phone && !fullHeight && 'pb-[calc(var(--tabbar)+env(safe-area-inset-bottom)+12px)]',
+            )}
+          >
             <Suspense fallback={<PageSpinner />}>
               <Outlet />
             </Suspense>
           </div>
         </SidebarInset>
+        {phone && <StaffTabBar current={current.to} unread={unread} waiting={waiting} />}
       </SidebarProvider>
     </TooltipProvider>
   )

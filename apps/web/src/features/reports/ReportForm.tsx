@@ -10,11 +10,9 @@ import {
   ChevronRight,
   ImagePlus,
   Info,
-  Lightbulb,
   LoaderCircle,
   LocateFixed,
   Map as MapIcon,
-  Plus,
   Sparkles,
   TriangleAlert,
   Users,
@@ -33,7 +31,6 @@ import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { ResidentAccount } from '../../app/ResidentShell'
 import { categories, hazardLabels, label } from './categories'
 import { CategoryTile } from './CategoryIcon'
-import { describePrompts, toggleAnswer } from './describe'
 import { MapPicker } from './MapPicker'
 import { devicePosition, photoCoordinates, useBarangayAt, useStreetName, type LocationSource } from './location'
 import { compressPhoto, MAX_PICK_BYTES, MAX_UPLOAD_BYTES, photoDetails, type PhotoDetails } from './photo'
@@ -75,6 +72,8 @@ export function ReportForm() {
   const [direction, setDirection] = useState(1)
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState('')
+  // The original stays heavily blurred on screen until the server's face-blurred copy replaces it.
+  const [previewState, setPreviewState] = useState<PreviewState>('checking')
   const [prediction, setPrediction] = useState<Prediction | null>(null)
   const [dismissedHazards, setDismissedHazards] = useState<Hazard[]>([])
   const [category, setCategory] = useState<Category | ''>('')
@@ -132,6 +131,7 @@ export function ReportForm() {
     if (!photo || typeof URL.createObjectURL !== 'function') return
     const url = URL.createObjectURL(photo)
     setPreview(url)
+    setPreviewState('checking')
     return () => URL.revokeObjectURL(url)
   }, [photo])
   useEffect(() => {
@@ -140,24 +140,37 @@ export function ReportForm() {
     const form = new FormData()
     form.set('image', photo)
     form.set('language', language)
-    void post<Prediction>('/reports/predict', form, { signal: controller.signal })
+    const analyse = () =>
+      post<Prediction>('/reports/predict', form, { signal: controller.signal })
+        .then(result => {
+          if (controller.signal.aborted) return
+          setPrediction(result)
+          const filled = { ...NOT_FILLED }
+          if (result.model_category) {
+            setCategory(current => current || result.model_category!)
+            filled.category = true
+          }
+          if (result.suggested_description) {
+            setDescription(current => current || result.suggested_description!)
+            filled.description = true
+          }
+          setAiFilled(filled)
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setPrediction(UNAVAILABLE)
+        })
+    // Faces first: it takes about a second, and the AI's answer then reuses the blurred copy.
+    void post<{ preview_image: string }>('/reports/photo-preview', form, { signal: controller.signal })
       .then(result => {
         if (controller.signal.aborted) return
-        setPrediction(result)
-        if (result.preview_image) setPreview(result.preview_image)
-        const filled = { ...NOT_FILLED }
-        if (result.model_category) {
-          setCategory(current => current || result.model_category!)
-          filled.category = true
-        }
-        if (result.suggested_description) {
-          setDescription(current => current || result.suggested_description!)
-          filled.description = true
-        }
-        setAiFilled(filled)
+        setPreview(result.preview_image)
+        setPreviewState('ready')
       })
       .catch(() => {
-        if (!controller.signal.aborted) setPrediction(UNAVAILABLE)
+        if (!controller.signal.aborted) setPreviewState('failed')
+      })
+      .then(() => {
+        if (!controller.signal.aborted) void analyse()
       })
     return () => controller.abort()
     // Analyse each photo once, in the language in use when it was chosen.
@@ -434,6 +447,7 @@ export function ReportForm() {
                   photo={photo}
                   preparing={preparing}
                   preview={preview}
+                  previewState={previewState}
                   prediction={prediction}
                   onSelect={selectPhoto}
                   onDrop={pickPhoto}
@@ -677,27 +691,13 @@ export function ReportForm() {
                       </span>
                     )}
                   </label>
-                  {category && (
-                    <DescribeHelp
-                      category={category}
-                      description={description}
-                      onChange={text => {
-                        setDescription(text.slice(0, 1000))
-                        setAiFilled(current => ({ ...current, description: false }))
-                      }}
-                    />
-                  )}
                 </>
               )}
               {step === 3 && (
                 <>
                   <div className="hairline overflow-hidden rounded-2xl bg-card">
                     {preview && (
-                      <img
-                        className="aspect-[2/1] w-full object-cover lg:aspect-[3/1]"
-                        src={preview}
-                        alt={t('Preview of incident photo')}
-                      />
+                      <ProtectedPhoto src={preview} state={previewState} className="aspect-[2/1] lg:aspect-[3/1]" />
                     )}
                     <dl>
                       {[
@@ -799,6 +799,7 @@ export function ReportForm() {
         <Summary
           step={step}
           preview={preview}
+          previewState={previewState}
           location={located ? (streetName ?? coordinates) : ''}
           category={category}
           description={description.trim()}
@@ -813,6 +814,7 @@ export function ReportForm() {
 function Summary({
   step,
   preview,
+  previewState,
   location,
   category,
   description,
@@ -820,6 +822,7 @@ function Summary({
 }: {
   step: number
   preview: string
+  previewState: PreviewState
   location: string
   category: Category | ''
   description: string
@@ -846,7 +849,7 @@ function Summary({
     <aside className="sticky top-10 hidden space-y-4 xl:block">
       <div className="hairline overflow-hidden rounded-2xl bg-card">
         {preview ? (
-          <img className="aspect-[2/1] w-full object-cover" src={preview} alt={t('Preview of incident photo')} />
+          <ProtectedPhoto src={preview} state={previewState} className="aspect-[2/1]" />
         ) : (
           <div className="grid aspect-[2/1] place-items-center bg-muted text-muted-foreground">
             <Camera className="size-8" aria-hidden="true" />
@@ -915,58 +918,34 @@ function AiTag({ check = false }: { check?: boolean }) {
   )
 }
 
-/** Tap-to-add answers that prompt the details staff need and a photo cannot show (depth, size, since when). */
-function DescribeHelp({
-  category,
-  description,
-  onChange,
-}: {
-  category: Category
-  description: string
-  onChange: (text: string) => void
-}) {
+type PreviewState = 'checking' | 'ready' | 'failed'
+
+/** Shows the server's face-blurred copy. Until then, only a heavily blurred version of the original is visible. */
+function ProtectedPhoto({ src, state, className }: { src: string; state: PreviewState; className?: string }) {
   const t = useText()
   return (
-    <section className="hairline space-y-3 rounded-2xl bg-card p-4" aria-labelledby="describe-help">
-      <h2 id="describe-help" className="flex items-center gap-1.5 text-[15px] font-semibold">
-        <Lightbulb className="size-4 text-primary" aria-hidden="true" />
-        <Txt>Help me describe it</Txt>
-      </h2>
-      {describePrompts[category].map(prompt => {
-        const answers = prompt.answers.map(t)
-        return (
-          <div key={prompt.question} role="group" aria-label={t(prompt.question)} className="space-y-1.5">
-            <p className="text-[13px] text-muted-foreground">
-              <Txt>{prompt.question}</Txt>
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {answers.map(answer => {
-                const chosen = description.includes(answer)
-                return (
-                  <button
-                    key={answer}
-                    type="button"
-                    aria-pressed={chosen}
-                    onClick={() => onChange(toggleAnswer(description, answers, answer))}
-                    className={cn(
-                      'inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-[14px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-                      chosen ? 'bg-primary text-primary-foreground' : 'bg-tint text-primary',
-                    )}
-                  >
-                    {chosen ? (
-                      <Check className="size-3.5" aria-hidden="true" />
-                    ) : (
-                      <Plus className="size-3.5" aria-hidden="true" />
-                    )}
-                    {answer.replace(/\.$/, '')}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-    </section>
+    <div className={cn('relative w-full overflow-hidden', className)}>
+      {/* A new element for each source: one <img> keeps painting its old picture until the next has loaded. */}
+      <img
+        key={src}
+        className={cn('size-full object-cover', state !== 'ready' && 'scale-110 blur-2xl')}
+        src={src}
+        alt={t('Preview of incident photo')}
+      />
+      {state !== 'ready' && (
+        <div
+          className="absolute inset-0 grid place-items-center bg-black/25 p-3 text-center text-[14px] font-medium text-white"
+          role="status"
+        >
+          {state === 'checking' && <span className="photo-scan" aria-hidden="true" />}
+          <span className="relative">
+            <Txt>
+              {state === 'checking' ? 'Hiding faces…' : 'Preview hidden. Faces are still checked before saving.'}
+            </Txt>
+          </span>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1000,6 +979,7 @@ function PhotoStep({
   photo,
   preparing,
   preview,
+  previewState,
   prediction,
   onSelect,
   onDrop,
@@ -1007,6 +987,7 @@ function PhotoStep({
   photo: File | null
   preparing: boolean
   preview: string
+  previewState: PreviewState
   prediction: Prediction | null
   onSelect: (event: ChangeEvent<HTMLInputElement>) => void
   onDrop: (file: File) => void
@@ -1021,14 +1002,13 @@ function PhotoStep({
         <Txt>Take a clear photo. The AI fills in the details to help you; check them and change anything wrong.</Txt>
       </p>
       {preview && (
-        <m.img
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.25 }}
-          className="hairline aspect-[2/1] w-full rounded-2xl object-cover lg:aspect-[3/1] xl:hidden"
-          src={preview}
-          alt={t('Preview of incident photo')}
-        />
+        <m.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }}>
+          <ProtectedPhoto
+            src={preview}
+            state={previewState}
+            className="hairline aspect-[2/1] rounded-2xl lg:aspect-[3/1] xl:hidden"
+          />
+        </m.div>
       )}
       {preparing && (
         <p className="flex items-center gap-2 px-1 text-[14px] text-muted-foreground" role="status">

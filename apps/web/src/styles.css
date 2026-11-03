@@ -282,6 +282,36 @@ body::after {
   --tab-offset: calc(var(--tabbar) + env(safe-area-inset-bottom));
 }
 
+/* What the staff top bar and phone tabs take from a full-height page. */
+:root {
+  --staff-chrome: 3.5rem;
+}
+@media (max-width: 767px) {
+  :root {
+    --staff-chrome: calc(3.5rem + var(--tabbar) + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+  }
+}
+
+/* A soft line sweeps over a photo while its faces are being blurred. */
+.photo-scan {
+  position: absolute;
+  inset-inline: 0;
+  top: -40%;
+  height: 40%;
+  background: linear-gradient(transparent, rgb(255 255 255 / 0.5), transparent);
+  animation: photo-scan 1.3s ease-in-out infinite;
+}
+@keyframes photo-scan {
+  to {
+    top: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-scan {
+    display: none;
+  }
+}
+
 /* A phone's keyboard needs the room, so the tab bar steps aside while someone types. */
 .keyboard-open .resident-shell {
   --tab-offset: env(safe-area-inset-bottom);

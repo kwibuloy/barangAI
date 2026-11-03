@@ -101,8 +101,6 @@ export type Prediction = {
   // false when the vision model looked and saw nothing wrong
   problem_seen?: boolean
   hazards?: Hazard[]
-  /** The copy that gets stored, with faces blurred. */
-  preview_image?: string
 }
 export type PriorityReason =
   | { code: 'category'; detail: Category; points: number }

@@ -58,7 +58,7 @@ export function QueuePage() {
     setParams(next, { replace: true })
   }
   return (
-    <div className="grid h-[calc(100svh-3.5rem)] min-h-0 md:h-[calc(100svh-3.5rem-1rem)] lg:grid-cols-[minmax(320px,400px)_minmax(0,1fr)]">
+    <div className="grid h-[calc(100svh-var(--staff-chrome))] min-h-0 md:h-[calc(100svh-3.5rem-1rem)] lg:grid-cols-[minmax(320px,400px)_minmax(0,1fr)]">
       <section className={cn('flex min-h-0 flex-col border-r', id && 'hidden lg:flex')}>
         <div className="space-y-3 border-b p-4">
           <label className="relative block">

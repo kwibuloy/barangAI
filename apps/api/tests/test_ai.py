@@ -11,10 +11,6 @@ from test_reports import submit
 CHECKER_DIR = Path(__file__).resolve().parents[1] / "models" / "mobileclip2-s0"
 
 
-def without_image(answer):
-    return {key: value for key, value in answer.items() if key != "preview_image"}
-
-
 def preview(client, photo, **data):
     return client.post(
         "/reports/predict",
@@ -43,7 +39,7 @@ def test_preview_requires_auth_and_works_with_no_ai_configured(client, photo):
     files = {"image": ("incident.jpg", photo, "image/jpeg")}
     assert client.post("/reports/predict", files=files).status_code == 401
     register(client)
-    assert without_image(preview(client, photo).json()) == {
+    assert preview(client, photo).json() == {
         "prediction_available": False,
         "model_category": None,
         "confidence": None,
@@ -65,7 +61,7 @@ def test_agreeing_models_fill_the_form_and_submission_reuses_the_preview(client,
     )
     register(client)
     body = preview(client, photo, language="fil").json()
-    assert without_image(body) == {
+    assert body == {
         "prediction_available": True,
         "model_category": "flooding",
         "confidence": 0.82,

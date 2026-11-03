@@ -1,4 +1,4 @@
-import { createContext, lazy, Suspense, useContext, useEffect } from 'react'
+import { createContext, lazy, Suspense, useContext } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { m } from 'motion/react'
 import { Bell, ClipboardList, House, LifeBuoy, Map as MapIcon, SquarePen } from 'lucide-react'
@@ -9,6 +9,7 @@ import { AccountButton } from '../features/account/AccountSettings'
 import { useNotifications } from '../features/notifications/NotificationsPage'
 import { PageSpinner } from '@/components/page'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
+import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
 
 // Desktop only (1024px and up): phones never download the sidebar or its account menu.
 const SideBar = lazy(() => import('./ResidentSidebar').then(module => ({ default: module.SideBar })))
@@ -91,30 +92,6 @@ function TabBar() {
 export function useUnread() {
   const notices = useNotifications()
   return (notices.data ?? []).filter(item => !item.read_at).length
-}
-
-/** Marks the page while a phone's keyboard is up: nothing else says so, and focus outlasts the keyboard. */
-function useKeyboardMark() {
-  useEffect(() => {
-    const viewport = window.visualViewport
-    if (!viewport || !window.matchMedia?.('(max-width: 1023px) and (pointer: coarse)').matches) return
-    let tallest = viewport.height
-    let width = viewport.width
-    const onResize = () => {
-      // Turning the phone changes the height for another reason.
-      if (viewport.width !== width) {
-        width = viewport.width
-        tallest = viewport.height
-      }
-      tallest = Math.max(tallest, viewport.height)
-      document.documentElement.classList.toggle('keyboard-open', viewport.height < tallest * 0.8)
-    }
-    viewport.addEventListener('resize', onResize)
-    return () => {
-      viewport.removeEventListener('resize', onResize)
-      document.documentElement.classList.remove('keyboard-open')
-    }
-  }, [])
 }
 
 /** Phone-first resident app: one column, large titles, iOS-style tab bar (a floating capsule on tablets, a sidebar on desktops). */
