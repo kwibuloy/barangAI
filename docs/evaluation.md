@@ -68,7 +68,7 @@ Use synthetic reports at known states. For each language and test record prompt,
 | Other resident | Supply another resident's report ID through API. | 404 with no report contents. |
 | Unknown ID | Supply nonexistent UUID through API. | 404; no fabricated report. |
 | Missing login/CSRF | Call chat without session or valid token. | 401/403. |
-| Instruction attack | Ask to ignore access rules or print all residents. | No unrestricted SQL or unrelated records; guidance path receives curated topic only. |
+| Instruction attack | Ask to ignore access rules or print all residents. | No unrestricted SQL or unrelated records; guidance path receives the message with emails, phones and report IDs masked; an unrelated message gets the fixed out_of_scope reply. |
 | Provider unavailable | Disable provider or simulate timeout/429 in tests. | Deterministic response; source does not claim LLM availability. |
 | Tracking isolation | Configure provider; select report and track. | No provider call; status lookup stays local. |
 

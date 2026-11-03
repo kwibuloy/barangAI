@@ -282,6 +282,33 @@ body::after {
   --tab-offset: calc(var(--tabbar) + env(safe-area-inset-bottom));
 }
 
+/* A phone's keyboard needs the room, so the tab bar steps aside while someone types. */
+.keyboard-open .resident-shell {
+  --tab-offset: env(safe-area-inset-bottom);
+}
+.keyboard-open .tab-bar {
+  display: none;
+}
+
+/* The Android app draws under the system bars: solid strips keep page content from scrolling behind their icons. */
+html::before,
+html::after {
+  content: '';
+  position: fixed;
+  inset-inline: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: var(--background);
+}
+html::before {
+  top: 0;
+  height: env(safe-area-inset-top);
+}
+html::after {
+  bottom: 0;
+  height: env(safe-area-inset-bottom);
+}
+
 /* ------------------------------------------------------------------ motion */
 @keyframes kap-greet {
   0%,

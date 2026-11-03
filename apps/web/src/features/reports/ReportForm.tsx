@@ -35,7 +35,7 @@ import { categories, hazardLabels, label } from './categories'
 import { CategoryTile } from './CategoryIcon'
 import { describePrompts, toggleAnswer } from './describe'
 import { MapPicker } from './MapPicker'
-import { photoCoordinates, useBarangayAt, useStreetName, type LocationSource } from './location'
+import { devicePosition, photoCoordinates, useBarangayAt, useStreetName, type LocationSource } from './location'
 import { compressPhoto, MAX_PICK_BYTES, MAX_UPLOAD_BYTES, photoDetails, type PhotoDetails } from './photo'
 import { findNearby, reportKeys, useCommunityCases, useSubmitReport } from './queries'
 import type { Category, Hazard, Nearby, Prediction, Report } from './types'
@@ -243,7 +243,7 @@ export function ReportForm() {
       return
     }
     setLocating(true)
-    navigator.geolocation.getCurrentPosition(
+    devicePosition(
       position => {
         if (quiet && (pinnedByHand.current || pick !== pickId.current)) {
           setLocating(false)
@@ -1051,7 +1051,7 @@ function PhotoStep({
             className="sr-only"
             type="file"
             aria-label={t('Take photo')}
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             capture="environment"
             onChange={onSelect}
           />

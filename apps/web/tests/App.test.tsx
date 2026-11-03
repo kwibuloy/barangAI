@@ -226,12 +226,16 @@ describe('resident reporting', () => {
     render(<App />)
     fireEvent.click(await screen.findByRole('link', { name: /review report/i }))
     expect(await screen.findByText(/duplicate suggestions unavailable/i)).toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: /start verification/i }))
+    const start = await screen.findByRole('button', { name: /start verification/i })
+    expect(start).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/reason or description/i), { target: { value: 'Checking the site' } })
+    fireEvent.click(start)
     await waitFor(() =>
       expect(calls.some(call => call.url.endsWith('/reports/rep1/status') && call.init?.method === 'POST')).toBe(true),
     )
     const body = JSON.parse(String(calls.find(call => call.url.endsWith('/reports/rep1/status'))?.init?.body))
     expect(body.status).toBe('Under Verification')
+    expect(body.note).toBe('Checking the site')
   })
 
   it('shows backend history and records coordination and duplicate decisions', async () => {
@@ -463,6 +467,24 @@ describe('roles and session', () => {
     fireEvent.click(await screen.findByRole('link', { name: 'My reports' }))
     expect(await screen.findByText('No reports yet')).toBeInTheDocument()
     expect(screen.queryByText('Staff-only row')).not.toBeInTheDocument()
+  })
+
+  it('clears what was typed when switching between sign in and create account', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ detail: 'Not signed in' }), { status: 401 })),
+    )
+    render(<App />)
+    const email = await screen.findByLabelText('Email address')
+    fireEvent.change(email, { target: { value: 'resident@example.test' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'synthetic password' } })
+    fireEvent.click(screen.getByRole('button', { name: 'New here? Create an account' }))
+    expect(screen.getByLabelText('Email address')).toHaveValue('')
+    expect(screen.getByLabelText('Password')).toHaveValue('')
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'new@example.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Already registered? Sign in' }))
+    expect(screen.getByLabelText('Email address')).toHaveValue('')
   })
 
   it('refetches notifications when the window regains focus', async () => {

@@ -82,7 +82,16 @@ def seed(password: str, count: int):
             ):
                 if status not in NEXT[previous]:
                     raise ValueError(f"{previous} cannot become {status}")
-                db.add(ReportEvent(report_id=report.id, from_status=previous, to_status=status, actor_id=staff.id))
+                db.add(
+                    ReportEvent(
+                        report_id=report.id,
+                        from_status=previous,
+                        to_status=status,
+                        actor_id=staff.id,
+                        note=f"Synthetic note: moved to {status}",
+                        rejection_reason="not_enough_details" if status == "Rejected" else None,
+                    )
+                )
                 db.add(Notification(user_id=resident.id, report_id=report.id, status=status))
                 if status == "Accepted":
                     report.verified_category = category
@@ -127,7 +136,8 @@ def pitch_story(db, staff, residents):
         previous = None
         for status in PATH[:4]:
             db.add(ReportEvent(report_id=report.id, from_status=previous, to_status=status,
-                               actor_id=resident.id if previous is None else staff.id))
+                               actor_id=resident.id if previous is None else staff.id,
+                               note=None if previous is None else f"Synthetic note: moved to {status}"))
             previous = status
         report.image_path = save_image(report.id, photo(100 + offset))
         if offset == 0:

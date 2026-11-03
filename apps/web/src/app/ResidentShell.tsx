@@ -1,4 +1,4 @@
-import { createContext, lazy, Suspense, useContext } from 'react'
+import { createContext, lazy, Suspense, useContext, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { m } from 'motion/react'
 import { Bell, ClipboardList, House, LifeBuoy, Map as MapIcon, SquarePen } from 'lucide-react'
@@ -39,7 +39,7 @@ function TabBar() {
   return (
     <nav
       aria-label={t('Resident sections')}
-      className="glass pb-safe fixed inset-x-0 bottom-0 z-40 shadow-[0_-0.5px_0_var(--border)] lg:hidden md:inset-x-auto md:bottom-4 md:left-1/2 md:w-[min(560px,calc(100%-48px))] md:-translate-x-1/2 md:rounded-full md:pb-0 md:shadow-[0_8px_30px_rgb(0_0_0/0.12),0_0_0_0.5px_var(--border)]"
+      className="tab-bar glass pb-safe fixed inset-x-0 bottom-0 z-40 shadow-[0_-0.5px_0_var(--border)] lg:hidden md:inset-x-auto md:bottom-4 md:left-1/2 md:w-[min(560px,calc(100%-48px))] md:-translate-x-1/2 md:rounded-full md:pb-0 md:shadow-[0_8px_30px_rgb(0_0_0/0.12),0_0_0_0.5px_var(--border)]"
     >
       <ul className="mx-auto flex h-[var(--tabbar)] max-w-2xl items-stretch">
         {TABS.map(({ to, label, icon: Icon }) => (
@@ -93,9 +93,34 @@ export function useUnread() {
   return (notices.data ?? []).filter(item => !item.read_at).length
 }
 
+/** Marks the page while a phone's keyboard is up: nothing else says so, and focus outlasts the keyboard. */
+function useKeyboardMark() {
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport || !window.matchMedia?.('(max-width: 1023px) and (pointer: coarse)').matches) return
+    let tallest = viewport.height
+    let width = viewport.width
+    const onResize = () => {
+      // Turning the phone changes the height for another reason.
+      if (viewport.width !== width) {
+        width = viewport.width
+        tallest = viewport.height
+      }
+      tallest = Math.max(tallest, viewport.height)
+      document.documentElement.classList.toggle('keyboard-open', viewport.height < tallest * 0.8)
+    }
+    viewport.addEventListener('resize', onResize)
+    return () => {
+      viewport.removeEventListener('resize', onResize)
+      document.documentElement.classList.remove('keyboard-open')
+    }
+  }, [])
+}
+
 /** Phone-first resident app: one column, large titles, iOS-style tab bar (a floating capsule on tablets, a sidebar on desktops). */
 export function ResidentShell({ user }: { user: User }) {
   const desktop = useMediaQuery(DESKTOP)
+  useKeyboardMark()
   return (
     <UserContext.Provider value={user}>
       <div className="resident-shell min-h-dvh">

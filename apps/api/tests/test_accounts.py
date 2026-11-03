@@ -535,3 +535,14 @@ def test_hosted_site_sends_security_headers_that_allow_its_own_theme_script(host
     assert "script-src 'self' 'sha256-" in policy and "unsafe-inline' ; " not in policy
     assert "https://*.tile.openstreetmap.org" in policy and "frame-ancestors 'none'" in policy
     assert response.headers["strict-transport-security"]
+
+
+def test_direct_connections_keep_the_strict_limit_despite_a_forwarded_header(client, monkeypatch):
+    monkeypatch.delenv("TRUSTED_PROXY_HOPS", raising=False)
+    monkeypatch.setenv("DIRECT_CONNECTIONS", "true")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "synthetic")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "synthetic")
+    monkeypatch.setenv("GOOGLE_REDIRECT_URI", "https://example.test/api/auth/google/callback")
+    forwarded = {"X-Forwarded-For": "203.0.113.9"}
+    codes = [client.get("/auth/google/start", headers=forwarded, follow_redirects=False).status_code for _ in range(11)]
+    assert codes[9] == 302 and codes[10] == 429

@@ -105,7 +105,7 @@ export function ChatPage() {
         <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1" aria-live="polite">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center pt-2 text-center">
-              <Kap pose="welcome" motion="float" className="h-40 w-auto" />
+              <Kap pose="welcome" motion="float" className="h-24 w-auto sm:h-40" />
               <p className="mt-2 text-[15px] text-muted-foreground">
                 <Txt>Hi! I can help you report concerns and follow up on them.</Txt>
               </p>
@@ -160,11 +160,11 @@ export function ChatPage() {
               </div>
             </div>
           )}
-          <div ref={end} />
+          <div ref={end} className="scroll-mb-[calc(var(--tab-offset)+5.5rem)] md:scroll-mb-40 lg:scroll-mb-0" />
         </div>
         <form
           onSubmit={send}
-          className="glass hairline sticky bottom-[calc(var(--tab-offset)+12px)] z-20 mt-4 flex items-center gap-2 rounded-full p-1.5 pl-4 md:bottom-28 lg:static lg:mt-3 lg:bg-background lg:backdrop-blur-none"
+          className="hairline sticky bottom-[calc(var(--tab-offset)+12px)] bg-card z-20 mt-4 flex items-center gap-2 rounded-full p-1.5 pl-4 md:bottom-28 lg:static lg:mt-3 lg:bg-background"
         >
           <label className="sr-only" htmlFor="chat-message">
             <Txt>Message</Txt>

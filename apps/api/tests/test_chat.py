@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 from conftest import register
@@ -34,34 +36,141 @@ def test_chat_report_status_is_scoped_to_resident(client, photo):
     assert chat(client, "status", report_id=report_id).status_code == 404
 
 
-def test_workers_ai_receives_only_curated_topic_and_language(client, monkeypatch):
+def kap_says(monkeypatch, reply, on_topic=True):
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "a" * 32)
+    monkeypatch.setenv("CLOUDFLARE_WORKERS_AI_TOKEN", "synthetic-token")
+    answer = json.dumps({"on_topic": on_topic, "reply": reply})
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *args, **kwargs: httpx.Response(200, json={"success": True, "result": {"response": answer}}),
+    )
+
+
+def test_kap_gets_the_question_without_private_details(client, monkeypatch):
     register(client)
     monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "a" * 32)
     monkeypatch.setenv("CLOUDFLARE_WORKERS_AI_TOKEN", "synthetic-token")
-    private_message = "Flooding near SECRET_PERSON_72 at private lane 0192, report 123e4567-e89b-12d3-a456-426614174000"
+    message = "Flooding here, call 0917 123 4567 or ana@example.test, report 123e4567-e89b-12d3-a456-426614174000"
     seen = []
 
     def fake_post(url, **kwargs):
         seen.append((url, kwargs))
-        assert url == f"https://api.cloudflare.com/client/v4/accounts/{'a' * 32}/ai/run/@cf/mistralai/mistral-small-3.1-24b-instruct"
-        assert kwargs["timeout"] == 8.0
+        assert (
+            url
+            == f"https://api.cloudflare.com/client/v4/accounts/{'a' * 32}/ai/run/@cf/mistralai/mistral-small-3.1-24b-instruct"
+        )
+        assert kwargs["timeout"] == httpx.Timeout(15.0, connect=5.0)
         assert kwargs["headers"]["Authorization"] == "Bearer synthetic-token"
         outgoing = str(kwargs["json"])
-        assert "SECRET_PERSON_72" not in outgoing
-        assert "private lane" not in outgoing
-        assert "0192" not in outgoing
-        assert "123e4567-e89b-12d3-a456-426614174000" not in outgoing
-        assert "flooding" in outgoing.lower()
-        assert "Filipino" in outgoing
-        return httpx.Response(200, json={"success": True, "result": {"response": "Lumayo sa rumaragasang baha at mag-ulat sa barangay."}})
+        assert "0917" not in outgoing
+        assert "ana@example.test" not in outgoing
+        assert "123e4567" not in outgoing
+        assert "Flooding here" in outgoing
+        assert "You are Kap" in outgoing
+        assert "in Filipino" in outgoing
+        reply = json.dumps({"on_topic": True, "reply": "Lumayo sa rumaragasang baha at mag-ulat sa barangay."})
+        return httpx.Response(200, json={"success": True, "result": {"response": reply}})
 
     monkeypatch.setattr(httpx, "post", fake_post)
-    result = chat(client, private_message, "fil")
+    result = chat(client, message, "fil")
     assert result.status_code == 200, result.text
     assert result.json()["source"] == "workers_ai"
     assert result.json()["llm_available"] is True
     assert "barangay" in result.json()["reply"]
     assert len(seen) == 1
+
+
+@pytest.mark.parametrize(
+    "detail",
+    ["0917.123.4567", "0917/123/4567", "+63(917)1234567", "(0917) 123-4567", "ana@example", "123e4567e89b12d3a456426614174000"],
+)
+def test_other_private_detail_formats_are_masked(client, monkeypatch, detail):
+    register(client)
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "a" * 32)
+    monkeypatch.setenv("CLOUDFLARE_WORKERS_AI_TOKEN", "synthetic-token")
+    seen = []
+
+    def fake_post(url, **kwargs):
+        seen.append(kwargs["json"]["messages"][1]["content"])
+        return httpx.Response(200, json={"success": True, "result": {"response": '{"on_topic": false, "reply": ""}'}})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    chat(client, f"May baha, tawagan si {detail}")
+    assert seen == ["May baha, tawagan si [removed]"]
+
+
+def test_ordinary_numbers_still_reach_the_model(client, monkeypatch):
+    register(client)
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "a" * 32)
+    monkeypatch.setenv("CLOUDFLARE_WORKERS_AI_TOKEN", "synthetic-token")
+    seen = []
+
+    def fake_post(url, **kwargs):
+        seen.append(kwargs["json"]["messages"][1]["content"])
+        return httpx.Response(200, json={"success": True, "result": {"response": '{"on_topic": false, "reply": ""}'}})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    chat(client, "1+1")
+    chat(client, "May baha sa Blk 12 Lot 34 Phase 5")
+    assert seen == ["1+1", "May baha sa Blk 12 Lot 34 Phase 5"]
+
+
+def test_off_topic_verdict_shows_only_the_fixed_reply(client, monkeypatch):
+    register(client)
+    kap_says(monkeypatch, "1+1 is 2", on_topic=False)
+    data = chat(client, "1+1").json()
+    assert data["source"] == "out_of_scope"
+    assert data["llm_available"] is False
+    assert "Kap" in data["reply"]
+    assert "2" not in data["reply"]
+
+
+@pytest.mark.parametrize("language", ["fil", "taglish"])
+def test_off_topic_reply_follows_the_language(client, monkeypatch, language):
+    register(client)
+    kap_says(monkeypatch, "", on_topic=False)
+    assert "Ako si Kap" in chat(client, "1+1", language).json()["reply"]
+
+
+def test_kap_reply_is_plain_text_without_a_cut_off_sentence(client, monkeypatch):
+    register(client)
+    kap_says(monkeypatch, "## Baha\n**Lumayo** sa baha. Mag-ulat sa barangay. Huwag tumawid sa")
+    assert chat(client, "May baha", "fil").json()["reply"] == "Baha\nLumayo sa baha. Mag-ulat sa barangay."
+
+
+@pytest.mark.parametrize(
+    ("answer", "reply"),
+    [
+        ('Lumayo sa baha. Mag-ulat "agad."', 'Lumayo sa baha. Mag-ulat "agad."'),
+        ("Lumayo sa baha (kung ligtas.)", "Lumayo sa baha (kung ligtas.)"),
+        ("Tumawag sa Brgy. San Jose para mag-ulat. Huwag tumawid", "Tumawag sa Brgy. San Jose para mag-ulat."),
+        ("1. Lumayo sa baha.\n- *Mag-ulat* sa barangay.", "Lumayo sa baha.\nMag-ulat sa barangay."),
+    ],
+)
+def test_kap_reply_keeps_whole_sentences(client, monkeypatch, answer, reply):
+    register(client)
+    kap_says(monkeypatch, answer)
+    assert chat(client, "May baha", "fil").json()["reply"] == reply
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "1. Lumayo sa baha at mag-ulat",
+        "Tumawag sa Brgy. San Jose at mag-ulat",
+        "Flood. Call 0917 123 4567",
+        "Flood safety first. Call **0917 123 4567** now",
+        "Email brgy@example.test for help.",
+        "Call 0917.123.4567 now.",
+        "See example.gov.ph for help.",
+        "Your report is currently resolved, so all is well.",
+    ],
+)
+def test_kap_fragment_or_contact_details_fall_back(client, monkeypatch, answer):
+    register(client)
+    kap_says(monkeypatch, answer)
+    assert chat(client, "May baha", "fil").json()["source"] == "deterministic"
 
 
 def test_workers_ai_429_falls_back_without_claiming_llm_answer(client, monkeypatch):
@@ -91,10 +200,21 @@ def test_report_tracking_never_calls_workers_ai(client, photo, monkeypatch):
     assert "Pending" in response.json()["reply"]
 
 
-@pytest.mark.parametrize("provider_result", [
-    httpx.Response(200, json=[]),
-    httpx.Response(200, json={"success": True, "result": {"response": "https://invented.example/contact"}}),
-])
+@pytest.mark.parametrize(
+    "provider_result",
+    [
+        httpx.Response(200, json=[]),
+        httpx.Response(200, json={"success": True, "result": {"response": "https://invented.example/contact"}}),
+        httpx.Response(200, json={"success": True, "result": {"response": "not json"}}),
+        httpx.Response(200, json={"choices": ["x"]}),
+        httpx.Response(200, json={"choices": [{"message": "x"}]}),
+        httpx.Response(200, json={"success": True, "result": {"response": '{"reply": "no verdict"}'}}),
+        httpx.Response(
+            200,
+            json={"success": True, "result": {"response": '{"on_topic": true, "reply": "See https://invented.example/contact."}'}},
+        ),
+    ],
+)
 def test_malformed_or_unsafe_workers_ai_response_falls_back(client, monkeypatch, provider_result):
     register(client)
     monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "a" * 32)
@@ -134,11 +254,17 @@ def test_upload_is_rate_limited(client, photo):
     assert submit(client, photo).status_code == 429
 
 
-@pytest.mark.parametrize("status,translated", [
-    ("Pending", "Naghihintay"), ("Under Verification", "Sinusuri"),
-    ("Accepted", "Tinanggap"), ("In Progress", "Isinasagawa"),
-    ("Resolved", "Nalutas"), ("Rejected", "Tinanggihan"),
-])
+@pytest.mark.parametrize(
+    "status,translated",
+    [
+        ("Pending", "Naghihintay"),
+        ("Under Verification", "Sinusuri"),
+        ("Accepted", "Tinanggap"),
+        ("In Progress", "Isinasagawa"),
+        ("Resolved", "Nalutas"),
+        ("Rejected", "Tinanggihan"),
+    ],
+)
 def test_filipino_tracking_localizes_the_actual_report_status(client, photo, status, translated):
     from barangai.db import session_for_url
     from barangai.models import Report

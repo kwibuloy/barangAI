@@ -104,8 +104,9 @@ def client_ip(request):
 def address_known(request):
     """False behind a proxy before TRUSTED_PROXY_HOPS is set: every caller then looks like the proxy. Each new chain
     length is logged, with the count only. A client can add entries but not remove them, so the operator sets the hop
-    count to the smallest number logged."""
-    if proxy_hops():
+    count to the smallest number logged. DIRECT_CONNECTIONS says no proxy exists (the laptop launcher), so a client's
+    header cannot make callers look shared and loosen the limits."""
+    if proxy_hops() or os.environ.get("DIRECT_CONNECTIONS", "").lower() == "true":
         return True
     forwarded = [part for part in request.headers.get("x-forwarded-for", "").split(",") if part.strip()]
     if forwarded and len(forwarded) not in _chains_logged and len(_chains_logged) < 32:

@@ -1,5 +1,7 @@
 # Render + Supabase deployment readiness
 
+> Parked on 3 November 2026: the project now runs locally. See [mobile.md](mobile.md). The staff jurisdiction steps below still apply locally.
+
 The selected route is Render Free + Supabase Free, replacing the earlier OCI proposal. A single container serves the React website and FastAPI under one HTTPS origin. PostgreSQL and private photos persist in Supabase. The public service is [BarangAI](https://barangai-watch.onrender.com). On 3 November 2026 `/api/health` returned `{"status":"ok"}` and its website files and API routes matched commit `e5fcb04`. Because startup runs Alembic before the server, a running service also means its migrations succeeded. This verifies availability, not classification accuracy, signed-in flows or maximum-load memory use.
 
 Follow [Render setup](render-setup.md), [Supabase setup](supabase-setup.md), and [Google sign-in setup](google-sign-in.md). The root render.yaml declares one Free Docker service, deployment on every commit and no paid Render database or disk. Credentials belong only in server secret settings. Publishing, project selection and deployment still require the user's authorization.
@@ -56,7 +58,7 @@ python -m barangai.bootstrap_staff staff@example.test --barangay "Barangay name"
 python -m barangai.bootstrap_staff staff@example.test --barangay "Other barangay" --assign
 ```
 
-`apps/api/data/dasmarinas-barangays.geojson` holds the 75 barangays of Dasmariñas. Their names and codes are matched to PSGC 3Q 2026, and the shapes are NAMRIA and PSA's, from OCHA's COD-AB release of November 2023 (CC BY-IGO), through [philippines-psgc-shapefiles](https://github.com/faeldon/philippines-psgc-shapefiles) v1.0.0 (MIT). The maps credit NAMRIA, PSA and OCHA, so keep that credit. These shapes are for service areas and aren't a legal boundary. `apps/api/tools/export_boundaries.py` rebuilds the file from that release's barangay zip.
+`apps/api/data/dasmarinas-barangays.geojson` holds the 75 barangays of Dasmariñas, and `taft-barangays.geojson` the 13 barangays around DLSU Taft in Manila, from the same source. Their names and codes are matched to PSGC 3Q 2026, and the shapes are NAMRIA and PSA's, from OCHA's COD-AB release of November 2023 (CC BY-IGO), through [philippines-psgc-shapefiles](https://github.com/faeldon/philippines-psgc-shapefiles) v1.0.0 (MIT). The maps credit NAMRIA, PSA and OCHA, so keep that credit. These shapes are for service areas and aren't a legal boundary. `apps/api/tools/export_boundaries.py` rebuilds the file from that release's barangay zip. To cover demos at DLSU Taft, also run `python -m barangai.barangays data/taft-barangays.geojson`, then `python -m barangai.bootstrap_staff staff@demo.test --barangay "Barangay 719" --assign` if the staff account should see pins on campus.
 
 The licence terms are in `apps/api/data/NOTICE.md`. The credit on the maps names this source, so a file from another source needs its own credit there, such as OpenStreetMap contributors (ODbL).
 

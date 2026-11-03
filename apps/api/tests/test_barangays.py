@@ -1,4 +1,8 @@
+import json
+from pathlib import Path
+
 import pytest
+from barangai.barangays import contains, features_from
 from conftest import register
 from test_reports import submit
 from test_workflow import change
@@ -560,3 +564,13 @@ def test_boundary_routes_are_rate_limited(client, path, params):
     register(client)
     statuses = [client.get(f"/barangays/{path}", params=params).status_code for _ in range(31)]
     assert statuses == [200] * 30 + [429]
+
+
+def test_taft_file_covers_the_campus_without_touching_dasmarinas():
+    data_dir = Path(__file__).resolve().parents[1] / "data"
+    taft = features_from(json.loads((data_dir / "taft-barangays.geojson").read_text(encoding="utf-8")))
+    dasmarinas = features_from(json.loads((data_dir / "dasmarinas-barangays.geojson").read_text(encoding="utf-8")))
+    assert len(taft) == 13
+    assert not {name for name, _ in taft} & {name for name, _ in dasmarinas}
+    assert [name for name, boundary in taft if contains(boundary, 14.5649, 120.9930)] == ["Barangay 719"]
+

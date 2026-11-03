@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BarangAI</string>
+    <string name="title_activity_main">BarangAI</string>
+    <string name="package_name">com.barangai.app</string>
+    <string name="custom_url_scheme">com.barangai.app</string>
+</resources>

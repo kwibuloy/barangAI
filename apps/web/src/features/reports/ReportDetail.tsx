@@ -20,7 +20,7 @@ import { Alert } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { Txt, useText } from '../../lib/i18n'
 import { useMe } from '../auth/queries'
-import { categories, hazardLabels, label } from './categories'
+import { categories, hazardLabels, label, rejectionReasons } from './categories'
 import { CategoryTile } from './CategoryIcon'
 import { DeletionReview, RequestDeletion } from './DeletionPanels'
 import { compressPhoto } from './photo'
@@ -259,6 +259,13 @@ function ReportFacts({ detail }: { detail: Report }) {
                 <small className="text-[13px] text-muted-foreground">
                   {event.created_at ? <DateText value={event.created_at} /> : t('Recorded')}
                 </small>
+                {event.rejection_reason && (
+                  <p className="mt-1 text-[15px] font-medium">
+                    <Txt>
+                      {rejectionReasons.find(item => item.value === event.rejection_reason)?.label ?? 'Other reason'}
+                    </Txt>
+                  </p>
+                )}
                 {event.note && <p className="mt-1 text-[15px]">{event.note}</p>}
               </li>
             )
@@ -293,17 +300,21 @@ function ReportFacts({ detail }: { detail: Report }) {
 }
 
 function StatusControls({ detail }: { detail: Report }) {
+  const t = useText()
   const change = useChangeStatus(detail.id)
   const [verified, setVerified] = useState<Category>(detail.verified_category ?? detail.resident_category)
   const [note, setNote] = useState('')
+  const [reason, setReason] = useState('')
   const actions = nextActions(detail.status)
   if (actions.length === 0) return null
+  const described = Boolean(note.trim())
   function transition(status: Status) {
     change.mutate(
       {
         status,
         ...(status === 'Accepted' ? { verified_category: verified } : {}),
-        ...(note.trim() ? { note: note.trim() } : {}),
+        ...(status === 'Rejected' ? { rejection_reason: reason } : {}),
+        note: note.trim(),
       },
       { onSuccess: () => setNote('') },
     )
@@ -322,9 +333,25 @@ function StatusControls({ detail }: { detail: Report }) {
           </NativeSelect>
         </label>
       )}
+      {detail.status === 'Under Verification' && (
+        <label className={fieldLabel}>
+          <Txt>Reason, if rejecting</Txt>
+          <NativeSelect value={reason} onChange={event => setReason(event.target.value)}>
+            <option value="">{t('Choose a reason')}</option>
+            {rejectionReasons.map(item => (
+              <option key={item.value} value={item.value}>
+                {t(item.label)}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+      )}
       <label className={fieldLabel}>
-        <Txt>Status note (optional)</Txt>
+        <Txt>Reason or description (required)</Txt>
         <Textarea rows={2} value={note} onChange={event => setNote(event.target.value)} className="text-foreground" />
+        <span className="text-[13px] font-normal text-muted-foreground">
+          <Txt>The resident sees this.</Txt>
+        </span>
       </label>
       <div className="flex flex-wrap gap-2">
         {actions.map(action => (
@@ -334,7 +361,7 @@ function StatusControls({ detail }: { detail: Report }) {
             variant={action.status === 'Rejected' ? 'destructive' : 'default'}
             className="flex-1"
             type="button"
-            disabled={change.isPending}
+            disabled={change.isPending || !described || (action.status === 'Rejected' && !reason)}
             onClick={() => transition(action.status)}
           >
             <Txt>{action.label}</Txt>

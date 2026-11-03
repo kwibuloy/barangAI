@@ -1,5 +1,16 @@
 import type { Category, Hazard, Status } from './types'
 
+/** Why staff may reject a report; the API checks these same values, and residents see the label. */
+export const rejectionReasons = [
+  { value: 'not_barangay_concern', label: 'Not a barangay concern' },
+  { value: 'already_reported', label: 'Already reported' },
+  { value: 'not_enough_details', label: 'Not enough details or unclear photo' },
+  { value: 'no_problem_found', label: 'No problem found when checked' },
+  { value: 'outside_area', label: "Outside this barangay's area" },
+  { value: 'false_or_inappropriate', label: 'False or inappropriate report' },
+  { value: 'other', label: 'Other reason' },
+] as const
+
 export const categories: { value: Category; label: string }[] = [
   { value: 'flooding', label: 'Flooding' },
   { value: 'fallen_trees', label: 'Fallen trees' },

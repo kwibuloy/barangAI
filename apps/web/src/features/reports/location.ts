@@ -22,6 +22,25 @@ export async function photoCoordinates(file: File): Promise<[number, number] | n
   }
 }
 
+/**
+ * The device's position. The Android app loads this site from a laptop over plain HTTP, where the browser
+ * refuses GPS, so there it asks the native plugin.
+ */
+export function devicePosition(
+  onPosition: (position: { coords: { latitude: number; longitude: number } }) => void,
+  onFailure: () => void,
+  options: PositionOptions,
+) {
+  const native = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()
+  if (!native) {
+    navigator.geolocation.getCurrentPosition(onPosition, onFailure, options)
+    return
+  }
+  void import('@capacitor/geolocation')
+    .then(({ Geolocation }) => Geolocation.getCurrentPosition(options))
+    .then(onPosition, onFailure)
+}
+
 /** Which barangay the pin falls in, as a preview; the server works it out again on submit. Null while unknown. */
 export function useBarangayAt(latitude: string, longitude: string) {
   const [place, setPlace] = useState<{ active: boolean; barangay: string | null } | null>(null)

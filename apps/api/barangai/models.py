@@ -146,6 +146,7 @@ class ReportEvent(Base):
     to_status: Mapped[str] = mapped_column(String(30), nullable=False)
     actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
+    rejection_reason: Mapped[str | None] = mapped_column(String(30))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
 
 

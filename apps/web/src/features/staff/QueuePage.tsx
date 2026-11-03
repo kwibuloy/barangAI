@@ -16,7 +16,7 @@ import { useReport, useReports } from '../reports/queries'
 import { PriorityChip } from '../reports/Priority'
 import { TrustChip } from '../reports/Trust'
 import { StatusBadge } from '../reports/StatusBadge'
-import { BarangayFilter, useBarangayFilter } from './BarangayFilter'
+import { BarangayFilter, LockedBarangay, useBarangayFilter } from './BarangayFilter'
 
 /** Review queue as a split view; filters live in the URL so a reviewed report returns to the same list. */
 export function QueuePage() {
@@ -117,6 +117,7 @@ export function QueuePage() {
                 className="col-span-2"
               />
             )}
+            {area.locked && <LockedBarangay name={area.locked} className="col-span-2" />}
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="px-0.5 text-[12.5px] text-muted-foreground" aria-live="polite">

@@ -6,6 +6,8 @@ export type User = {
   id: string
   email: string
   role: 'resident' | 'staff' | 'administrator'
+  /** The barangay a staff member is limited to; administrators have none. */
+  barangay?: string | null
   /** Saved on the account so they follow the person to another device. */
   preferences?: Preferences
   /** Signs in with Google, so it has no password of its own. */

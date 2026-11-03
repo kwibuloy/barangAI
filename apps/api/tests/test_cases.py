@@ -25,7 +25,10 @@ def resident_report(client, photo, email, **fields):
 
 def walk(client, report_id, *statuses, category="flooding"):
     for status in statuses:
-        body = {"status": status, **({"verified_category": category} if status == "Accepted" else {})}
+        body = {"status": status, "note": "Synthetic status note",
+                **({"verified_category": category} if status == "Accepted" else {})}
+        if status == "Rejected":
+            body["rejection_reason"] = "not_enough_details"
         response = client.post(f"/reports/{report_id}/status", json=body, headers=headers(client))
         assert response.status_code == 200, response.text
 
@@ -70,9 +73,11 @@ def test_rejected_reports_cannot_be_grouped_and_rejection_moves_the_case(client,
     assert client.post("/cases/link", json={"report_id": first, "other_report_id": second},
                        headers=headers(client)).status_code == 200
     walk(client, first, "Under Verification")
-    response = client.post(f"/reports/{second}/status", json={"status": "Rejected"}, headers=headers(client))
+    response = client.post(f"/reports/{second}/status", json={"status": "Rejected", "rejection_reason": "already_reported", "note": "Same pothole as another report"}, headers=headers(client))
     assert response.status_code == 200, response.text
-    assert client.get(f"/reports/{first}").json()["status"] == "Rejected"
+    rejected = client.get(f"/reports/{first}").json()
+    assert rejected["status"] == "Rejected"
+    assert rejected["events"][-1]["rejection_reason"] == "already_reported"
     assert client.post("/cases/link", json={"report_id": first, "other_report_id": third},
                        headers=headers(client)).status_code == 409
 
@@ -122,7 +127,7 @@ def test_i_see_this_too_counts_only_after_staff_confirm(client, photo):
     # Unknown or non-public cases look the same to residents.
     assert submit(client, photo, case_id="not-a-case").status_code == 404
     login(client, "staff@example.test", "staff-password-123")
-    assert client.post(f"/reports/{extra}/status", json={"status": "Under Verification"},
+    assert client.post(f"/reports/{extra}/status", json={"status": "Under Verification", "note": "Checking it"},
                        headers=headers(client)).status_code == 409
     response = client.post(f"/reports/{extra}/case/decision", json={"decision": "confirmed"}, headers=headers(client))
     assert response.status_code == 200, response.text

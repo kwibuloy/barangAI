@@ -15,7 +15,7 @@ def staff_login(client):
 
 
 def change(client, report_id, status, **extra):
-    return client.post(f"/reports/{report_id}/status", json={"status": status, **extra},
+    return client.post(f"/reports/{report_id}/status", json={"status": status, "note": "Synthetic status note", **extra},
                        headers={"X-CSRF-Token": client.cookies.get("csrf_token", "")})
 
 
@@ -40,12 +40,39 @@ def test_rejection_and_invalid_transition_preserve_history(client, photo):
     report_id = submit(client, photo).json()["id"]
     staff_login(client)
     assert change(client, report_id, "Resolved").status_code == 409
+    assert change(client, report_id, "Under Verification", note=None).status_code == 422
+    assert change(client, report_id, "Under Verification", note="   ").status_code == 422
+    assert change(client, report_id, "Under Verification", note="Updated with case #1").status_code == 422
     assert change(client, report_id, "Under Verification").status_code == 200
     assert change(client, report_id, "Accepted").status_code == 422
-    assert change(client, report_id, "Rejected", note="Not a valid barangay concern").status_code == 200
+    assert change(client, report_id, "Rejected").status_code == 422
+    assert change(client, report_id, "Rejected", rejection_reason="because").status_code == 422
+    assert change(client, report_id, "Rejected", rejection_reason="other", note="  ").status_code == 422
+    reason = {"rejection_reason": "not_barangay_concern", "note": "A private property matter"}
+    assert change(client, report_id, "Rejected", **reason).status_code == 200
     assert change(client, report_id, "Accepted", verified_category="flooding").status_code == 409
     detail = client.get(f"/reports/{report_id}").json()
     assert [event["to_status"] for event in detail["events"]] == ["Pending", "Under Verification", "Rejected"]
+    assert detail["events"][-1]["rejection_reason"] == "not_barangay_concern"
+    assert detail["events"][-1]["note"] == "A private property matter"
+
+
+def test_only_rejection_takes_a_reason_and_the_resident_sees_it(client, photo):
+    register(client, "ana@example.test")
+    report_id = submit(client, photo).json()["id"]
+    client.cookies.clear()
+    staff_login(client)
+    assert change(client, report_id, "Under Verification", rejection_reason="other").status_code == 422
+    assert change(client, report_id, "Under Verification").status_code == 200
+    assert change(client, report_id, "Rejected", rejection_reason="other", note="Reported to the wrong office").status_code == 200
+    client.cookies.clear()
+    from test_cases import login
+
+    login(client, "ana@example.test")
+    last = client.get(f"/reports/{report_id}").json()["events"][-1]
+    assert last["rejection_reason"] == "other"
+    assert last["note"] == "Reported to the wrong office"
+    assert "actor_id" not in last
 
 
 def test_resident_cannot_forge_status_or_role(client, photo):

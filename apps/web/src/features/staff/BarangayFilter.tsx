@@ -6,18 +6,32 @@ import type { Report } from '../reports/types'
 
 const OUTSIDE = 'outside'
 
-/** Administrators see every barangay, so only they get this filter; the API already limits staff to their own. */
+/** Administrators see every barangay and can filter them; staff see the one the API limits them to, locked. */
 export function useBarangayFilter(reports: Report[] | undefined, value: string) {
-  const administrator = useMe().data?.role === 'administrator'
+  const me = useMe().data
+  const administrator = me?.role === 'administrator'
   const names = useMemo(() => [...new Set((reports ?? []).flatMap(report => report.barangay ?? []))].sort(), [reports])
   // No report has a barangay until boundaries are loaded, and then "outside" would wrongly describe all of them.
   const enabled = administrator && names.length > 0
   const selected = enabled ? value : ''
   return {
     enabled,
+    locked: me?.role === 'staff' ? (me.barangay ?? null) : null,
     names,
     matches: (report: Report) => !selected || (selected === OUTSIDE ? !report.barangay : report.barangay === selected),
   }
+}
+
+export function LockedBarangay({ name, className }: { name: string; className?: string }) {
+  const t = useText()
+  return (
+    <label className={className ?? 'block'}>
+      <span className="sr-only">{t('Your barangay')}</span>
+      <NativeSelect aria-label={t('Your barangay')} value={name} disabled>
+        <option value={name}>{name}</option>
+      </NativeSelect>
+    </label>
+  )
 }
 
 export function BarangayFilter({

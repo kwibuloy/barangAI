@@ -1,14 +1,14 @@
 # BarangAI
 
-Community incident reporting for Philippine barangays. Residents submit photographed, located concerns; barangay staff verify and manage them. No report is forwarded automatically. See the [presentation guide](docs/presentation-demo.md), [feature status](docs/feature-status.md), and [deployment guide](docs/deployment.md) for capabilities and remaining gates.
+Community incident reporting for Philippine barangays. Residents submit photographed, located concerns; barangay staff verify and manage them. No report is forwarded automatically. See the [presentation guide](docs/presentation-demo.md), [feature status](docs/feature-status.md), and [mobile guide](docs/mobile.md) for capabilities and how to run it.
 
 ## Current state
 
-The local application includes resident, staff and administrator permissions, private sanitized photo uploads, ownership checks, status transitions, actions and audit history. Residents can choose an existing photo or use a camera input, preview the selection and submit it. After a photo is chosen, the AI fills in the category, a short description, hazard flags and the location (see [Local presentation with AI](#local-presentation-with-ai)); residents review and edit all of it, and staff verify every report. Its accuracy has not been measured yet, and embedding quality for duplicate review is not validated. Chat supports English, Filipino and Taglish with authorized tracking and optional Workers AI guidance. The public demo is [BarangAI](https://barangai-watch.onrender.com). The reviewed AI image was deployed on 21 October 2026; three authenticated synthetic photo previews returned predictions successfully.
+The local application includes resident, staff and administrator permissions, private sanitized photo uploads, ownership checks, status transitions, actions and audit history. Residents can choose an existing photo or use a camera input, preview the selection and submit it. After a photo is chosen, the AI fills in the category, a short description, hazard flags and the location (see [Local presentation with AI](#local-presentation-with-ai)); residents review and edit all of it, and staff verify every report. Its accuracy has not been measured yet, and embedding quality for duplicate review is not validated. Chat supports English, Filipino and Taglish with authorized tracking and optional Workers AI guidance. The reviewed AI image was deployed on 21 October 2026; three authenticated synthetic photo previews returned predictions successfully.
 
 The staff portal includes filters, category counts, a seven-day trend and an incident map. In-app notifications record status changes and read/unread state. The interface supports English and Filipino. Resident Google sign-in is implemented and hidden until credentials are configured. The administrator [deletion command](docs/data-deletion.md) defaults to a dry run and requires explicit confirmation.
 
-The selected hosting setup is **Render Free + Supabase Free**. One container serves the website and API; PostgreSQL and a private photo bucket persist separately. Local storage remains available for development. Hosted privacy checks, physical-phone camera checks and target-host performance must pass before claiming the hosted demo ready.
+BarangAI runs locally: a laptop serves the website and API, staff use its browser, and residents use an Android app over the same Wi-Fi. See [Running on a laptop and an Android phone](docs/mobile.md). The Render and Supabase files and guides are parked and not in use.
 
 ## Local setup
 

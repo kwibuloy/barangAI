@@ -1,6 +1,6 @@
 /**
  * Photos are shrunk in the browser before upload: a phone camera's 3–12 MB original becomes a ~200–500 KB JPEG
- * whose longest side is at most 1600 px. That keeps uploads quick on mobile data and the private Supabase bucket
+ * whose longest side is at most 1600 px. That keeps uploads quick on mobile data and stored photos
  * small, while street signs, wiring and potholes stay readable. The server applies the same limits again, so an
  * old or unusual browser that cannot shrink here still stores a small photo.
  *

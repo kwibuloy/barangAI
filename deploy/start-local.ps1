@@ -1,4 +1,4 @@
-param([int]$Port = 8000)
+param([int]$Port = 8000, [switch]$Lan)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -12,8 +12,10 @@ if (!(Test-Path -LiteralPath (Join-Path $website 'index.html'))) { throw 'Build 
 # Optional keys from the git-ignored .env file in the repo root (see .env.example). Only these names are read,
 # so the file can never point this local presentation at a remote database or storage. Values already set in
 # the shell win over the file.
-$allowed = 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_WORKERS_AI_TOKEN', 'CLOUDFLARE_VISION_MODEL', 'GEOCODER_CONTACT',
-    'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'
+$allowed = 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_WORKERS_AI_TOKEN', 'CLOUDFLARE_VISION_MODEL', 'GEOCODER_CONTACT'
+# Google accepts neither a private network address as a callback nor sign-in from an app's web view.
+if (!$Lan) { $allowed += 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI' }
+else { 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI' | ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'Process') } }
 $keysFile = Join-Path $projectRoot '.env'
 if (Test-Path -LiteralPath $keysFile) {
     foreach ($line in Get-Content -LiteralPath $keysFile) {
@@ -34,16 +36,26 @@ $env:CHECKER_THREADS = '2'
 $env:GEOCODER = 'nominatim'
 $env:STATIC_SITE_DIR = $website
 $env:API_ROOT_PATH = ''
+$env:DIRECT_CONNECTIONS = 'true'
 $env:COOKIE_SECURE = 'false'
 $env:DATABASE_URL = 'sqlite:///' + (Join-Path $projectRoot 'barangai-dev.db').Replace('\', '/')
 $env:MEDIA_STORAGE = 'local'
 $env:PRIVATE_MEDIA_DIR = Join-Path $projectRoot 'private_media'
 
+$bindAddress = '127.0.0.1'
 Write-Host "Local presentation: http://127.0.0.1:$Port"
+if ($Lan) {
+    $bindAddress = '0.0.0.0'
+    # The network card with the internet route, so virtual adapters such as WSL's aren't offered to phones.
+    $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
+    $address = if ($route) { Get-NetIPAddress -InterfaceIndex $route.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty IPAddress }
+    Write-Host "Phone address: $(if ($address) { "http://${address}:$Port" } else { "http://<this PC's Wi-Fi address>:$Port" })"
+    Write-Host 'Plain HTTP: use a trusted Wi-Fi network. If a phone cannot connect, see docs/mobile.md for the firewall rule.'
+}
 Write-Host "Cloudflare photo descriptions: $cloudflare"
 Write-Host 'AI suggestions are experimental and not field validated. Residents review them; staff verify every report.'
 Push-Location (Join-Path $projectRoot 'apps/api')
 try {
-    & $python -m uvicorn barangai.main:app --host 127.0.0.1 --port $Port
+    & $python -m uvicorn barangai.main:app --host $bindAddress --port $Port
     if ($LASTEXITCODE -ne 0) { throw "API exited with code $LASTEXITCODE" }
 } finally { Pop-Location }

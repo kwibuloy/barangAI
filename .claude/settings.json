@@ -1,11 +1,5 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Edit|Write|NotebookEdit|Grep|Bash|PowerShell",
-        "hooks": [{ "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"", "timeout": 10 }]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

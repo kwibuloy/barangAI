@@ -35,6 +35,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0e0e0d' : '#f5f4f1')
+    // In the Android app, system bar icons follow the app's theme, not only the phone's.
+    ;(
+      window as { Capacitor?: { Plugins?: Record<string, { setStyle?: (options: { style: string }) => unknown }> } }
+    ).Capacitor?.Plugins?.SystemBars?.setStyle?.({ style: dark ? 'DARK' : 'LIGHT' })
   }, [dark])
   function setTheme(value: ThemeChoice) {
     try {

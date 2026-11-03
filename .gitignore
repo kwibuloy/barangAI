@@ -13,6 +13,7 @@ env
 .claude/.last-check
 *.db
 *.sqlite3
+*.sql
 private_media/
 coverage/
 ml/outputs/

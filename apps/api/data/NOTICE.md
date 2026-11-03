@@ -1,12 +1,12 @@
 # Boundary data notices
 
-`dasmarinas-barangays.geojson` holds the 75 barangays of the City of Dasmariñas.
+`dasmarinas-barangays.geojson` holds the 75 barangays of the City of Dasmariñas. `taft-barangays.geojson` holds 13 barangays of Manila around De La Salle University, Taft Avenue, for demos there.
 
 ## Shapes
 
 Philippines administrative level 0-4 boundaries (COD-AB), release of 6 November 2023, by the National Mapping and Resource Information Authority (NAMRIA) and the Philippine Statistics Authority (PSA), published by OCHA on the [Humanitarian Data Exchange](https://data.humdata.org/dataset/cod-ab-phl). Licensed under [CC BY-IGO](https://creativecommons.org/licenses/by/3.0/igo/legalcode).
 
-Changes made: reprojected from UTM zone 51N to longitude and latitude and rounded to six decimals here, with one city's barangays selected. The API simplifies the borders it sends to maps.
+Changes made: reprojected from UTM zone 51N to longitude and latitude and rounded to six decimals here, with one city's barangays, or those near one point, selected. The API simplifies the borders it sends to maps.
 
 ## Names and codes
 

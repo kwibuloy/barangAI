@@ -5,7 +5,7 @@ import { useText } from '../../lib/i18n'
 import { statuses } from '../reports/categories'
 import { groupCases } from '../reports/grouping'
 import { useReports } from '../reports/queries'
-import { BarangayFilter, useBarangayFilter } from './BarangayFilter'
+import { BarangayFilter, LockedBarangay, useBarangayFilter } from './BarangayFilter'
 import { MapLegend, StaffMap } from './StaffMap'
 
 export function MapPage() {
@@ -56,6 +56,7 @@ export function MapPage() {
         {area.enabled && (
           <BarangayFilter names={area.names} value={barangay} onChange={value => setFilter('barangay', value)} />
         )}
+        {area.locked && <LockedBarangay name={area.locked} />}
         <p className="text-[12.5px] text-muted-foreground">
           {visible.length} {t('of')} {rows.length} {t('reports')} · {t('Click a pin to open it.')}
         </p>

@@ -9,6 +9,8 @@
     "test": "vitest run --maxWorkers=1 --no-file-parallelism --pool=threads"
   },
   "dependencies": {
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/geolocation": "^8.2.4",
     "@tanstack/react-query": "^5.105.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

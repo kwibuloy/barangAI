@@ -58,6 +58,7 @@ def serialize_report(report, detail=False, staff=False):
                 "to_status": event.to_status,
                 # A case's automatic step note is for staff; residents still see the step itself.
                 "note": event.note if staff or not (event.note or "").startswith(CASE_STEP_NOTE) else None,
+                "rejection_reason": event.rejection_reason,
                 "created_at": utc_iso(event.created_at),
                 **({"actor_id": event.actor_id} if staff else {}),
             }

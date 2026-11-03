@@ -9,7 +9,13 @@ export type Category =
   | 'other'
 export type Hazard = 'electrical_hazard' | 'blocks_road' | 'risk_to_people'
 export type Status = 'Pending' | 'Under Verification' | 'Accepted' | 'In Progress' | 'Resolved' | 'Rejected'
-export type ReportEvent = { id?: string; to_status?: Status; created_at?: string; note?: string }
+export type ReportEvent = {
+  id?: string
+  to_status?: Status
+  created_at?: string
+  note?: string
+  rejection_reason?: string | null
+}
 export type StaffAction = { id: string; kind: 'action' | 'coordination' | 'system'; note: string; created_at: string }
 export type Duplicate = {
   id: string

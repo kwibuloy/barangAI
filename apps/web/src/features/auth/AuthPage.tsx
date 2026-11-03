@@ -246,6 +246,10 @@ export function AuthPage() {
             className="mx-auto block min-h-11 px-2 text-[15px] font-medium text-primary"
             onClick={() => {
               setMode(mode === 'login' ? 'register' : 'login')
+              setEmail('')
+              setPassword('')
+              setShowPassword(false)
+              setAgreed(false)
               signIn.reset()
               setRedirectError('')
             }}
