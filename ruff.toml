@@ -1,0 +1,9 @@
+# One style for the API, hooks and scripts. ml/ is frozen.
+line-length = 120
+target-version = "py312"
+exclude = ["ml"]
+
+[lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B008", "E501"]  # FastAPI Depends() defaults; the formatter owns line length.
+unfixable = ["F401"]  # Report unused imports, never delete them: some imports register models or routes.
