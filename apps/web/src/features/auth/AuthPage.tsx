@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { m } from 'motion/react'
+import { useReducedMotion } from 'motion/react'
 import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { AuthKap } from './AuthKap'
+import { Leaves } from './Leaves'
 import './auth.css'
+import { Wordmark } from '@/components/BrandMark'
+import { cn } from '@/lib/utils'
+import { Scene } from '@/components/Scene'
 import { Alert } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LanguageSwitch, Txt, useText } from '../../lib/i18n'
 import { LegalLinks } from '../legal/LegalPage'
-import { useGoogleConfig, useSignIn } from './queries'
+import { isReturningVisitor, useGoogleConfig, useSignIn } from './queries'
 
 const GOOGLE_ERRORS: Record<string, string> = {
   google_cancelled: 'Google sign-in was cancelled. Try again or use your password.',
@@ -18,6 +22,95 @@ const GOOGLE_ERRORS: Record<string, string> = {
   google_email_unverified: 'Use a verified Google email address to sign in.',
   google_account_exists: 'This email already has an account. Sign in with your password.',
   google_resident_only: 'Google sign-in is available for resident accounts only.',
+}
+
+// Kap introduces himself to someone new, one line at a time; a returning visitor just gets a welcome back.
+const INTRO = ["Hi! I'm Kap", 'Your barangay helper.', "Spot a problem? I'll help you report it!"]
+const REGISTER = ['Nice to meet you!', "Let's make your account."]
+
+/** Types a line out letter by letter, each letter popping in (all at once under reduced motion). Every letter is laid
+    out from the start and only fades in, so the bubble never jumps in size while typing; words stay unbroken. */
+function Typed({ text }: { text: string }) {
+  const reduced = useReducedMotion()
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    setCount(reduced ? text.length : 0)
+    if (reduced) return
+    const timer = window.setInterval(
+      () =>
+        setCount(value => {
+          if (value >= text.length) window.clearInterval(timer)
+          return Math.min(text.length, value + 1)
+        }),
+      26,
+    )
+    return () => window.clearInterval(timer)
+  }, [text, reduced])
+  let start = 0
+  const words = text.split(' ').map(word => {
+    const at = start
+    start += word.length + 1
+    return { word, at }
+  })
+  return (
+    <span className="auth-typed">
+      {words.map(({ word, at }, w) => (
+        <Fragment key={at}>
+          {w > 0 && ' '}
+          <span className="auth-word">
+            {[...word].map((letter, i) => (
+              <span key={i} className="auth-letter" data-on={at + i < count || undefined}>
+                {letter}
+              </span>
+            ))}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  )
+}
+
+/** Little round bubbles that float up off Kap's speech bubble and pop. */
+function Fizz() {
+  return (
+    <span className="auth-fizz" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+      <i />
+    </span>
+  )
+}
+
+/** What Kap says, following the form: introductions, a peek joke on the password, help when something fails. */
+function useKapLine({
+  mode,
+  returning,
+  emailFocus,
+  privacyFocus,
+  revealed,
+  failed,
+}: {
+  mode: 'login' | 'register'
+  returning: boolean
+  emailFocus: boolean
+  privacyFocus: boolean
+  revealed: boolean
+  failed: boolean
+}) {
+  const [step, setStep] = useState(0)
+  const script = mode === 'register' ? REGISTER : returning ? ['Hello again! Welcome back!'] : INTRO
+  useEffect(() => setStep(0), [mode])
+  useEffect(() => {
+    if (step >= script.length - 1) return
+    const timer = window.setTimeout(() => setStep(value => value + 1), 2600)
+    return () => clearTimeout(timer)
+  }, [step, script.length])
+  if (failed) return "Hmm, that didn't work. Check and try again?"
+  if (revealed) return "Eyes covered! I can't see a thing."
+  if (privacyFocus) return "I'm not peeking… promise!"
+  if (emailFocus) return returning ? 'Is that you?' : "What's your email?"
+  return script[Math.min(step, script.length - 1)]
 }
 
 export function AuthPage() {
@@ -42,11 +135,13 @@ export function AuthPage() {
     })
     return () => cancelAnimationFrame(frame)
   }, [loadingStage])
+  const [returning] = useState(isReturningVisitor)
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [privacyFocus, setPrivacyFocus] = useState(false)
+  const [emailFocus, setEmailFocus] = useState(false)
   const [agreed, setAgreed] = useState(false)
   const t = useText()
   const [redirectError, setRedirectError] = useState('')
@@ -73,39 +168,22 @@ export function AuthPage() {
     signIn.mutate({ mode, email, password, ...(mode === 'register' ? { accepted_terms: agreed } : {}) })
   }
   const error = signIn.error?.message ?? redirectError
+  const line = useKapLine({ mode, returning, emailFocus, privacyFocus, revealed: showPassword, failed: Boolean(error) })
+  // The hills drift with the pointer (desktop only); layers move by their data-depth (auth.css).
+  function parallax(event: PointerEvent<HTMLElement>) {
+    if (event.pointerType === 'touch') return
+    const x = (event.clientX / innerWidth) * 2 - 1
+    const y = (event.clientY / innerHeight) * 2 - 1
+    event.currentTarget.style.setProperty('--px', (x * -14).toFixed(1))
+    event.currentTarget.style.setProperty('--py', (y * -6).toFixed(1))
+  }
   return (
-    <main className="auth-scene" data-loading-stage={loadingStage}>
+    <main className="auth-scene" data-loading-stage={loadingStage} onPointerMove={parallax}>
+      <Scene className="auth-hills" houses={false} />
+      <Leaves />
       <div className="auth-ui" inert={loadingStage} aria-hidden={loadingStage || undefined}>
-        <div className="auth-landscape auth-landscape-left" aria-hidden="true" />
-        <div className="auth-landscape auth-landscape-right" aria-hidden="true" />
         <header className="auth-brand">
-          <span>
-            <svg width="65" height="65" viewBox="0 0 65 65" aria-hidden="true">
-              <defs>
-                <linearGradient id="auth-brand-blue" x2="0" y2="1">
-                  <stop stopColor="#008aff" />
-                  <stop offset="1" stopColor="#0054eb" />
-                </linearGradient>
-              </defs>
-              <rect width="65" height="65" rx="14" fill="url(#auth-brand-blue)" />
-              <g transform="translate(32.5 32.5)">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <rect
-                    key={i}
-                    x="-3"
-                    y="-25"
-                    width="6"
-                    height="11"
-                    rx="3"
-                    fill="#ffdd00"
-                    transform={`rotate(${i * 45})`}
-                  />
-                ))}
-                <circle r="11" fill="white" />
-              </g>
-            </svg>
-            <span>BarangAI</span>
-          </span>
+          <Wordmark size={48} textClassName="text-[32px]" />
           <LanguageSwitch className="auth-language" />
         </header>
         <div className="auth-composition">
@@ -117,17 +195,16 @@ export function AuthPage() {
               failed={Boolean(error)}
               onLoadingChange={loadingChanged}
             />
-            <span className="auth-greeting">
-              Hello! 👋
-              <br />
-              Welcome back!
+            <span className="auth-greeting" key={line}>
+              <Typed text={t(line)} />
+              <Fizz />
             </span>
           </div>
           <section className="auth-card" aria-labelledby="auth-heading">
-            <m.form onSubmit={submit} className="auth-form" aria-busy={signIn.isPending}>
+            <form onSubmit={submit} className="auth-form" aria-busy={signIn.isPending}>
               <div className="auth-heading">
                 <h1 id="auth-heading">
-                  <Txt>{mode === 'login' ? 'Welcome back' : 'Create an account'}</Txt>
+                  <Txt>{mode === 'login' ? (returning ? 'Welcome back' : 'Sign in') : 'Create an account'}</Txt>
                 </h1>
                 <p>
                   <Txt>
@@ -138,7 +215,7 @@ export function AuthPage() {
                 </p>
               </div>
               <label className="block space-y-1.5">
-                <span className="text-[14px] font-medium">
+                <span className="auth-label">
                   <Txt>Email address</Txt>
                 </span>
                 <Input
@@ -148,6 +225,8 @@ export function AuthPage() {
                   inputMode="email"
                   value={email}
                   onChange={event => setEmail(event.target.value)}
+                  onFocus={() => setEmailFocus(true)}
+                  onBlur={() => setEmailFocus(false)}
                 />
               </label>
               <div
@@ -159,7 +238,7 @@ export function AuthPage() {
                 }}
               >
                 <label className="block space-y-1.5">
-                  <span className="text-[14px] font-medium">
+                  <span className="auth-label">
                     <Txt>Password</Txt>
                   </span>
                   <span className="relative block">
@@ -171,14 +250,14 @@ export function AuthPage() {
                       value={password}
                       onChange={event => setPassword(event.target.value)}
                       aria-describedby={mode === 'register' ? 'password-hint' : undefined}
-                      className="pr-12"
+                      className="pr-14"
                     />
                     <button
                       type="button"
                       aria-label={t(showPassword ? 'Hide password' : 'Show password')}
                       aria-pressed={showPassword}
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute top-0 right-0 grid size-11 place-items-center text-muted-foreground"
+                      className="absolute top-1/2 right-1.5 grid size-10 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-card hover:text-link"
                     >
                       {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                     </button>
@@ -201,11 +280,11 @@ export function AuthPage() {
                   />
                   <span>
                     <Txt>I agree to the</Txt>{' '}
-                    <Link to="/terms" className="font-medium text-primary underline underline-offset-2">
+                    <Link to="/terms" className="font-medium text-link underline underline-offset-2">
                       <Txt>Terms and conditions</Txt>
                     </Link>{' '}
                     <Txt>and the</Txt>{' '}
-                    <Link to="/privacy" className="font-medium text-primary underline underline-offset-2">
+                    <Link to="/privacy" className="font-medium text-link underline underline-offset-2">
                       <Txt>Privacy notice</Txt>
                     </Link>
                     .
@@ -217,18 +296,18 @@ export function AuthPage() {
                   <Txt>{error}</Txt>
                 </Alert>
               )}
-              <Button size="lg" className="auth-submit w-full" type="submit" disabled={signIn.isPending}>
+              <Button size="lg" className="mt-2 w-full" type="submit" disabled={signIn.isPending}>
                 {signIn.isPending && <LoaderCircle className="animate-spin" />}
                 <Txt>{signIn.isPending ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}</Txt>
               </Button>
               {google.data?.enabled && (
                 <>
-                  <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
-                    <span className="h-px flex-1 bg-border" />
+                  <div className="flex items-center gap-3 label-caps text-[12px] text-muted-foreground">
+                    <span className="h-0.5 flex-1 rounded-full bg-border" />
                     <Txt>or</Txt>
-                    <span className="h-px flex-1 bg-border" />
+                    <span className="h-0.5 flex-1 rounded-full bg-border" />
                   </div>
-                  <Button asChild variant="outline" size="lg" className="w-full bg-card">
+                  <Button asChild variant="secondary" size="lg" className="w-full">
                     <a href="/api/auth/google/start">
                       <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
                         <path
@@ -255,7 +334,7 @@ export function AuthPage() {
               )}
               <button
                 type="button"
-                className="auth-switch mx-auto block min-h-11 px-2 text-[15px] font-medium text-primary"
+                className="mx-auto block min-h-11 rounded-xl px-3 label-caps text-[14px] text-link hover:bg-sky-soft"
                 onClick={() => {
                   setMode(mode === 'login' ? 'register' : 'login')
                   setEmail('')
@@ -268,13 +347,19 @@ export function AuthPage() {
               >
                 <Txt>{mode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in'}</Txt>
               </button>
-              <p className="text-center text-[13px] text-muted-foreground">
+              {/* Signing up already links the terms and privacy notice beside its tick box; phones keep the
+                  form on one screen by not repeating them, or the emergency line, there. */}
+              <p
+                className={cn('text-center text-[13px] text-muted-foreground', mode === 'register' && 'max-sm:hidden')}
+              >
                 <Txt>Not for emergencies. If anyone is in danger, call 911.</Txt>
               </p>
-              <LegalLinks className="text-center" />
-            </m.form>
+              <LegalLinks className={cn('text-center', mode === 'register' && 'max-sm:hidden')} />
+            </form>
           </section>
-          <p className="auth-tagline">A safer barangay starts with you.</p>
+          <p className="auth-tagline">
+            <Txt>A safer barangay starts with you.</Txt>
+          </p>
         </div>
       </div>
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">

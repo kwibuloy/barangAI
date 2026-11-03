@@ -62,6 +62,28 @@ if (role !== 'none') {
 
 // Multi-step flows: each step is shot as <role>-<flow>-<n>-<step>-<width>.png. A submit writes to the local DB.
 const click = (page, text) => page.locator(`::-p-text(${text})`).click()
+// Full-page capture resizes the viewport, which replays chart draw-ins and can catch entrance animations mid-way.
+// So grow the viewport to the page's height first, give charts time to redraw, then end every one-shot animation
+// (looping ones, like Kap breathing, keep running) and capture the settled layout.
+const settle = async page => {
+  const viewport = page.viewport()
+  const height = await page.evaluate(() => document.documentElement.scrollHeight)
+  if (height > viewport.height) {
+    await page.setViewport({ ...viewport, height })
+    await new Promise(r => setTimeout(r, 900))
+  }
+  await page.evaluate(() =>
+    document.getAnimations().forEach(animation => {
+      if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish()
+    }),
+  )
+  return viewport
+}
+const capture = async (page, path) => {
+  const viewport = await settle(page)
+  await page.screenshot({ path, fullPage: true })
+  await page.setViewport(viewport)
+}
 const addPhoto = page =>
   page.evaluate(async () => {
     // Synthetic "flooded street" photo drawn in the page, so no real image is used.
@@ -161,7 +183,7 @@ for (const route of routes.filter(route => FLOWS[route])) {
     page.on('console', m => m.type() === 'error' && errors.push(m.text()))
     await FLOWS[route](page, async step => {
       const path = `${out}/${role}-${route}-${step}-${w}${suffix}.png`
-      await page.screenshot({ path, fullPage: true })
+      await capture(page, path)
       console.log(path)
     })
     if (errors.length) {
@@ -191,7 +213,7 @@ for (const route of routes.filter(route => !FLOWS[route])) {
     await page.goto(route === 'home' ? base : new URL(route, base).href, { waitUntil: 'networkidle0', timeout: 60_000 })
     await new Promise(r => setTimeout(r, 2000)) // map tiles, photos and chart animations settle
     const name = `${role}-${route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}-${w}${suffix}.png`
-    await page.screenshot({ path: `${out}/${name}`, fullPage: true })
+    await capture(page, `${out}/${name}`)
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)
     if (errors.length || overflow) failures++
     console.log(

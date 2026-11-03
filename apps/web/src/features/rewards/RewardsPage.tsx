@@ -23,10 +23,10 @@ function RewardCard({ reward, balance }: { reward: Reward; balance: number }) {
   const short = balance < reward.points_cost
   const gone = reward.stock === 0
   return (
-    <li className="hairline space-y-2 rounded-2xl bg-card p-4">
+    <li className="edge space-y-3 rounded-2xl p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <strong className="block text-[16px] font-semibold">{reward.name}</strong>
+          <strong className="block text-[16px] font-extrabold">{reward.name}</strong>
           {reward.partner && <span className="block text-[13px] text-muted-foreground">{reward.partner}</span>}
           {reward.description && <span className="block text-[13px] text-muted-foreground">{reward.description}</span>}
           {reward.stock !== null && (
@@ -35,20 +35,19 @@ function RewardCard({ reward, balance }: { reward: Reward; balance: number }) {
             </span>
           )}
         </div>
-        <span className="shrink-0 text-[15px] font-semibold text-primary tabular-nums">
+        <span className="shrink-0 rounded-xl border-2 border-[#ffc800] bg-[#fff4c2] px-2.5 py-1 text-[14px] font-extrabold text-[#7a5a00] tabular-nums dark:bg-[#ffc800]/15 dark:text-[#ffd84d]">
           {reward.points_cost} <Txt>pts</Txt>
         </span>
       </div>
       {asking ? (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 *:grow *:basis-auto">
           <Button
-            className="flex-1"
             disabled={redeem.isPending}
             onClick={() => redeem.mutate(reward.id, { onSettled: () => setAsking(false) })}
           >
             <Txt>Spend the points</Txt>
           </Button>
-          <Button className="flex-1" variant="outline" onClick={() => setAsking(false)}>
+          <Button variant="outline" onClick={() => setAsking(false)}>
             <Txt>Cancel</Txt>
           </Button>
         </div>
@@ -73,7 +72,7 @@ function Shop({ balance }: { balance: number }) {
   const shop = useShop(barangay)
   return (
     <div className="space-y-3">
-      <label className="block space-y-1.5 text-[14px] font-medium">
+      <label className="block space-y-1.5 text-[14px] font-bold">
         <Txt>Choose a barangay</Txt>
         <NativeSelect value={barangay} onChange={event => setBarangay(event.target.value)}>
           <option value="">{t('Choose a barangay')}</option>
@@ -115,10 +114,15 @@ function Codes() {
   ) : (
     <ul className="space-y-3">
       {available.map(item => (
-        <li key={item.id} className="hairline space-y-1 rounded-2xl bg-card p-4">
-          <strong className="block text-[16px] font-semibold">{item.reward}</strong>
+        <li
+          key={item.id}
+          className="space-y-1 rounded-2xl border-2 border-dashed border-[#ffc800] bg-[#fffbe8] p-4 dark:bg-[#ffc800]/10"
+        >
+          <strong className="block text-[16px] font-extrabold">{item.reward}</strong>
           <span className="block text-[14px] text-muted-foreground">{item.barangay}</span>
-          <code className="block py-1 text-[24px] font-bold tracking-widest select-all">{item.code}</code>
+          <code className="block py-1 font-mono text-[26px] font-extrabold tracking-[0.2em] break-all select-all">
+            {item.code}
+          </code>
           <span className="block text-[13px] text-muted-foreground">
             <Txt>Show this at the barangay. It works once. Expires</Txt> {when(item.expires_at)}
           </span>
@@ -134,11 +138,11 @@ function History({ entries }: { entries: PointEntry[] }) {
   return (
     <div className="space-y-4">
       {past.length > 0 && (
-        <ul className="hairline divide-y rounded-2xl bg-card">
+        <ul className="edge divide-y-2 overflow-hidden rounded-2xl">
           {past.map(item => (
             <li key={item.id} className="flex items-center justify-between gap-3 p-3.5 text-[15px]">
               <span className="min-w-0">
-                <span className="block font-medium">{item.reward}</span>
+                <span className="block font-extrabold">{item.reward}</span>
                 <span className="block text-[13px] text-muted-foreground">
                   {item.code} · {item.barangay}
                 </span>
@@ -150,7 +154,7 @@ function History({ entries }: { entries: PointEntry[] }) {
           ))}
         </ul>
       )}
-      <ul className="hairline divide-y rounded-2xl bg-card">
+      <ul className="edge divide-y-2 overflow-hidden rounded-2xl">
         {entries.length === 0 && (
           <li className="p-3.5 text-[15px] text-muted-foreground">
             <Txt>Points appear here once staff accept your report.</Txt>
@@ -159,12 +163,14 @@ function History({ entries }: { entries: PointEntry[] }) {
         {entries.map(item => (
           <li key={item.id} className="flex items-center justify-between gap-3 p-3.5 text-[15px]">
             <span className="min-w-0">
-              <span className="block font-medium">
+              <span className="block font-extrabold">
                 <Txt>{ENTRY[item.kind]}</Txt>
               </span>
               <span className="block text-[13px] text-muted-foreground">{when(item.created_at)}</span>
             </span>
-            <span className="shrink-0 font-semibold tabular-nums">
+            <span
+              className={`shrink-0 font-extrabold tabular-nums ${item.amount > 0 ? 'text-leaf-ink' : 'text-muted-foreground'}`}
+            >
               {item.amount > 0 ? '+' : ''}
               {item.amount}
             </span>
@@ -187,11 +193,16 @@ export function RewardsPage() {
         subtitle={<Txt>Earn points for valid reports and spend them in any barangay's shop.</Txt>}
         trailing={<ResidentAccount />}
       />
-      <div className="hairline rounded-2xl bg-card p-4">
-        <span className="block text-[14px] text-muted-foreground">
-          <Txt>Your points</Txt>
+      <div className="flex items-center gap-4 rounded-2xl border-2 border-b-4 border-[#ffd84d] bg-[#fff7d6] p-4 dark:border-[#7a6200] dark:bg-[#ffc800]/10">
+        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#ffc800] text-[#4a3a00] shadow-[0_4px_0_#e0a800]">
+          <Gift className="size-7" strokeWidth={2.5} aria-hidden="true" />
         </span>
-        <strong className="block text-[34px] leading-tight font-bold tabular-nums">{points.data?.balance ?? 0}</strong>
+        <span className="min-w-0">
+          <span className="label-caps block text-[12px] text-[#7a5a00] dark:text-[#ffd84d]">
+            <Txt>Your points</Txt>
+          </span>
+          <strong className="display block text-[36px] leading-tight tabular-nums">{points.data?.balance ?? 0}</strong>
+        </span>
       </div>
       <Segmented
         id="rewards-section"

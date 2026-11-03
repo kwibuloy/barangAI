@@ -6,7 +6,7 @@ afterEach(() => {
   cleanup()
   vi.useRealTimers()
 })
-it('runs surprise then covering then covered and cancels stale movement on reveal', () => {
+it('takes a surprised beat, then peeks; showing the password covers at once and hiding it peeks again', () => {
   vi.useFakeTimers()
   const { result, rerender, unmount } = renderHook(({ focus, reveal }) => useKapPrivacy(focus, reveal, true), {
     initialProps: { focus: false, reveal: false },
@@ -14,48 +14,36 @@ it('runs surprise then covering then covered and cancels stale movement on revea
   rerender({ focus: true, reveal: false })
   expect(result.current.phase).toBe('surprise')
   act(() => {
-    vi.advanceTimersByTime(140)
+    vi.advanceTimersByTime(160)
   })
-  expect(result.current.phase).toBe('covering')
+  expect(result.current.phase).toBe('peek')
   rerender({ focus: true, reveal: true })
-  expect(result.current.phase).toBe('turning-away')
-  act(() => {
-    vi.advanceTimersByTime(1000)
-  })
-  expect(result.current.phase).toBe('away')
-  rerender({ focus: true, reveal: false })
-  expect(result.current.phase).toBe('turning-back')
-  act(() => {
-    vi.advanceTimersByTime(220)
-  })
   expect(result.current.phase).toBe('covered')
+  rerender({ focus: true, reveal: false })
+  expect(result.current.phase).toBe('peek')
   rerender({ focus: false, reveal: false })
-  expect(result.current.phase).toBe('returning')
-  rerender({ focus: true, reveal: false })
-  expect(result.current.phase).toBe('covering')
-  act(() => {
-    vi.advanceTimersByTime(480)
-  })
-  expect(result.current.phase).toBe('covered')
+  expect(result.current.phase).toBe('idle')
   unmount()
   expect(vi.getTimerCount()).toBe(0)
 })
-it('keeps privacy immediate when images are unavailable and cancels surprise after a rapid blur', () => {
+it('never shows an idle frame on focus and skips the beat when images are missing or a blur comes fast', () => {
   vi.useFakeTimers()
   const { result, rerender } = renderHook(({ focus, ready }) => useKapPrivacy(focus, false, ready), {
     initialProps: { focus: true, ready: false },
   })
-  expect(result.current.phase).toBe('covered')
+  expect(result.current.phase).toBe('peek')
   rerender({ focus: false, ready: true })
-  act(() => {
-    vi.advanceTimersByTime(500)
-  })
+  expect(result.current.phase).toBe('idle')
   rerender({ focus: true, ready: true })
   expect(result.current.phase).toBe('surprise')
   rerender({ focus: false, ready: true })
-  expect(result.current.phase).toBe('returning')
+  expect(result.current.phase).toBe('idle')
   act(() => {
     vi.advanceTimersByTime(500)
   })
   expect(result.current.phase).toBe('idle')
+})
+it('covers immediately on reveal, even before its effect runs', () => {
+  const { result } = renderHook(() => useKapPrivacy(false, true, true))
+  expect(result.current.phase).toBe('covered')
 })

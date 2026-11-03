@@ -71,12 +71,19 @@ export function ReportsPage() {
             />
           ) : (
             shown.length > 0 && (
-              <div className="hairline overflow-hidden rounded-2xl bg-card lg:scroll-thin lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+              // Phones: one chunky card per report, like Duolingo's lesson tiles; desktops: one list beside the details.
+              <div
+                data-cards={!desktop || undefined}
+                className="space-y-2.5 lg:scroll-thin lg:hairline lg:min-h-0 lg:flex-1 lg:space-y-0 lg:overflow-hidden lg:overflow-y-auto lg:rounded-2xl lg:bg-card"
+              >
                 {shown.map(report => (
                   <LinkRow
                     key={report.id}
                     to={`/reports/${report.id}`}
-                    className={cn(desktop && report.id === id && 'bg-tint hover:bg-tint')}
+                    className={cn(
+                      'max-lg:edge max-lg:rounded-2xl max-lg:bg-card',
+                      desktop && report.id === id && 'bg-tint hover:bg-tint',
+                    )}
                     leading={<CategoryTile category={report.resident_category} />}
                     title={<Txt>{label(report.resident_category)}</Txt>}
                     subtitle={
@@ -124,7 +131,7 @@ export function ReportsPage() {
       </div>
       {!desktop && (
         <Drawer open={Boolean(id)} onOpenChange={open => !open && close()}>
-          <DrawerContent className="mx-auto max-h-[94dvh] max-w-2xl data-[vaul-drawer-direction=bottom]:max-h-[94dvh]">
+          <DrawerContent className="mx-auto max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] max-w-2xl data-[vaul-drawer-direction=bottom]:max-h-[calc(100dvh-env(safe-area-inset-top)-12px)]">
             <DrawerTitle className="sr-only">
               <Txt>Report details</Txt>
             </DrawerTitle>

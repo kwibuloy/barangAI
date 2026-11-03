@@ -15,6 +15,26 @@ export type User = {
 }
 
 const meKey = ['me'] as const
+const RETURNING = 'barangai-returning'
+
+/** Remember this device once a session exists, whichever way it signed in (password or Google). */
+export function markReturningVisitor() {
+  try {
+    localStorage.setItem(RETURNING, '1')
+  } catch {
+    // Private mode: Kap introduces himself again next time.
+  }
+}
+
+/** Whether someone has signed in on this device before, so Kap says "welcome back" instead of introducing
+    himself. One flag, no personal data; private browsing simply gets the introduction again. */
+export function isReturningVisitor() {
+  try {
+    return localStorage.getItem(RETURNING) === '1'
+  } catch {
+    return false
+  }
+}
 export const isStaff = (user: User) => user.role === 'staff' || user.role === 'administrator'
 
 /** The signed-in user, or null when the session is missing or expired. */

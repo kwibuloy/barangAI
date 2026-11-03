@@ -32,11 +32,13 @@ Traffic is plain HTTP, including passwords, so use a Wi-Fi network you trust. Go
 
 ## Build and install the app
 
-You need JDK 21 and the Android SDK (platform 36), with the SDK path in `apps/mobile/android/local.properties` as `sdk.dir=...`. On this laptop it's in `D:\Android\Sdk`. Don't install it from inside the Claude app: Windows redirects its `AppData` writes to the app's private storage, where a normal terminal can't find them.
+You need JDK 21 and the Android SDK (platform 36), with the SDK path in `apps/mobile/android/local.properties` as `sdk.dir=...`, for example `D:\Android\Sdk` or `C:\Users\<you>\Android\Sdk`. Keep both out of `AppData` when installing from inside the Claude app: Windows redirects its `AppData` writes to the app's private storage, where Android Studio and a normal terminal can't find them. Android Studio 2026.2 bundles JDK 25, which this Gradle (8.14) can't run (`Unsupported class file major version 69`): set Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK to a JDK 21, such as Eclipse Temurin 21. The app is locked to portrait on phones (`AndroidManifest.xml`); Android 16 ignores the lock on tablets and unfolded foldables, which the tablet layout already handles.
 
 ```powershell
 cd apps/mobile; npm ci; npm run apk
 ```
+
+On a laptop with 8 GB of RAM the Gradle daemon can crash with an out-of-memory log (`hs_err_pid*.log`). Close other heavy apps, or cap it: `.\gradlew.bat assembleDebug --max-workers=1 "-Dorg.gradle.jvmargs=-Xmx1g -XX:+UseSerialGC" -Pkotlin.compiler.execution.strategy=in-process`.
 
 If Gradle stops with `Unable to establish loopback connection`, set `$env:JAVA_TOOL_OPTIONS='-Djdk.net.unixdomain.tmpdir=D:/gradle-tmp -Djava.io.tmpdir=D:/gradle-tmp'` to an existing folder with no spaces in its path, and build again.
 
