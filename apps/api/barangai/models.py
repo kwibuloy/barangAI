@@ -6,14 +6,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 
-# Report categories (AGENTS.md): residents, staff and the vision model choose from these; the checker from its own subset.
+# Report categories (AGENTS.md): residents, staff and both AI models choose from the same eight.
 CATEGORIES = (
     "flooding",
     "potholes",
     "fallen_trees",
     "uncollected_garbage",
     "damaged_signage",
-    "fire_hazard",
     "broken_streetlights",
     "exposed_wiring",
     "other",

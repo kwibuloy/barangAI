@@ -6,7 +6,6 @@ export type Category =
   | 'potholes'
   | 'uncollected_garbage'
   | 'damaged_signage'
-  | 'fire_hazard'
   | 'other'
 export type Hazard = 'electrical_hazard' | 'blocks_road' | 'risk_to_people'
 export type Status = 'Pending' | 'Under Verification' | 'Accepted' | 'In Progress' | 'Resolved' | 'Rejected'

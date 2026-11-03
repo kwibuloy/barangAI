@@ -46,7 +46,7 @@ OPEN_FOR_EVIDENCE = ("Accepted", "In Progress")
 # lights are separate faults); floods and garbage spread. Untuned starting values: check them on real reports.
 MANILA = timezone(timedelta(hours=8))
 RADIUS_M = {"broken_streetlights": 50, "damaged_signage": 50, "exposed_wiring": 50, "potholes": 50,
-            "fallen_trees": 100, "fire_hazard": 100, "uncollected_garbage": 100, "flooding": 300, "other": 300}
+            "fallen_trees": 100, "uncollected_garbage": 100, "flooding": 300, "other": 300}
 # Categories two residents may pick for one incident: garbage clogging a drain floods the street; a fallen tree
 # brings down wires and lights. Such pairs are suggested too, with a lower score, and staff still decide.
 RELATED = {"flooding": {"uncollected_garbage"}, "uncollected_garbage": {"flooding"},

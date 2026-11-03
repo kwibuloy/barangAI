@@ -280,16 +280,6 @@ def test_staff_correct_a_description_everywhere_and_keep_the_old_text_private(cl
     assert client.put(path, json={"note": "x"}, headers=headers(client)).status_code == 403
 
 
-def test_fire_hazard_is_a_category_with_high_severity(client, photo):
-    from barangai.priority import SEVERITY
-
-    report = resident_report(client, photo, "ana@example.test")
-    staff_login(client)
-    walk(client, report, "Under Verification", "Accepted", category="fire_hazard")
-    assert client.get(f"/reports/{report}").json()["verified_category"] == "fire_hazard"
-    assert SEVERITY["fire_hazard"] == 3
-
-
 def test_a_correction_leaves_an_earlier_decision_with_the_same_words(client, photo):
     from barangai.db import session_for_url
     from barangai.models import ReportEvent

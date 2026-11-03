@@ -19,7 +19,6 @@ export const categories: { value: Category; label: string }[] = [
   { value: 'potholes', label: 'Potholes' },
   { value: 'uncollected_garbage', label: 'Uncollected garbage' },
   { value: 'damaged_signage', label: 'Damaged signage' },
-  { value: 'fire_hazard', label: 'Fire or fire hazard' },
   { value: 'other', label: 'Other' },
 ]
 
