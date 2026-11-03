@@ -1,5 +1,5 @@
 """What residents can do about their own data: change their password, ask for a report to be deleted, or delete their
-account, plus who runs the service for the legal pages. Administrators decide deletion requests."""
+account, plus who runs the service for the legal pages. Barangay staff and administrators decide deletion requests."""
 
 import logging
 import os
@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from . import barangays
 from . import delete_report as deletion
 from .auth import MAX_PASSWORD, current_session, hash_password, password_matches, rate_limit, require_csrf, require_role
 from .db import get_db
@@ -120,8 +121,8 @@ def request_deletion(
         raise HTTPException(429, "Daily limit for deletion requests reached")
     report = db.get(Report, report_id)
     db.add(DeletionRequest(report_id=report_id, requester_id=user.id, reason=(body.reason or "").strip() or None))
-    for admin in db.scalars(select(User.id).where(User.role == "administrator")):
-        db.add(Notification(user_id=admin, report_id=report_id, status=report.status, kind="deletion_request"))
+    for decider in db.scalars(select(User.id).where(barangays.staff_audience(db, report))):
+        db.add(Notification(user_id=decider, report_id=report_id, status=report.status, kind="deletion_request"))
     db.commit()
     return deletion_request_data(db, report_id)
 
@@ -130,7 +131,8 @@ def request_deletion(
 def decide_deletion(
     report_id: str, body: DeletionDecision, db: Session = Depends(get_db), user: User = Depends(require_csrf)
 ):
-    require_role(user, {"administrator"})
+    # authorized_report limits staff to their own barangay.
+    require_role(user, {"staff", "administrator"})
     if body.decision not in {"approved", "declined"}:
         raise HTTPException(422, "Invalid decision")
     report = authorized_report(report_id, db, user)
@@ -148,7 +150,7 @@ def decide_deletion(
         db.commit()
         return {"status": "declined"}
     images = deletion.erase_rows(db, report)
-    # The rows are still uncommitted if storage refuses, so the administrator can try again.
+    # The rows are still uncommitted if storage refuses, so whoever decided can try again.
     for location in images:
         delete_image(location)
     db.commit()

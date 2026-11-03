@@ -86,8 +86,19 @@ def rank(status):
     return PATH.index(status) if status in PATH else -1
 
 
-def bring_to(db: Session, report: Report, target: str, actor_id: str, case: Case, verified: str | None):
-    """Walk a report forward along the required path to the case's status, logging each step. Never moves back."""
+def bring_to(
+    db: Session,
+    report: Report,
+    target: str,
+    actor_id: str,
+    case: Case,
+    verified: str | None,
+    description: str | None = None,
+):
+    """Walk a report forward along the required path to the case's status, logging each step. Never moves back.
+
+    The last step carries what staff wrote about this change, if they wrote anything, so its resident sees it too.
+    """
     if target == "Rejected":
         steps = {"Pending": ["Under Verification", "Rejected"], "Under Verification": ["Rejected"]}.get(report.status, [])
     else:
@@ -99,7 +110,8 @@ def bring_to(db: Session, report: Report, target: str, actor_id: str, case: Case
     for index, step in enumerate(steps):
         # Distinct times keep the history in order.
         db.add(ReportEvent(report_id=report.id, from_status=report.status, to_status=step, actor_id=actor_id,
-                           note=note, created_at=start + timedelta(microseconds=index)))
+                           note=description if description and index == len(steps) - 1 else note,
+                           created_at=start + timedelta(microseconds=index)))
         report.status = step
     # Only a category staff verified on another report of the case; never a resident's or the model's.
     if rank(report.status) >= rank("Accepted") and not report.verified_category and verified:
@@ -152,7 +164,7 @@ def new_case(report: Report, actor_id: str):
                 longitude=report.longitude, location_label=report.location_label, created_by=actor_id)
 
 
-def after_status_change(db: Session, report: Report, actor_id: str):
+def after_status_change(db: Session, report: Report, actor_id: str, description: str):
     """Called by the workflow after a staff status change: open a case on acceptance, move the rest of the case."""
     if report.status == "Accepted" and not report.case_id:
         case = new_case(report, actor_id)
@@ -166,7 +178,7 @@ def after_status_change(db: Session, report: Report, actor_id: str):
             case.category = report.verified_category
         for other in members(db, case.id, lock=True):
             if other.id != report.id:
-                bring_to(db, other, report.status, actor_id, case, verified_category([report]))
+                bring_to(db, other, report.status, actor_id, case, verified_category([report]), description)
 
 
 def case_data(db: Session, report: Report, user: User):

@@ -50,6 +50,14 @@ def change_status(report_id: str, body: StatusInput, db: Session = Depends(get_d
         raise HTTPException(422, "Verified category only allowed on acceptance")
     if body.status == "Rejected" and body.rejection_reason not in REJECTION_REASONS:
         raise HTTPException(422, "Rejection reason required")
+    # Rejection moves the whole case, so this would also reject the report it duplicates.
+    if (
+        body.rejection_reason == "already_reported"
+        and report.case_id
+        and report.case_confirmed
+        and len(cases.members(db, report.case_id)) > 1
+    ):
+        raise HTTPException(409, "This report is grouped with others, so rejecting it as already reported would reject them all")
     if body.rejection_reason is not None and body.status != "Rejected":
         raise HTTPException(422, "Rejection reason only allowed on rejection")
     values = {"status": body.status, "updated_at": now()}
@@ -65,9 +73,9 @@ def change_status(report_id: str, body: StatusInput, db: Session = Depends(get_d
     db.flush()
     db.refresh(report)
     # The other reports of a grouped case move with this one.
-    cases.after_status_change(db, report, user.id)
+    cases.after_status_change(db, report, user.id, note)
     if body.status == "Rejected" and report.case_id:
-        # Every resident of the case is told why, though the staff note stays on this report.
+        # Every resident of the case is told why.
         db.execute(
             update(ReportEvent)
             .where(

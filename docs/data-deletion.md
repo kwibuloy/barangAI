@@ -26,7 +26,7 @@ On Windows, use a real private absolute path such as `C:\PRIVATE\OPERATOR\deleti
 
 Deletion removes the photo, any added photos and details, the report, notifications for the report, its status history and staff actions, and duplicate suggestions referencing the report in either direction. A case left with no reports is removed, and a case sitting on the deleted report's pin moves to its earliest remaining report, so the shared map keeps no trace of that location. User accounts and other reports remain.
 
-Residents can also ask for deletion on a report's page, which an administrator approves or declines in the staff desk, or delete their own account and all its reports in account settings. Both remove the same data as this command. Forgotten passwords are reset with `python -m barangai.bootstrap_staff EMAIL --reset-password`. Historical links to the removed report will stop working.
+Residents can also ask for deletion on a report's page, which staff of that barangay or an administrator approve or decline in the staff desk, or delete their own account and all its reports in account settings. Both remove the same data as this command. Forgotten passwords are reset with `python -m barangai.bootstrap_staff EMAIL --reset-password`. Historical links to the removed report will stop working.
 
 ## Receipt and failures
 

@@ -24,7 +24,7 @@ Updated 3 November 2026 (Asia/Manila). Local verification does not imply cloud o
 | P0 | Hybrid chatbot and authorized tracking | Multilingual fallback and optional LLM adapter implemented/tested. Live optional provider unconfigured. |
 | P0 | Administrator deletion | Authenticated dry-run, exact confirmation and receipts implemented/tested with synthetic records. Retention policy needs operator approval. |
 | P1 | Terms, privacy notice and disclaimers | Public `/terms` and `/privacy` pages in English and Filipino, required agreement at sign-up (recorded with its version), and emergency and AI disclaimers. Drafted without legal or human language review; operator details wait on `OPERATOR_NAME` and `PRIVACY_CONTACT`. Accounts older than this have no recorded agreement. |
-| P1 | Password change and data requests | In-app password change, command-line reset, resident deletion requests decided by administrators, and self-service account deletion. API tested. |
+| P1 | Password change and data requests | In-app password change, command-line reset, resident deletion requests decided by barangay staff or administrators, and self-service account deletion. API tested. |
 | P1 | Resident Google sign-in | Implemented/tested; OAuth client and hosted callback check pending. |
 | P1 | English/Filipino UI | Implemented; human language review pending. |
 | P1 | Dashboard, filters, map and trend | Implemented and locally tested. |

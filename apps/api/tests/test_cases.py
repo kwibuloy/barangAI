@@ -73,11 +73,12 @@ def test_rejected_reports_cannot_be_grouped_and_rejection_moves_the_case(client,
     assert client.post("/cases/link", json={"report_id": first, "other_report_id": second},
                        headers=headers(client)).status_code == 200
     walk(client, first, "Under Verification")
-    response = client.post(f"/reports/{second}/status", json={"status": "Rejected", "rejection_reason": "already_reported", "note": "Same pothole as another report"}, headers=headers(client))
+    response = client.post(f"/reports/{second}/status", json={"status": "Rejected", "rejection_reason": "no_problem_found", "note": "Nothing there when checked"}, headers=headers(client))
     assert response.status_code == 200, response.text
     rejected = client.get(f"/reports/{first}").json()
     assert rejected["status"] == "Rejected"
-    assert rejected["events"][-1]["rejection_reason"] == "already_reported"
+    assert rejected["events"][-1]["rejection_reason"] == "no_problem_found"
+    assert rejected["events"][-1]["note"] == "Nothing there when checked"
     assert client.post("/cases/link", json={"report_id": first, "other_report_id": third},
                        headers=headers(client)).status_code == 409
 
@@ -216,3 +217,42 @@ def test_residents_learn_case_counts_and_days_only_once_the_case_is_public(clien
     assert client.get(f"/reports/{first}/case").json()["case"]["contributors"] == 2
     item = client.get("/cases/map").json()[0]
     assert len(item["first_reported_on"]) == 10 and "first_reported_at" not in item
+
+
+def grouped_under_verification(client, photo):
+    first = resident_report(client, photo, "ana@example.test")
+    second = resident_report(client, photo, "ben@example.test")
+    staff_login(client)
+    assert client.post("/cases/link", json={"report_id": first, "other_report_id": second},
+                       headers=headers(client)).status_code == 200
+    walk(client, first, "Under Verification")
+    return first, second
+
+
+def test_already_reported_cannot_reject_a_grouped_report(client, photo):
+    first, second = grouped_under_verification(client, photo)
+    body = {"status": "Rejected", "rejection_reason": "already_reported", "note": "Same pothole"}
+    response = client.post(f"/reports/{second}/status", json=body, headers=headers(client))
+    assert response.status_code == 409
+    assert "grouped" in response.json()["detail"]
+    assert client.get(f"/reports/{first}").json()["status"] == "Under Verification"
+
+
+def test_already_reported_works_on_a_report_on_its_own(client, photo):
+    report = resident_report(client, photo, "ana@example.test")
+    staff_login(client)
+    walk(client, report, "Under Verification")
+    body = {"status": "Rejected", "rejection_reason": "already_reported", "note": "Same pothole"}
+    assert client.post(f"/reports/{report}/status", json=body, headers=headers(client)).status_code == 200
+
+
+def test_everyone_in_the_case_sees_the_status_description(client, photo):
+    first, second = grouped_under_verification(client, photo)
+    body = {"status": "Accepted", "verified_category": "potholes", "note": "A crew will check this road"}
+    assert client.post(f"/reports/{first}/status", json=body, headers=headers(client)).status_code == 200
+    login(client, "ben@example.test")
+    last = client.get(f"/reports/{second}").json()["events"][-1]
+    assert last["to_status"] == "Accepted"
+    assert last["note"] == "A crew will check this road"
+    assert "actor_id" not in last
+

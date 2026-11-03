@@ -1,11 +1,11 @@
 # BarangAI project rules
 
 - Follow the user's global AGENTS.md instructions.
-- Build a barangay incident-reporting app. Since 3 Nov 2026 this is a standalone project, no longer tied to the PLDT AI in 30 Hours hackathon or the DLSU-D paper, so features may go beyond the paper. Each staff account belongs to one barangay; administrators see all. Staff and administrators use the same dashboard, differing only in that limit and in administrators deciding deletion requests. Never auto-forward reports to outside offices.
+- Build a barangay incident-reporting app. Since 3 Nov 2026 this is a standalone project, no longer tied to the PLDT AI in 30 Hours hackathon or the DLSU-D paper, so features may go beyond the paper. Each staff account belongs to one barangay; administrators see all. Staff and administrators use the same dashboard, differing only in that limit; staff decide deletion requests for their own barangay. Never auto-forward reports to outside offices.
 - Required roles: resident, staff, administrator. Enforce permissions in the API.
 - Keep model prediction, resident category, and staff-verified category distinct.
 - Categories: flooding, fallen_trees, broken_streetlights, exposed_wiring, potholes, uncollected_garbage, damaged_signage, other. The model predicts only its trained subset.
-- Required report path: Pending, Under Verification, Accepted, In Progress, Resolved; Under Verification may become Rejected, with a required reason from a fixed list. Every status change by staff or administrators needs a description, and residents see both (3 Nov 2026). Residents see status history and staff `action` notes only: no staff IDs, coordination notes or automatic logs. AI hazard flags stay off the shared map (3 Nov 2026).
+- Required report path: Pending, Under Verification, Accepted, In Progress, Resolved; Under Verification may become Rejected, with a required reason from a fixed list. Every status change by staff or administrators needs a description, and residents see both; on a grouped case, every resident in it does, and "Already reported" is refused because rejection moves the whole case (3 Nov 2026). Residents see status history and staff `action` notes only: no staff IDs, coordination notes or automatic logs. AI hazard flags stay off the shared map (3 Nov 2026).
 - Store private photographs outside public web roots. Strip metadata before storage.
 - Use synthetic people and incidents in demos and tests. Never invent model metrics or user-study results.
 - Keep external services optional in local tests. No paid API use or automatic billing.

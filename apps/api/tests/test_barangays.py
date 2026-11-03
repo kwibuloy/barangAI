@@ -574,3 +574,23 @@ def test_taft_file_covers_the_campus_without_touching_dasmarinas():
     assert not {name for name, _ in taft} & {name for name, _ in dasmarinas}
     assert [name for name, boundary in taft if contains(boundary, 14.5649, 120.9930)] == ["Barangay 719"]
 
+
+def test_staff_decide_deletion_requests_only_in_their_barangay(client, desk):
+    from barangai.db import session_for_url
+    from barangai.models import Notification, Report, User
+
+    assert post(client, f"/reports/{desk['south']}/deletion-request", reason="Synthetic").status_code == 201
+    with session_for_url() as db:
+        told = {
+            db.get(User, item.user_id).email
+            for item in db.query(Notification).filter_by(kind="deletion_request").all()
+        }
+    assert told == {"south@example.test", "admin@example.test"}
+    login(client, "north@example.test")
+    decision = f"/reports/{desk['south']}/deletion-request/decision"
+    assert post(client, decision, decision="approved").status_code == 404
+    login(client, "south@example.test")
+    assert post(client, decision, decision="approved").json()["status"] == "approved"
+    with session_for_url() as db:
+        assert db.get(Report, desk["south"]) is None
+
