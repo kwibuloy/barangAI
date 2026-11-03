@@ -1,0 +1,33 @@
+FROM node:22-alpine AS frontend
+WORKDIR /build
+COPY apps/web/package.json apps/web/package-lock.json ./
+RUN npm ci
+COPY apps/web/ ./
+RUN npm run build
+
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 STATIC_SITE_DIR=/app/static \
+    CHECKER_MODEL_DIR=/app/models/mobileclip2-s0 \
+    VALIDATED_EMBEDDING_MODEL_VERSION=mobileclip2-s0:effec85f7f21 \
+    CHECKER_ONNX_SHA256=effec85f7f2158ec8d261da9b397adfaed40bf4f796c323de49ff8fd83832a90 \
+    CHECKER_JSON_SHA256=30078e582f33e7122790c0a432a65bb775d489d06add1cad4968b58029dcdccc \
+    GEOCODER=nominatim \
+    OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MALLOC_ARENA_MAX=2
+WORKDIR /app
+COPY apps/api/pyproject.toml ./
+COPY apps/api/barangai ./barangai
+COPY apps/api/alembic.ini ./
+COPY apps/api/migrations ./migrations
+COPY deploy/requirements-render-vision.txt /tmp/requirements-render-vision.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-render-vision.txt \
+    && pip install --no-cache-dir . \
+    && useradd --uid 10001 --create-home app
+COPY apps/api/models/mobileclip2-s0 ./models/mobileclip2-s0
+RUN printf '%s  %s\n%s  %s\n' "$CHECKER_ONNX_SHA256" "$CHECKER_MODEL_DIR/visual.onnx" \
+    "$CHECKER_JSON_SHA256" "$CHECKER_MODEL_DIR/checker.json" | sha256sum --check --status
+COPY --from=frontend /build/dist ./static
+COPY deploy/start-render.sh ./start-render.sh
+COPY deploy/supabase-ca.crt ./supabase-ca.crt
+USER app
+EXPOSE 10000
+CMD ["sh", "/app/start-render.sh"]
