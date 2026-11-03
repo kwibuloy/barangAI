@@ -11,6 +11,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 STATIC_SITE_DIR=/app/static \
     VALIDATED_EMBEDDING_MODEL_VERSION=mobileclip2-s0:effec85f7f21 \
     CHECKER_ONNX_SHA256=effec85f7f2158ec8d261da9b397adfaed40bf4f796c323de49ff8fd83832a90 \
     CHECKER_JSON_SHA256=30078e582f33e7122790c0a432a65bb775d489d06add1cad4968b58029dcdccc \
+    FACE_MODEL_PATH=/app/models/yunet/face_detection_yunet_2023mar.onnx \
+    FACE_MODEL_SHA256=8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4 \
     GEOCODER=nominatim \
     OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MALLOC_ARENA_MAX=2
 WORKDIR /app
@@ -23,8 +25,12 @@ RUN pip install --no-cache-dir -c /tmp/constraints-render.txt -r /tmp/requiremen
     && pip install --no-cache-dir -c /tmp/constraints-render.txt . \
     && useradd --uid 10001 --create-home app
 COPY apps/api/models/mobileclip2-s0 ./models/mobileclip2-s0
-RUN printf '%s  %s\n%s  %s\n' "$CHECKER_ONNX_SHA256" "$CHECKER_MODEL_DIR/visual.onnx" \
-    "$CHECKER_JSON_SHA256" "$CHECKER_MODEL_DIR/checker.json" | sha256sum --check --status
+COPY apps/api/models/yunet ./models/yunet
+RUN printf '%s  %s\n%s  %s\n%s  %s\n' "$CHECKER_ONNX_SHA256" "$CHECKER_MODEL_DIR/visual.onnx" \
+    "$CHECKER_JSON_SHA256" "$CHECKER_MODEL_DIR/checker.json" \
+    "$FACE_MODEL_SHA256" "$FACE_MODEL_PATH" | sha256sum --check --status
+# The hash proves the bytes; this proves OpenCV can load them, since a failure at run time only logs a warning.
+RUN python -c "from barangai import privacy; assert privacy.enabled()"
 COPY --from=frontend /build/dist ./static
 COPY deploy/start-render.sh ./start-render.sh
 COPY deploy/supabase-ca.crt ./supabase-ca.crt

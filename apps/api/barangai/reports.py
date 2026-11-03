@@ -121,9 +121,11 @@ def preview_prediction(
     """What the AI can fill in from the photo; the resident reviews and edits all of it."""
     require_role(user, {"resident"})
     rate_limit(request, "preview", 20, key=user.id)
+    resident_id = user.id
+    db.commit()  # The face check is slow, and a few uploads must not use up the small connection pool.
     # Checked first, so invalid uploads use up no allowance.
     sanitized = sanitized_upload(image)
-    if not take(db, period_key(f"preview:{user.id}"), limit_setting("MAX_PREVIEWS_PER_DAY", 40)):
+    if not take(db, period_key(f"preview:{resident_id}"), limit_setting("MAX_PREVIEWS_PER_DAY", 40)):
         raise HTTPException(429, "Daily limit for photo suggestions reached")
     # About 5 neurons each, so the default leaves room for the chatbot in Cloudflare's 10,000 a day. Past it, the
     # local checker answers alone.
@@ -173,9 +175,11 @@ def submit_report(
     within_daily_cap(db, Report, Report.resident_id, user.id, "MAX_REPORTS_PER_DAY", 10)
     from . import cases  # Imported here: cases.py builds on this module.
 
-    case = cases.open_case_for_evidence(db, case_id) if case_id else None
+    resident_id = user.id
     raw = read_upload(image)
+    db.commit()  # The face check is slow, and a few uploads must not use up the small connection pool.
     sanitized = sanitize_image(raw)
+    case = cases.open_case_for_evidence(db, case_id) if case_id else None
     # The upload's own details win; the browser's reading fills in what shrinking removed.
     facts = {**trust.client_facts(photo_taken_at, photo_camera, photo_latitude, photo_longitude),
              **trust.photo_facts(raw)}
@@ -183,7 +187,7 @@ def submit_report(
     # A case stays in one barangay. Across a border the report stands alone, and its own barangay's staff review it.
     if case and cases.barangay_of(db, case) != barangay_id:
         case = None
-    resident_id, joined_case = user.id, case.id if case else None
+    joined_case = case.id if case else None
     # Accounts need no email check, so a cap per resident alone would not protect the 1 GB photo bucket. Counted only
     # now, so one resident's invalid uploads cannot use up the whole site's allowance.
     if not take(db, period_key("reports"), limit_setting("MAX_SITE_REPORTS_PER_DAY", 300)):
@@ -284,9 +288,9 @@ def add_details(
     rate_limit(request, "addendum", key=user.id)
     within_daily_cap(db, ReportAddendum, ReportAddendum.author_id, user.id, "MAX_ADDENDA_PER_DAY", 20,
                      "Daily limit for added details reached")
-    sanitized = sanitized_upload(image) if image is not None and image.filename else None
     author_id, addendum_id = user.id, uid()
-    db.commit()  # No database connection waits on the photo upload.
+    db.commit()  # No database connection waits on the face check or the photo upload.
+    sanitized = sanitized_upload(image) if image is not None and image.filename else None
     location = save_image(addendum_id, sanitized) if sanitized else None
     # The report may have been closed or deleted during the upload.
     report = db.get(Report, report_id)

@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 from conftest import register
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 from test_cases import headers, login, resident_report, walk
 from test_reports import submit
 from test_workflow import staff_login
@@ -71,25 +71,33 @@ def test_login_limit_is_per_account(client):
     assert client.post("/auth/login", json={"email": "ana@example.test", "password": "wrong"}).status_code == 429
     register(client, "ben@example.test")
     client.cookies.clear()
-    assert client.post("/auth/login", json={"email": "ben@example.test",
-                                            "password": "correct horse battery staple"}).status_code == 200
+    assert (
+        client.post(
+            "/auth/login", json={"email": "ben@example.test", "password": "correct horse battery staple"}
+        ).status_code
+        == 200
+    )
 
 
-@pytest.mark.parametrize("hops,forwarded,expected", [
-    ("0", "203.0.113.9", "testclient"),
-    ("1", "198.51.100.7", "198.51.100.7"),
-    # A client-written entry on the left is ignored; the one the trusted proxy appended is used.
-    ("1", "6.6.6.6, 198.51.100.7", "198.51.100.7"),
-    ("2", "198.51.100.7, 10.0.0.2", "198.51.100.7"),
-    ("2", "198.51.100.7", "testclient"),
-])
+@pytest.mark.parametrize(
+    "hops,forwarded,expected",
+    [
+        ("0", "203.0.113.9", "testclient"),
+        ("1", "198.51.100.7", "198.51.100.7"),
+        # A client-written entry on the left is ignored; the one the trusted proxy appended is used.
+        ("1", "6.6.6.6, 198.51.100.7", "198.51.100.7"),
+        ("2", "198.51.100.7, 10.0.0.2", "198.51.100.7"),
+        ("2", "198.51.100.7", "testclient"),
+    ],
+)
 def test_client_address_trusts_only_configured_proxy_hops(monkeypatch, hops, forwarded, expected):
     from barangai.auth import client_ip
     from starlette.requests import Request
 
     monkeypatch.setenv("TRUSTED_PROXY_HOPS", hops)
-    request = Request({"type": "http", "headers": [(b"x-forwarded-for", forwarded.encode())],
-                       "client": ("testclient", 50000)})
+    request = Request(
+        {"type": "http", "headers": [(b"x-forwarded-for", forwarded.encode())], "client": ("testclient", 50000)}
+    )
     assert client_ip(request) == expected
 
 
@@ -99,12 +107,26 @@ def test_password_guessing_from_elsewhere_does_not_lock_the_owner_out(client, mo
     client.cookies.clear()
     stranger = {"X-Forwarded-For": "198.51.100.66"}
     for _ in range(10):
-        assert client.post("/auth/login", json={"email": "ana@example.test", "password": "wrong"},
-                           headers=stranger).status_code == 401
-    assert client.post("/auth/login", json={"email": "ana@example.test", "password": "wrong"},
-                       headers=stranger).status_code == 429
-    assert client.post("/auth/login", json={"email": "ana@example.test", "password": "correct horse battery staple"},
-                       headers={"X-Forwarded-For": "203.0.113.5"}).status_code == 200
+        assert (
+            client.post(
+                "/auth/login", json={"email": "ana@example.test", "password": "wrong"}, headers=stranger
+            ).status_code
+            == 401
+        )
+    assert (
+        client.post(
+            "/auth/login", json={"email": "ana@example.test", "password": "wrong"}, headers=stranger
+        ).status_code
+        == 429
+    )
+    assert (
+        client.post(
+            "/auth/login",
+            json={"email": "ana@example.test", "password": "correct horse battery staple"},
+            headers={"X-Forwarded-For": "203.0.113.5"},
+        ).status_code
+        == 200
+    )
 
 
 # Trust checks
@@ -134,8 +156,16 @@ def test_matching_recent_camera_photo_has_no_flags(client):
 
 def test_browser_reading_is_used_when_shrinking_removed_the_details(client, photo):
     register(client)
-    report_id = submit(client, photo, latitude="14.6000", longitude="121.0000", photo_latitude="14.0",
-                       photo_longitude="121.0", photo_taken_at=manila_exif_time(1), photo_camera="1").json()["id"]
+    report_id = submit(
+        client,
+        photo,
+        latitude="14.6000",
+        longitude="121.0000",
+        photo_latitude="14.0",
+        photo_longitude="121.0",
+        photo_taken_at=manila_exif_time(1),
+        photo_camera="1",
+    ).json()["id"]
     assert [flag["code"] for flag in staff_view(client, report_id)["trust_flags"]] == ["pin_far_from_photo"]
 
 
@@ -163,7 +193,9 @@ def test_trust_flag_thresholds():
 
 def test_jpeg_comments_and_other_carried_over_details_are_removed(client):
     output = io.BytesIO()
-    Image.new("RGB", (8, 8), "red").save(output, format="JPEG", comment=b"Synthetic owner note 14.33,120.93", dpi=(300, 300))
+    Image.new("RGB", (8, 8), "red").save(
+        output, format="JPEG", comment=b"Synthetic owner note 14.33,120.93", dpi=(300, 300)
+    )
     register(client)
     report_id = submit(client, output.getvalue()).json()["id"]
     stored = client.get(f"/reports/{report_id}/image").content
@@ -230,17 +262,211 @@ def test_face_blur_is_off_without_opencv_or_when_disabled(monkeypatch):
     privacy.detector.cache_clear()
 
 
-def test_opencv_face_detector_loads_when_installed(monkeypatch):
+def test_face_blur_is_off_when_the_model_file_is_missing(monkeypatch, tmp_path):
     pytest.importorskip("cv2")
-    from barangai import privacy
+    from barangai import media, privacy
 
     monkeypatch.setenv("FACE_BLUR", "on")
+    monkeypatch.setenv("FACE_MODEL_PATH", str(tmp_path / "absent.onnx"))
     privacy.detector.cache_clear()
     try:
-        assert privacy.enabled()
-        assert privacy.find_faces(Image.new("RGB", (900, 600), "white")) == []
+        assert privacy.enabled() is False
+        media.clear_sanitized_cache()
+        assert media.sanitize_image(jpeg(scene_with_face(120)))
     finally:
         privacy.detector.cache_clear()
+
+
+# The real model on drawn pictures, so no photo of anyone is kept in the repository. Skipped without OpenCV.
+
+
+@pytest.fixture
+def real_detector(monkeypatch):
+    pytest.importorskip("cv2")
+    from barangai import media, privacy
+
+    monkeypatch.setenv("FACE_BLUR", "on")
+    monkeypatch.delenv("FACE_MODEL_PATH", raising=False)
+    privacy.detector.cache_clear()
+    media.clear_sanitized_cache()
+    yield privacy
+    privacy.detector.cache_clear()
+    media.clear_sanitized_cache()
+
+
+def drawn_face(size):
+    """A synthetic head on grey: nobody's face, but enough like one for the detector."""
+    s = size / 400
+    picture = Image.new("RGB", (size, size), (205, 215, 225))
+    draw = ImageDraw.Draw(picture)
+
+    def at(*values):
+        return [value * s for value in values]
+
+    draw.ellipse(at(80, 30, 320, 300), fill=(40, 28, 22))
+    draw.rounded_rectangle(at(170, 300, 230, 380), 20 * s, fill=(190, 140, 110))
+    draw.ellipse(at(100, 70, 300, 340), fill=(214, 170, 140))
+    for x in (155, 245):
+        draw.arc(at(x - 32, 135, x + 32, 175), 200, 340, fill=(40, 28, 22), width=max(1, int(7 * s)))
+        draw.ellipse(at(x - 26, 165, x + 26, 193), fill=(245, 240, 235))
+        draw.ellipse(at(x - 12, 166, x + 12, 192), fill=(55, 35, 25))
+    draw.polygon(at(200, 190, 182, 250, 218, 250), fill=(196, 148, 120))
+    draw.ellipse(at(180, 244, 196, 256), fill=(120, 80, 65))
+    draw.ellipse(at(204, 244, 220, 256), fill=(120, 80, 65))
+    draw.chord(at(155, 265, 245, 310), 0, 180, fill=(150, 60, 60))
+    return picture.filter(ImageFilter.GaussianBlur(max(0.5, 2.5 * s)))
+
+
+def scene_with_face(size, turned=0, where=(300, 200)):
+    scene = Image.new("RGB", (1000, 800), (150, 170, 190))
+    face = drawn_face(size)
+    if turned:
+        face = face.rotate(turned, expand=True, fillcolor=(150, 170, 190))
+    scene.paste(face, where)
+    return scene
+
+
+def wiring_scene():
+    """Sky, poles, cross-arms and a tangle of overhead wires, with no one in it."""
+    scene = Image.new("RGB", (1000, 800), (170, 200, 230))
+    draw = ImageDraw.Draw(scene)
+    for x in (150, 520, 880):
+        draw.rectangle((x - 9, 60, x + 9, 800), fill=(90, 90, 85))
+        for y in (110, 170):
+            draw.rectangle((x - 80, y, x + 80, y + 10), fill=(60, 60, 60))
+            for dx in (-70, -30, 30, 70):
+                draw.rectangle((x + dx - 5, y - 18, x + dx + 5, y), fill=(225, 225, 215))
+    for k in range(40):
+        y = 90 + k * 9
+        sag = 20 + (k * 37) % 90
+        points = [(i, y + ((k * 13) % 50) + sag * (1 - ((i - 500) / 500) ** 2)) for i in range(0, 1001, 20)]
+        draw.line(points, fill=(20, 20, 25), width=1 + k % 3)
+    for x, y in ((300, 260), (640, 300), (420, 420)):
+        draw.ellipse((x, y, x + 70, y + 90), outline=(15, 15, 15), width=3)
+        draw.rectangle((x + 20, y + 25, x + 50, y + 60), fill=(50, 50, 55))
+    return scene
+
+
+def jpeg(picture, orientation=None):
+    output = io.BytesIO()
+    exif = Image.Exif()
+    if orientation:
+        exif[0x0112] = orientation
+    picture.save(output, format="JPEG", quality=92, exif=exif)
+    return output.getvalue()
+
+
+def sharpness(picture, box):
+    """How much neighbouring pixels differ inside the box: a blurred region scores near zero."""
+    grey = picture.crop(box).convert("L")
+    pixels = grey.tobytes()
+    width = grey.width
+    return sum(abs(pixels[i] - pixels[i + 1]) for i in range(len(pixels) - 1) if (i + 1) % width) / len(pixels)
+
+
+@pytest.mark.parametrize("size", [400, 200, 120, 80, 50])
+def test_real_detector_finds_faces_large_and_small(real_detector, size):
+    boxes = real_detector.find_faces(scene_with_face(size))
+    assert len(boxes) == 1
+    left, top, width, height = boxes[0]
+    assert 300 <= left + width / 2 <= 300 + size and 200 <= top + height / 2 <= 200 + size
+
+
+@pytest.mark.parametrize("turned", [-30, -15, 15, 30, 90, -90])
+def test_real_detector_finds_tilted_and_sideways_faces(real_detector, turned):
+    boxes = real_detector.find_faces(scene_with_face(200, turned))
+    assert len(boxes) == 1  # the upright and sideways passes do not count one face twice
+    left, top, width, height = boxes[0]
+    assert left <= 400 <= left + width and top <= 300 <= top + height  # the drawn head's centre, wherever it turned
+
+
+class FakeModel:
+    """Answers each detection pass from a list; an exception in the list makes that pass fail."""
+
+    def __init__(self, *passes):
+        self.passes = list(passes)
+
+    def setInputSize(self, _size):
+        pass
+
+    def detect(self, _picture):
+        answer = self.passes.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        return 1, answer
+
+
+def test_one_face_found_by_two_passes_is_blurred_to_the_outer_edge_of_both(monkeypatch):
+    numpy = pytest.importorskip("numpy")
+    from barangai import privacy
+
+    upright = numpy.array([[480, 380, 40, 40]], dtype=float)
+    # On the copy turned left (a 640 x 480 picture becomes 480 x 640), this maps back to 200-500 across, 260-560 down.
+    turned = numpy.array([[260, 140, 300, 300]], dtype=float)
+    monkeypatch.setattr(privacy, "detector", lambda: FakeModel(upright, turned, None))
+    assert privacy.find_faces(Image.new("RGB", (640, 480))) == [(200, 260, 320, 300)]
+
+
+def test_a_failed_pass_keeps_the_faces_the_other_passes_found(monkeypatch):
+    numpy = pytest.importorskip("numpy")
+    from barangai import privacy
+
+    upright = numpy.array([[100, 100, 60, 60]], dtype=float)
+    monkeypatch.setattr(privacy, "detector", lambda: FakeModel(upright, RuntimeError("synthetic"), RuntimeError("synthetic")))
+    assert privacy.find_faces(Image.new("RGB", (640, 480))) == [(100, 100, 60, 60)]
+
+
+def test_empty_and_non_finite_boxes_from_the_model_are_ignored(monkeypatch):
+    numpy = pytest.importorskip("numpy")
+    from barangai import privacy
+
+    nonsense = numpy.array([[9e9, -9e9, 0, 0], [numpy.nan, 5, 10, 10], [5, 5, numpy.inf, 10]], dtype=float)
+    monkeypatch.setattr(privacy, "detector", lambda: FakeModel(nonsense, None, None))
+    assert privacy.find_faces(Image.new("RGB", (640, 480))) == []
+
+
+def test_unreadable_face_model_turns_blurring_off_instead_of_failing(monkeypatch, tmp_path, real_detector):
+    broken = tmp_path / "broken.onnx"
+    broken.write_bytes(b"not a model")
+    monkeypatch.setenv("FACE_MODEL_PATH", str(broken))
+    real_detector.detector.cache_clear()
+    assert real_detector.enabled() is False
+
+
+def test_real_detector_leaves_wires_and_poles_sharp(real_detector):
+    assert real_detector.find_faces(wiring_scene()) == []
+    assert real_detector.blur_faces(wiring_scene())[1] == 0
+
+
+def test_wiring_beside_a_face_stays_sharp_after_blurring(real_detector):
+    from barangai import media
+
+    scene = wiring_scene()
+    scene.paste(drawn_face(160), (760, 600))
+    wires = (40, 150, 500, 450)
+    with Image.open(io.BytesIO(media.sanitize_image(jpeg(scene)))) as cleaned:
+        assert sharpness(cleaned, wires) > 0.8 * sharpness(scene, wires)
+        assert sharpness(cleaned, (790, 640, 890, 730)) < 0.5 * sharpness(scene, (790, 640, 890, 730))
+
+
+@pytest.mark.parametrize(
+    "orientation, to_stored",
+    [
+        (3, Image.Transpose.ROTATE_180),
+        (6, Image.Transpose.ROTATE_90),
+        (8, Image.Transpose.ROTATE_270),
+    ],
+)
+def test_face_in_a_photo_with_exif_rotation_is_blurred_where_it_ends_up(real_detector, orientation, to_stored):
+    from barangai import media
+
+    upright = scene_with_face(200)
+    face = (340, 240, 460, 360)
+    with Image.open(io.BytesIO(media.sanitize_image(jpeg(upright.transpose(to_stored), orientation)))) as cleaned:
+        assert cleaned.size == upright.size and not cleaned.getexif()
+        assert sharpness(cleaned, face) < 0.5 * sharpness(upright, face)
+        red, _, blue = cleaned.crop(face).resize((1, 1)).getpixel((0, 0))
+        assert red > blue  # skin, not the blue-grey background: the photo was turned the right way
 
 
 # Details added later, and staff notifications
@@ -298,8 +524,9 @@ def test_resident_notifications_are_unchanged_by_staff_notices(client, photo):
     login(client, "staff@example.test", "staff-password-123")
     walk(client, report_id, "Under Verification")
     login(client, "ana@example.test")
-    assert [(item["kind"], item["status"]) for item in client.get("/notifications").json()] == \
-        [("status", "Under Verification")]
+    assert [(item["kind"], item["status"]) for item in client.get("/notifications").json()] == [
+        ("status", "Under Verification")
+    ]
 
 
 # "You already reported this"
@@ -344,9 +571,21 @@ def test_related_categories_are_suggested_to_staff_with_a_lower_score(client, ph
     from barangai import ai
     from barangai.ai import Analysis
 
-    monkeypatch.setattr(ai, "for_submission", lambda _image: Analysis(
-        category=None, confidence=None, source=None, needs_check=False, problem_seen=True, description=None,
-        hazards=(), embedding=[1.0, 0.0], embedding_version="validated-synthetic-v1"))
+    monkeypatch.setattr(
+        ai,
+        "for_submission",
+        lambda _image: Analysis(
+            category=None,
+            confidence=None,
+            source=None,
+            needs_check=False,
+            problem_seen=True,
+            description=None,
+            hazards=(),
+            embedding=[1.0, 0.0],
+            embedding_version="validated-synthetic-v1",
+        ),
+    )
     flood = resident_report(client, photo, "ana@example.test")
     garbage = resident_report(client, photo, "ben@example.test", resident_category="uncollected_garbage")
     pothole = resident_report(client, photo, "cy@example.test", resident_category="potholes")
@@ -391,8 +630,9 @@ def test_brief_counts_the_queue_for_staff_only(client, photo):
 def cloudflare_answer(monkeypatch, text):
     monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "a" * 32)
     monkeypatch.setenv("CLOUDFLARE_WORKERS_AI_TOKEN", "synthetic-token")
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: httpx.Response(
-        200, json={"success": True, "result": {"response": text}}))
+    monkeypatch.setattr(
+        httpx, "post", lambda *a, **k: httpx.Response(200, json={"success": True, "result": {"response": text}})
+    )
 
 
 def test_brief_uses_the_model_only_when_every_number_is_real(client, photo, monkeypatch):
