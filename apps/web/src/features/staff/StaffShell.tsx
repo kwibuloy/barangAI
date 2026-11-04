@@ -1,6 +1,6 @@
 import { Suspense, type CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { ArrowLeft, Bell, FileText, Gift, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
+import { ArrowLeft, Bell, FileText, Gift, Inbox, LayoutGrid, LifeBuoy, Map as MapIcon, Users } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -29,7 +29,9 @@ import { AccountIdentity, AccountMenu } from '../account/AccountMenu'
 import { AccountButton } from '../account/AccountSettings'
 import type { User } from '../auth/queries'
 import { useLiveRefresh, useNotifications } from '../notifications/NotificationsPage'
+import { groupCases } from '../reports/grouping'
 import { useReports } from '../reports/queries'
+import { queueLink, WAITING, WORKING } from './queueFilter'
 
 const NAV = [
   { to: '/desk', label: 'Overview', icon: LayoutGrid, color: '#ff9600' },
@@ -38,11 +40,16 @@ const NAV = [
   { to: '/desk/reports', label: 'Reports', icon: Inbox, color: '#1cb0f6' },
   { to: '/desk/rewards', label: 'Rewards', icon: Gift, color: '#58cc02' },
   { to: '/desk/records', label: 'Monthly report', icon: FileText, color: '#ff4b4b' },
+  { to: '/desk/accounts', label: 'Staff accounts', icon: Users, color: '#ce82ff' },
+  { to: '/desk/help', label: 'Help', icon: LifeBuoy, color: '#1cb0f6' },
 ]
 const SECTIONS = [
   { label: 'Dashboard', items: NAV.slice(0, 3) },
-  { label: 'Records', items: NAV.slice(3) },
+  { label: 'Records', items: NAV.slice(3, 6) },
+  { label: 'Support', items: NAV.slice(6) },
 ]
+// Five tabs fit a phone; these are for the office, and Overview links to them on a phone.
+const NOT_TABS = ['/desk/records', '/desk/accounts', '/desk/help']
 // Hidden when the sidebar collapses to icons.
 const WIDE_ONLY = 'group-data-[collapsible=icon]:hidden'
 
@@ -55,8 +62,7 @@ function StaffTabBar({ current, unread, waiting }: { current: string; unread: nu
       className="tab-bar pb-safe fixed inset-x-0 bottom-0 z-40 border-t-2 bg-background"
     >
       <ul className="mx-auto flex h-[var(--tabbar)] max-w-2xl items-stretch gap-1 px-2">
-        {/* Five tabs fit a phone; the monthly report is for the office, and Overview links to it on a phone. */}
-        {NAV.filter(item => item.to !== '/desk/records').map(item => {
+        {NAV.filter(item => !NOT_TABS.includes(item.to)).map(item => {
           const active = current === item.to
           const badge = item.to === '/desk/updates' ? unread : item.to === '/desk/reports' ? waiting : 0
           return (
@@ -109,9 +115,10 @@ export function StaffShell({ user }: { user: User }) {
   useKeyboardMark()
   useLiveRefresh()
   const reports = useReports()
-  const all = reports.data ?? []
-  const count = (...statuses: string[]) => all.filter(report => statuses.includes(report.status)).length
-  const waiting = count('Pending', 'Under Verification')
+  // Counted as the queue lists them, so a number always equals the list it opens: a grouped case is one row.
+  const rows = groupCases(reports.data ?? []).rows
+  const count = (...statuses: string[]) => rows.filter(report => statuses.includes(report.status)).length
+  const waiting = count(...WAITING)
   const notices = useNotifications()
   // A notifications hiccup must never take the dashboard down with it.
   const unread = Array.isArray(notices.data)
@@ -147,46 +154,48 @@ export function StaffShell({ user }: { user: User }) {
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-1.5">
-                    {section.items.map(item => (
-                      <SidebarMenuItem key={item.to}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={current.to === item.to}
-                          tooltip={t(item.label)}
-                          className={cn(
-                            navItemClass(current.to === item.to),
-                            'h-12 p-3 hover:bg-muted data-active:bg-sky-soft data-active:font-extrabold data-active:text-link group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-2.5! [&>svg]:size-7!',
+                    {section.items
+                      .filter(item => item.to !== '/desk/accounts' || user.role === 'administrator')
+                      .map(item => (
+                        <SidebarMenuItem key={item.to}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={current.to === item.to}
+                            tooltip={t(item.label)}
+                            className={cn(
+                              navItemClass(current.to === item.to),
+                              'h-12 p-3 hover:bg-muted data-active:bg-sky-soft data-active:font-extrabold data-active:text-link group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-2.5! [&>svg]:size-7!',
+                            )}
+                          >
+                            <NavLink to={item.to} end={item.to === '/desk'}>
+                              <item.icon
+                                strokeWidth={2.3}
+                                style={navIconStyle(item.color)}
+                                className="transition-transform duration-200 group-hover/nav:-rotate-6 group-hover/nav:scale-110"
+                              />
+                              <span>
+                                <Txt>{item.label}</Txt>
+                              </span>
+                            </NavLink>
+                          </SidebarMenuButton>
+                          {item.to === '/desk/updates' && unread > 0 && (
+                            <SidebarMenuBadge
+                              aria-label={`${unread} ${t('unread')}`}
+                              className="top-1/2 right-3 h-6 min-w-6 -translate-y-1/2 rounded-full bg-sky text-[12px] font-extrabold text-white dark:text-[#131f24]"
+                            >
+                              {unread}
+                            </SidebarMenuBadge>
                           )}
-                        >
-                          <NavLink to={item.to} end={item.to === '/desk'}>
-                            <item.icon
-                              strokeWidth={2.3}
-                              style={navIconStyle(item.color)}
-                              className="transition-transform duration-200 group-hover/nav:-rotate-6 group-hover/nav:scale-110"
-                            />
-                            <span>
-                              <Txt>{item.label}</Txt>
-                            </span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                        {item.to === '/desk/updates' && unread > 0 && (
-                          <SidebarMenuBadge
-                            aria-label={`${unread} ${t('unread')}`}
-                            className="top-1/2 right-3 h-6 min-w-6 -translate-y-1/2 rounded-full bg-sky text-[12px] font-extrabold text-white dark:text-[#131f24]"
-                          >
-                            {unread}
-                          </SidebarMenuBadge>
-                        )}
-                        {item.to === '/desk/reports' && waiting > 0 && (
-                          <SidebarMenuBadge
-                            aria-label={`${waiting} ${t('waiting for review')}`}
-                            className="top-1/2 right-3 h-6 min-w-6 -translate-y-1/2 rounded-full bg-destructive text-[12px] font-extrabold text-white dark:text-[#131f24]"
-                          >
-                            {waiting}
-                          </SidebarMenuBadge>
-                        )}
-                      </SidebarMenuItem>
-                    ))}
+                          {item.to === '/desk/reports' && waiting > 0 && (
+                            <SidebarMenuBadge
+                              aria-label={`${waiting} ${t('waiting for review')}`}
+                              className="top-1/2 right-3 h-6 min-w-6 -translate-y-1/2 rounded-full bg-destructive text-[12px] font-extrabold text-white dark:text-[#131f24]"
+                            >
+                              {waiting}
+                            </SidebarMenuBadge>
+                          )}
+                        </SidebarMenuItem>
+                      ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -199,19 +208,19 @@ export function StaffShell({ user }: { user: User }) {
                     label: 'Waiting',
                     value: waiting,
                     color: 'var(--status-pending)',
-                    to: '/desk/reports?status=Pending',
+                    to: queueLink(WAITING),
                   },
                   {
                     label: 'Working',
-                    value: count('Accepted', 'In Progress'),
+                    value: count(...WORKING),
                     color: 'var(--status-progress)',
-                    to: '/desk/reports?status=In+Progress',
+                    to: queueLink(WORKING),
                   },
                   {
                     label: 'Resolved',
                     value: count('Resolved'),
                     color: 'var(--status-resolved)',
-                    to: '/desk/reports?status=Resolved',
+                    to: queueLink(['Resolved']),
                   },
                 ].map(stat => (
                   // One row each, so a longer translation (Naghihintay, Ginagawa) never overflows a narrow tile.

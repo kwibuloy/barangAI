@@ -21,6 +21,7 @@ from .models import (
     DeletionRequest,
     DuplicateSuggestion,
     Erasure,
+    Feedback,
     LoginSession,
     Notification,
     OAuthIdentity,
@@ -105,6 +106,7 @@ def erase_account(db, user_id):
     for model, column in (
         (Notification, Notification.user_id),
         (DeletionRequest, DeletionRequest.requester_id),
+        (Feedback, Feedback.user_id),
         (OAuthIdentity, OAuthIdentity.user_id),
         (LoginSession, LoginSession.user_id),
     ):

@@ -8,6 +8,10 @@ const FORMAT: Intl.DateTimeFormatOptions = {
   minute: '2-digit',
 }
 
+/** The same words as DateText, for a label that can't hold an element. */
+export const dateLabel = (value: string, language: string) =>
+  new Intl.DateTimeFormat(language === 'fil' ? 'fil-PH' : 'en-GB', FORMAT).format(new Date(value))
+
 /** Philippine day-month order ("26 Oct 2026, 9:13 PM"), in the interface language. Compact drops this year's year. */
 export function DateText({
   value,

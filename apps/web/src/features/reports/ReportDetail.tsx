@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import {
   ImagePlus,
   ImageOff,
@@ -18,11 +18,13 @@ import { Select } from '@/components/ui/select'
 import { DateText } from '@/components/DateText'
 import { Alert } from '@/components/page'
 import { cn } from '@/lib/utils'
+import { ApiError } from '../../lib/api'
 import { shownError } from '../../lib/live'
 import { Txt, useText } from '../../lib/i18n'
 import { categories, hazardLabels, label, rejectionReasons } from './categories'
 import { CategoryTile } from './CategoryIcon'
 import { DeletionReview, RequestDeletion } from './DeletionPanels'
+import { NOTE_PHRASES, storedNote } from './notePhrases'
 import { compressPhoto } from './photo'
 import { PriorityPanel } from './Priority'
 import { TrustPanel } from './Trust'
@@ -39,7 +41,13 @@ import {
   useReport,
   useReportCase,
 } from './queries'
-import type { Category, Duplicate, Report, StaffAction, Status } from './types'
+import type { Category, Duplicate, Report, ReportSummary, StaffAction, Status } from './types'
+
+/** What staff are told when a change goes through, and the way to the next report, from the queue around this view. */
+export type StaffFlow = {
+  onSaved?: (report: Report, status: Status) => void
+  next?: () => void
+}
 
 /** Staff transitions follow the API's status graph; the server still enforces it. */
 function nextActions(status: Status): { label: string; status: Status }[] {
@@ -100,7 +108,7 @@ export function ReportHeading({ report, id }: { report?: Report; id: string }) {
 }
 
 /** Everything about one report. Staff also get status controls, the action log form and duplicate review. */
-export function ReportView({ id, staff }: { id: string; staff: boolean }) {
+export function ReportView({ id, staff, flow }: { id: string; staff: boolean; flow?: StaffFlow }) {
   const t = useText()
   const report = useReport(id)
   const detail: Report | undefined = report.data
@@ -139,7 +147,7 @@ export function ReportView({ id, staff }: { id: string; staff: boolean }) {
           {/* Seed staff choices from the full report, never the list row, and reset them per report. */}
           {/* An unchecked "I see this too" gets its case decision first; the API refuses status changes until then. */}
           {detail && !report.isPlaceholderData && !(detail.case_id && !detail.case_confirmed) && (
-            <StatusControls key={detail.id} detail={detail} />
+            <StatusControls key={detail.id} detail={detail} flow={flow} />
           )}
           {detail?.priority && !report.isPlaceholderData && <PriorityPanel priority={detail.priority} />}
           {detail?.trust_flags && !report.isPlaceholderData && <TrustPanel report={detail} />}
@@ -303,7 +311,10 @@ function ReportFacts({ detail }: { detail: Report }) {
   )
 }
 
-function StatusControls({ detail }: { detail: Report }) {
+// Keeps "and next" honest about what it does when a report can go two ways.
+const AND_NEXT: Partial<Record<Status, string>> = { Accepted: 'Accept and next', Rejected: 'Reject and next' }
+
+function StatusControls({ detail, flow }: { detail: Report; flow?: StaffFlow }) {
   const t = useText()
   const change = useChangeStatus(detail.id)
   const [verified, setVerified] = useState<Category>(detail.verified_category ?? detail.resident_category)
@@ -330,17 +341,28 @@ function StatusControls({ detail }: { detail: Report }) {
   )
   if (actions.length === 0) return notice ? <Panel title="Change status">{notice}</Panel> : null
   const described = Boolean(note.trim())
-  function transition(status: Status) {
+  // A phrase left as written belongs to one decision: "We confirmed this problem" must not go out with a rejection.
+  const noteFor = actions.find(action => NOTE_PHRASES[action.status]?.some(item => t(item.note) === note.trim()))
+  const blocked = (status: Status) =>
+    change.isPending ||
+    !described ||
+    (status === 'Rejected' && !reason) ||
+    Boolean(noteFor && noteFor.status !== status)
+  function transition(status: Status, advance = false) {
     const from = detail.status
     change.mutate(
       {
         status,
         ...(status === 'Accepted' ? { verified_category: verified } : {}),
         ...(status === 'Rejected' ? { rejection_reason: reason } : {}),
-        note: note.trim(),
+        note: storedNote(note, status, t),
       },
       {
-        onSuccess: () => setNote(''),
+        onSuccess: () => {
+          setNote('')
+          flow?.onSaved?.(detail, status)
+          if (advance) flow?.next?.()
+        },
         // Refused because a colleague got there first: same as being moved while writing.
         onError: () => {
           if (lastStatus.current === from) return
@@ -379,6 +401,34 @@ function StatusControls({ detail }: { detail: Report }) {
           </Select>
         </label>
       )}
+      {actions.map(action => {
+        const phrases = NOTE_PHRASES[action.status] ?? []
+        return (
+          <div key={action.status} className="space-y-1.5">
+            <p className="text-[13px] font-medium text-muted-foreground">
+              <Txt>{actions.length > 1 ? `Ready-made notes: ${action.label}` : 'Ready-made notes'}</Txt>
+            </p>
+            <div role="group" aria-label={t(action.label)} className="flex flex-wrap gap-1.5">
+              {phrases.map(phrase => (
+                <Button
+                  key={phrase.label}
+                  type="button"
+                  size="xs"
+                  variant="secondary"
+                  className="tracking-normal normal-case"
+                  onClick={() => {
+                    setNote(t(phrase.note))
+                    setMoved(false)
+                    if (phrase.reason) setReason(phrase.reason)
+                  }}
+                >
+                  <Txt>{phrase.label}</Txt>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
       <label className={fieldLabel}>
         <Txt>Reason or description (required)</Txt>
         <Textarea
@@ -394,6 +444,14 @@ function StatusControls({ detail }: { detail: Report }) {
           <Txt>The resident sees this.</Txt>
         </span>
       </label>
+      {noteFor && actions.length > 1 && (
+        <p className="text-[13px] text-muted-foreground">
+          {t('This note is for: {action}. Change the words to use it for another choice.').replace(
+            '{action}',
+            t(noteFor.label),
+          )}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 *:grow *:basis-auto">
         {actions.map(action => (
           <Button
@@ -401,12 +459,25 @@ function StatusControls({ detail }: { detail: Report }) {
             size="sm"
             variant={action.status === 'Rejected' ? 'destructive' : 'default'}
             type="button"
-            disabled={change.isPending || !described || (action.status === 'Rejected' && !reason)}
+            disabled={blocked(action.status)}
             onClick={() => transition(action.status)}
           >
             <Txt>{action.label}</Txt>
           </Button>
         ))}
+        {flow?.next &&
+          actions.map(action => (
+            <Button
+              key={action.status}
+              size="sm"
+              variant="secondary"
+              type="button"
+              disabled={blocked(action.status)}
+              onClick={() => transition(action.status, true)}
+            >
+              <Txt>{AND_NEXT[action.status] ?? 'Save and next'}</Txt>
+            </Button>
+          ))}
       </div>
       {change.error && (
         <Alert>
@@ -462,8 +533,53 @@ function ActionForm({ id }: { id: string }) {
   )
 }
 
+/** One side of the comparison. Says whose category it is: staff's once verified, otherwise the resident's. */
+function CompareSide({ title, report, link }: { title: string; report: ReportSummary; link?: string }) {
+  const t = useText()
+  const category = report.verified_category ?? report.resident_category
+  return (
+    <div className="min-w-0 space-y-1.5 text-[13px]">
+      <strong className="block text-[13px] font-bold break-words">{title}</strong>
+      <img
+        src={report.image_url}
+        alt={`${title}: ${t(label(category))}`}
+        loading="lazy"
+        decoding="async"
+        className="hairline aspect-[4/3] w-full rounded-xl bg-muted object-cover"
+      />
+      {/* Half a narrow panel: the badge wraps here rather than running into the other report's. */}
+      <StatusBadge status={report.status} className="h-auto max-w-full py-0.5 leading-tight whitespace-normal" />
+      <p className="break-words">
+        <span className="text-muted-foreground">
+          <Txt>{report.verified_category ? 'Verified:' : 'Resident chose:'}</Txt>
+        </span>{' '}
+        <span className="font-semibold">
+          <Txt>{label(category)}</Txt>
+        </span>
+      </p>
+      <p className="text-muted-foreground">
+        <DateText value={report.created_at} />
+      </p>
+      {report.location_label && <p className="break-words text-muted-foreground">{report.location_label}</p>}
+      {link && (
+        <Link to={link} className="inline-flex min-h-8 items-center font-bold text-link">
+          <Txt>Open report</Txt>
+        </Link>
+      )}
+    </div>
+  )
+}
+
+type LinkCheck = { reasons: string[]; distance_m: number; categories: Category[] }
+
+const linkCheckOf = (error: unknown) => {
+  const detail = error instanceof ApiError ? (error.detail as (LinkCheck & { code?: string }) | undefined) : undefined
+  return detail && typeof detail === 'object' && detail.code === 'confirm_far' ? detail : null
+}
+
 function DuplicateReview({ id }: { id: string }) {
   const t = useText()
+  const { search } = useLocation()
   const duplicates = useDuplicates(id, true)
   const generate = useGenerateDuplicates(id)
   const decide = useDecideDuplicate()
@@ -471,9 +587,21 @@ function DuplicateReview({ id }: { id: string }) {
   const inCase = new Set(useReportCase(id).data?.members?.map(member => member.id))
   // One draft note per suggestion, so text typed under one never goes out with another.
   const [notes, setNotes] = useState<Record<string, string>>({})
+  // Grouping can't be undone, so a pair that looks like a mis-click comes back with what to check before asking again.
+  const [check, setCheck] = useState<{ item: Duplicate; details: LinkCheck } | null>(null)
   const busy = generate.isPending || decide.isPending || link.isPending
-  const error = duplicates.error ?? generate.error ?? decide.error ?? link.error
-  const group = (item: Duplicate) => link.mutate({ report_id: id, other_report_id: item.candidate_report_id })
+  const error = duplicates.error ?? generate.error ?? decide.error ?? (linkCheckOf(link.error) ? null : link.error)
+  const group = (item: Duplicate, confirmFar = false) =>
+    link.mutate(
+      { report_id: id, other_report_id: item.candidate_report_id, ...(confirmFar ? { confirm_far: true } : {}) },
+      {
+        onSuccess: () => setCheck(null),
+        onError: failure => {
+          const details = linkCheckOf(failure)
+          setCheck(details ? { item, details } : null)
+        },
+      },
+    )
   function decideOn(item: Duplicate, decision: 'confirmed' | 'rejected') {
     decide.mutate(
       { id: item.id, decision, note: notes[item.id]?.trim() || undefined },
@@ -511,10 +639,28 @@ function DuplicateReview({ id }: { id: string }) {
           )}
           {result.suggestions.map(item => (
             <div className="space-y-2 rounded-xl bg-muted p-3" key={item.id}>
-              <strong className="block text-[14px]">
-                <Txt>Report</Txt> {item.candidate_report_id.slice(0, 8)}
-              </strong>
+              {!item.candidate && (
+                <strong className="block text-[14px]">
+                  <Txt>Report</Txt> {item.candidate_report_id.slice(0, 8)}
+                </strong>
+              )}
+              {result.report && item.candidate && (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <CompareSide title={t('This report')} report={result.report} />
+                  <CompareSide
+                    title={`#${item.candidate.id.slice(0, 8).toUpperCase()}`}
+                    report={item.candidate}
+                    link={`/desk/reports/${item.candidate.id}${search}`}
+                  />
+                </div>
+              )}
               <small className="block text-[13px] text-muted-foreground">
+                {item.distance_m != null && (
+                  <>
+                    {t('{n} m apart').replace('{n}', String(item.distance_m))}
+                    {' · '}
+                  </>
+                )}
                 <Txt>Similarity score</Txt> {item.score.toFixed(2)} · <Txt>{item.decision}</Txt>
               </small>
               {item.decision === 'confirmed' && inCase.has(item.candidate_report_id) && (
@@ -528,6 +674,30 @@ function DuplicateReview({ id }: { id: string }) {
                   <Layers />
                   <Txt>Group into one case</Txt>
                 </Button>
+              )}
+              {check?.item.id === item.id && (
+                <div role="alert" className="space-y-2 rounded-xl bg-card p-3 text-[14px]">
+                  <strong className="block font-bold">
+                    <Txt>Check before grouping. This can't be undone.</Txt>
+                  </strong>
+                  {check.details.reasons.includes('far') && (
+                    <p>{t('These reports are {n} m apart.').replace('{n}', String(check.details.distance_m))}</p>
+                  )}
+                  {check.details.reasons.includes('category') && (
+                    <p>
+                      <Txt>Their categories differ:</Txt>{' '}
+                      {check.details.categories.map(category => t(label(category))).join(' / ')}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" type="button" disabled={busy} onClick={() => group(item, true)}>
+                      <Txt>Group them anyway</Txt>
+                    </Button>
+                    <Button size="sm" variant="secondary" type="button" disabled={busy} onClick={() => setCheck(null)}>
+                      <Txt>Cancel</Txt>
+                    </Button>
+                  </div>
+                </div>
               )}
               {item.decision === 'pending' && (
                 <>
@@ -734,6 +904,9 @@ function AddDetails({ id }: { id: string }) {
         <p className="text-[14px] text-muted-foreground">
           <Txt>Your first report stays as it is. Staff see what you add, with the time you added it.</Txt>
         </p>
+        <label htmlFor="addendum-note" className="sr-only">
+          <Txt>Add details</Txt>
+        </label>
         <Textarea
           id="addendum-note"
           value={note}

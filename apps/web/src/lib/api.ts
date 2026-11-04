@@ -2,6 +2,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** What the API sent as `detail`, when it is more than a sentence (see cases.py's confirm_far). */
+    readonly detail?: unknown,
   ) {
     super(message)
   }
@@ -20,8 +22,14 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${path}`, { ...init, credentials: 'include', headers })
   if (!response.ok) {
     const problem = await response.json().catch(() => null)
-    const detail = typeof problem?.detail === 'string' ? problem.detail : `Request failed (${response.status})`
-    throw new ApiError(detail, response.status)
+    const detail = problem?.detail
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : typeof detail?.message === 'string'
+          ? detail.message
+          : `Request failed (${response.status})`
+    throw new ApiError(message, response.status, detail)
   }
   return response.status === 204 ? (undefined as T) : (response.json() as Promise<T>)
 }

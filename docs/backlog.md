@@ -18,6 +18,7 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 | D8 | Monthly report (`/desk/records`): counts, typical times, backlog age, rejection reasons, CSV and print, limited to the caller's barangay | `test_records.py`, `records.test.tsx`, screenshots awaiting approval |
 | D9 | Staff report view: the three category fields no longer overlap; a staff account with no barangay is told why its desk is empty | Screenshots awaiting approval |
 | D10 | Security and backend batch, API side (B5, B6, P1 API, M1, M3 to M10, M12 to M14; P7 without unlink): see docs/api.md and docs/architecture.md | `test_admin.py`, `test_limits.py`, `test_points_ledger.py`, `test_links_and_polls.py`, `test_export_erasure_ops.py` |
+| D11 | Staff desk batch: P1 (accounts page, first-run checklist, forced password change, phone address as text), P6, P8 (thumbnails, open-only default, saved phrases, save and next, bulk "Start verification"), P9, P11 for staff screens, P13 staff side, M8 screen, P7's confirm prompt (a safety net so far: screens only link pairs staff already confirmed, which skip the check) | `test_staff_desk.py`, `staff-desk.test.tsx`, screenshots awaiting approval |
 
 ## Open: 1. Blockers and current risks
 
@@ -34,19 +35,19 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 
 | ID | Item | Evidence | Why it matters | Effort | Done when | Lead |
 | --- | --- | --- | --- | --- | --- | --- |
-| P1 | Start a barangay without a developer: admin screen for staff accounts and password resets; first-run checklist; address as a QR code | C | The biggest barrier to a pilot | M-L | A non-developer gets staff signed in and one synthetic report through, without a terminal | Product |
+| P1 | Start a barangay without a developer. Left: the address as a QR code (deferred: no QR library in the project, and new dependencies need approval; the address shows as text), and loading barangays still needs a command | C | The biggest barrier to a pilot | S-M | A non-developer gets staff signed in and one synthetic report through, without a terminal | Product |
 | P2 | Friendly screen when the server can't be reached (Filipino too), instead of an address prompt | C | First thing residents see when away from the Wi-Fi | S | Server off: translated screen with Retry | UX |
 | P3 | Network errors: friendly message, upload timeout, "offline · last updated" strip, no sign-in screen on a 5xx | C | Raw "Failed to fetch"; a server error looks like being signed out | S-M | Server stopped mid-session: strip appears within about 20 s | UX |
 | P4 | Keep report drafts across tab switches, reloads and re-sign-in | C | Tapping another tab loses the photo and pin | M | Draft restored; other accounts never see it; wiped after sending or 24 h | UX |
 | P5 | Top of report detail: state, latest staff note, what happens next; "still not fixed" as a linked new report | C and E (first experience drives repeat reports) | Follow-through is the retention driver | S-M | All six statuses show a next step | Product |
 | P6 | Duplicate review shows both photos, distance and date | C | Staff merge blind, and merging moves other residents' status | S-M | Compare without leaving the report | UX |
-| P7 | Grouping can't be undone, and `/cases/link` has no distance check | R | A mis-click follows the resident forever and pays points | M | Unlink restores status, points, category and history, audited (status-path exception needs owner) | Backend |
+| P7 | Grouping can't be undone (the distance check and its prompt are done) | R | A mis-click follows the resident forever and pays points | M | Unlink restores status, points, category and history, audited (status-path exception needs owner) | Backend |
 | P8 | Faster triage: thumbnails, open-only default, saved phrases, save and next | C | Daily staff time, which is what a barangay pays for | S each | Pending to Accepted in two choices and two clicks | UX |
-| P9 | Overview figures match the lists they open (multi-status filter); counts come from the server | C | "4 waiting" opens a list showing fewer; list cut at 2,000 | S-M | Each number equals its list | UX |
+| P9 | Counts come from the server (figures now equal the lists they open; both stop at the newest 2,000) | C | Lists cut at 2,000 | S-M | A barangay past 2,000 reports still sees true totals | UX |
 | P10 | Contrast: white on green is 2.09:1 on every primary button; also error text, badges, focus rings | R (computed) | Hard to read outdoors; fails WCAG AA | S | Token check at 4.5:1 and owner's screenshot approval | UX |
-| P11 | Screen reader and keyboard gaps: focus on step change, route titles, row names, chart table | C | Accessibility and public-sector credibility | S-M | TalkBack report and NVDA status change completed | UX |
+| P11 | Screen reader and keyboard gaps, resident side: focus on step change. Staff screens have route titles, row names and a chart table; NVDA check not run | C | Accessibility and public-sector credibility | S-M | TalkBack report and NVDA status change completed | UX |
 | P12 | Location dead-end: Next disabled with no reason, pin drawn when none is set | C | Blocks a report with no explanation | S | Told exactly what to do with GPS denied | UX |
-| P13 | Help path: "ask your barangay hall" on sign-in, barangay contact details, feedback form | C | Locked-out residents have nowhere to go | S-M | Reachable from sign-in and failed chat in both languages | Support |
+| P13 | Help path, resident side: "ask your barangay hall" on sign-in, barangay contact details, an entry to `POST /feedback` (staff side done) | C | Locked-out residents have nowhere to go | S-M | Reachable from sign-in and failed chat in both languages | Support |
 | P14 | Remaining translation gaps: 15 API errors, native dialog; hide "Already reported" for grouped cases; Filipino review by a person | R | Trust among non-English users | S | A test fails on an untranslated API error | UX |
 
 ## Open: 3. Business validation (business-model.md)
@@ -81,7 +82,7 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 ## Open: 5. Longer term
 
 - Capture now, send later: photo and GPS kept on the phone until the server is back. Large, but softens the same-Wi-Fi limit.
-- Bulk status changes. No-pin reports (landmark or barangay only), which change jurisdiction logic.
+- Bulk status changes past "Start verification". No-pin reports (landmark or barangay only), which change jurisdiction logic.
 - Per-barangay settings, city rollup report and SMS notices (about ₱0.56 a text, E).
 
 ## Open: 6. Deployment and launch (deliberately last)

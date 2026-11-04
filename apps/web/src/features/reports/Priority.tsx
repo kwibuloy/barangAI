@@ -9,7 +9,7 @@ const LEVEL_STYLE: Record<Priority['level'], string> = {
   medium: 'var(--status-progress)',
   low: 'var(--muted-foreground)',
 }
-const LEVEL_LABEL: Record<Priority['level'], string> = {
+export const LEVEL_LABEL: Record<Priority['level'], string> = {
   high: 'High priority',
   medium: 'Medium priority',
   low: 'Low priority',

@@ -23,6 +23,7 @@ from .chat import router as chat_router
 from .checker import validate_configured_checker
 from .db import database_url, upgrade_sqlite
 from .duplicates import router as duplicates_router
+from .feedback import router as feedback_router
 from .geo import router as geo_router
 from .google_auth import router as google_router
 from .media import validate_storage_config
@@ -60,6 +61,7 @@ def create_app():
     app.include_router(records_router)
     app.include_router(points_router)
     app.include_router(admin_router)
+    app.include_router(feedback_router)
     app.add_middleware(RequestBodyLimitMiddleware)
 
     @app.get("/health", include_in_schema=False)

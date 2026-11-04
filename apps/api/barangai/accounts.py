@@ -15,6 +15,7 @@ from . import delete_report as deletion
 from .auth import (
     MAX_PASSWORD,
     check_password,
+    csrf_user,
     current_session,
     get_current_user,
     hash_password,
@@ -26,7 +27,7 @@ from .auth import (
 )
 from .db import get_db, scrub_deleted
 from .media import delete_image
-from .models import DeletionRequest, LoginSession, Notification, Report, User, now, utc_iso
+from .models import DeletionRequest, Feedback, LoginSession, Notification, Report, User, now, utc_iso
 from .reports import authorized_report, deletion_request_data, serialize_report
 from .usage import limit_setting, period_key, take
 
@@ -50,19 +51,24 @@ class PasswordChange(BaseModel):
 
 @router.post("/auth/password", status_code=204)
 def change_password(
-    body: PasswordChange, request: Request, db: Session = Depends(get_db), user: User = Depends(require_csrf)
+    body: PasswordChange, request: Request, db: Session = Depends(get_db), user: User = Depends(csrf_user)
 ):
-    """Signs out the account's other devices too, in case someone else had the old password."""
+    """Signs out the account's other devices too, in case someone else had the old password. This is the one way out
+    of a temporary password, so it stays open to an account that also uses Google once an administrator has reset it."""
     rate_limit(request, "password", key=user.id)
-    if user.identities:
+    temporary = user.must_change_password
+    if user.identities and not temporary:
         raise HTTPException(409, "This account signs in with Google")
     stored = user.password_hash
     db.rollback()
     if not password_matches(stored, body.current_password):
         raise HTTPException(403, "Current password is incorrect")
     check_password(body.new_password, user.email)
+    if temporary and body.new_password == body.current_password:
+        raise HTTPException(422, "Choose a new password, not the temporary one")
     keep = current_session(request, db).token_hash
     user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
     db.execute(delete(LoginSession).where(LoginSession.user_id == user.id, LoginSession.token_hash != keep))
     db.commit()
 
@@ -111,8 +117,9 @@ def export_my_data(request: Request, db: Session = Depends(get_db), user: User =
     rate_limit(request, "export", 5, key=user.id)
     user_id = user.id
     points.expire_due(db, user_id)
+    # The temporary-password flag is about this session, not the person's data.
     account = {
-        **user_data(user),
+        **{key: value for key, value in user_data(user).items() if key != "must_change_password"},
         "terms_accepted_at": utc_iso(user.terms_accepted_at) if user.terms_accepted_at else None,
         "terms_version": user.terms_version,
     }
@@ -132,6 +139,10 @@ def export_my_data(request: Request, db: Session = Depends(get_db), user: User =
         ],
         "points": points.my_ledger(db, user_id),
         "vouchers": points.my_vouchers_data(db, user_id),
+        "feedback": [
+            {"message": item.message, "created_at": utc_iso(item.created_at)}
+            for item in db.scalars(select(Feedback).where(Feedback.user_id == user_id).order_by(Feedback.created_at))
+        ],
     }
     return JSONResponse(data, headers={"Content-Disposition": 'attachment; filename="barangai-my-data.json"'})
 

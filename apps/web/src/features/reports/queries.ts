@@ -100,7 +100,9 @@ export const useDecideDuplicate = () =>
   )
 
 export const useLinkReports = () =>
-  useReportMutation((body: { report_id: string; other_report_id: string }) => post('/cases/link', body))
+  useReportMutation((body: { report_id: string; other_report_id: string; confirm_far?: boolean }) =>
+    post('/cases/link', body),
+  )
 
 export const useCaseDecision = (id: string) =>
   useReportMutation((body: { decision: 'confirmed' | 'rejected'; note?: string }) =>

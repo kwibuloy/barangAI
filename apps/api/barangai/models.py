@@ -60,6 +60,8 @@ class User(Base):
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Points that couldn't be taken back because they were already spent; they come out of the next refund (points.py).
     points_owed: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Set when an administrator issues a temporary password; the account can write nothing else until it picks its own.
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     identities: Mapped[list["OAuthIdentity"]] = relationship(viewonly=True)
 
 
@@ -282,6 +284,17 @@ class RewardChange(Base):
     # "created" holds the starting values; "changed" holds {field: [old, new]}.
     action: Mapped[str] = mapped_column(String(20), nullable=False)
     changes: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+
+
+class Feedback(Base):
+    """A note about the app from a signed-in person. Holds the account id and nothing else about them, and goes with
+    the account when it is erased."""
+
+    __tablename__ = "feedback"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
 
 

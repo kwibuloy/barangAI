@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/page'
 import { shownError } from '../../lib/live'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { categories, label } from '../reports/categories'
+import { groupCases } from '../reports/grouping'
 import { CategoryTile, categoryColor } from '../reports/CategoryIcon'
 import { useMe } from '../auth/queries'
 import { useBoundaries } from '../reports/boundaries'
@@ -21,6 +22,8 @@ import { useCountUp } from '@/hooks/use-count-up'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from '../reports/StatusBadge'
 import type { Report } from '../reports/types'
+import { FirstRunChecklist } from './FirstRunChecklist'
+import { ALL_STATUSES, queueLink, WAITING, WORKING } from './queueFilter'
 import { MapLegend, StaffMap } from './StaffMap'
 
 const DAYS = 14
@@ -80,7 +83,9 @@ export function OverviewPage() {
   // With barangays loaded, a staff account without one sees nothing, which would otherwise read as "All caught up".
   const unassigned = me.data?.role === 'staff' && !me.data.barangay && Boolean(boundaries.data?.features?.length)
   const all = useMemo(() => reports.data ?? [], [reports.data])
-  const count = (...statuses: Report['status'][]) => all.filter(report => statuses.includes(report.status)).length
+  // Each figure is the length of the list it opens, so these count as the queue does: a grouped case is one row.
+  const rows = useMemo(() => groupCases(all).rows, [all])
+  const count = (...statuses: Report['status'][]) => rows.filter(report => statuses.includes(report.status)).length
   const trend = useMemo(
     () =>
       Array.from({ length: DAYS }, (_, index) => {
@@ -96,12 +101,16 @@ export function OverviewPage() {
       }),
     [all, language],
   )
+  // Staff's word where they have verified one, the resident's until then. The model's guess never counts here.
   const byCategory = categories
-    .map(item => ({ ...item, count: all.filter(report => report.resident_category === item.value).length }))
+    .map(item => ({
+      ...item,
+      count: rows.filter(report => (report.verified_category ?? report.resident_category) === item.value).length,
+    }))
     .sort((a, b) => b.count - a.count)
   const maxCategory = Math.max(1, ...byCategory.map(item => item.count))
-  const attention = all
-    .filter(report => ['Pending', 'Under Verification'].includes(report.status))
+  const attention = rows
+    .filter(report => WAITING.includes(report.status))
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
     .slice(0, 6)
   const today = new Intl.DateTimeFormat(language === 'fil' ? 'fil-PH' : 'en-GB', {
@@ -118,9 +127,20 @@ export function OverviewPage() {
             <Txt>Operations overview</Txt>
           </h1>
         </div>
-        <Link to="/desk/records" className="text-[14px] font-bold text-link md:hidden">
-          <Txt>Monthly report</Txt>
-        </Link>
+        {/* Phones have no sidebar, and these don't fit in the tabs. */}
+        <nav aria-label={t('More sections')} className="flex flex-wrap gap-x-4 gap-y-1 md:hidden">
+          <Link to="/desk/records" className="inline-flex min-h-11 items-center text-[14px] font-bold text-link">
+            <Txt>Monthly report</Txt>
+          </Link>
+          {me.data?.role === 'administrator' && (
+            <Link to="/desk/accounts" className="inline-flex min-h-11 items-center text-[14px] font-bold text-link">
+              <Txt>Staff accounts</Txt>
+            </Link>
+          )}
+          <Link to="/desk/help" className="inline-flex min-h-11 items-center text-[14px] font-bold text-link">
+            <Txt>Help</Txt>
+          </Link>
+        </nav>
       </div>
       {unassigned && (
         <p role="alert" className="hairline rounded-2xl bg-card p-4 text-[15px] font-semibold text-destructive">
@@ -130,6 +150,7 @@ export function OverviewPage() {
           </Txt>
         </p>
       )}
+      {me.data?.role === 'administrator' && <FirstRunChecklist reports={reports.data?.length} />}
       <BriefCard />
       {shownError(reports) && (
         <p role="alert" className="text-[14px] text-destructive">
@@ -141,18 +162,18 @@ export function OverviewPage() {
         <Kpi
           index={0}
           label="Waiting for review"
-          value={count('Pending', 'Under Verification')}
+          value={count(...WAITING)}
           icon={Inbox}
           color="#ff9600"
-          to="/desk/reports?status=Pending"
+          to={queueLink(WAITING)}
         />
         <Kpi
           index={1}
           label="Being worked on"
-          value={count('Accepted', 'In Progress')}
+          value={count(...WORKING)}
           icon={Wrench}
           color="#1cb0f6"
-          to="/desk/reports?status=In+Progress"
+          to={queueLink(WORKING)}
         />
         <Kpi
           index={2}
@@ -160,10 +181,20 @@ export function OverviewPage() {
           value={count('Resolved')}
           icon={CircleCheckBig}
           color="#58cc02"
-          to="/desk/reports?status=Resolved"
+          to={queueLink(['Resolved'])}
         />
-        <Kpi index={3} label="Total reports" value={all.length} icon={Layers} color="#ce82ff" to="/desk/reports" />
+        <Kpi
+          index={3}
+          label="Total reports"
+          value={rows.length}
+          icon={Layers}
+          color="#ce82ff"
+          to={queueLink(ALL_STATUSES)}
+        />
       </div>
+      <p className="-mt-4 text-[13px] text-muted-foreground">
+        <Txt>A grouped case counts as one here and in Reports. Kap's brief counts each report.</Txt>
+      </p>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
@@ -197,6 +228,31 @@ export function OverviewPage() {
                 />
               </AreaChart>
             </ChartContainer>
+            <details className="mt-2 text-[14px]">
+              <summary className="flex min-h-11 cursor-pointer items-center font-bold text-link">
+                <Txt>Show as a table</Txt>
+              </summary>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <Txt>Day</Txt>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Txt>New reports</Txt>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {trend.map(item => (
+                    <TableRow key={item.day}>
+                      <TableCell>{item.day}</TableCell>
+                      <TableCell className="text-right tabular-nums">{item.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </details>
           </CardContent>
         </Card>
         <Card>
@@ -204,6 +260,9 @@ export function OverviewPage() {
             <CardTitle>
               <Txt>Category distribution</Txt>
             </CardTitle>
+            <p className="text-[13px] text-muted-foreground">
+              <Txt>Staff-verified category where there is one, otherwise the resident's choice.</Txt>
+            </p>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3.5">
@@ -242,7 +301,7 @@ export function OverviewPage() {
             </CardTitle>
             <CardAction>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/desk/reports">
+                <Link to={queueLink(WAITING)}>
                   <Txt>View all</Txt> <ArrowRight />
                 </Link>
               </Button>

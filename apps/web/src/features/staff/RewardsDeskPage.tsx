@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Alert } from '@/components/page'
+import { RewardsLog } from './RewardsLog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -215,6 +216,7 @@ function RewardList() {
 
 /** Basic version: staff use residents' codes and manage their barangay's shop; administrators, every barangay's. */
 export function RewardsDeskPage() {
+  const administrator = useMe().data?.role === 'administrator'
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-5 md:p-8">
       <h1 className="display text-[30px] leading-tight">
@@ -223,6 +225,7 @@ export function RewardsDeskPage() {
       <UseCode />
       <AddReward />
       <RewardList />
+      {administrator && <RewardsLog />}
     </div>
   )
 }

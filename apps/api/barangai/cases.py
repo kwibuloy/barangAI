@@ -236,21 +236,37 @@ def report_case(report_id: str, db: Session = Depends(get_db), user: User = Depe
     return case_data(db, authorized_report(report_id, db, user), user)
 
 
-def in_jurisdiction(db: Session, user: User, result: dict):
-    """duplicates.py is frozen and compares across barangays; staff only get suggestions they could open."""
-    return {**result, "suggestions": [
-        item for item in result["suggestions"]
-        if barangays.may_see(db, user, db.get(Report, item["candidate_report_id"]))]}
+def comparison(report: Report) -> dict:
+    """What staff compare side by side. The category fields stay separate, and the photo uses the authorized image
+    route, which leaves the usual trace in the photo-view log."""
+    return {"id": report.id, "status": report.status, "resident_category": report.resident_category,
+            "verified_category": report.verified_category, "created_at": utc_iso(report.created_at),
+            "location_label": report.location_label, "image_url": f"/api/reports/{report.id}/image"}
+
+
+def in_jurisdiction(db: Session, user: User, report_id: str, result: dict):
+    """duplicates.py is frozen and compares across barangays; staff only get suggestions they could open, each with
+    what they need to compare it without leaving the report."""
+    if not result["embedding_available"]:
+        return result
+    report = db.get(Report, report_id)
+    suggestions = []
+    for item in result["suggestions"]:
+        candidate = db.get(Report, item["candidate_report_id"])
+        if candidate and barangays.may_see(db, user, candidate):
+            apart = distance_m(report.latitude, report.longitude, candidate.latitude, candidate.longitude)
+            suggestions.append({**item, "distance_m": round(apart), "candidate": comparison(candidate)})
+    return {**result, "report": comparison(report), "suggestions": suggestions}
 
 
 @router.get("/reports/{report_id}/duplicates")
 def duplicate_candidates(report_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return in_jurisdiction(db, user, duplicates.duplicate_candidates(report_id, db, user))
+    return in_jurisdiction(db, user, report_id, duplicates.duplicate_candidates(report_id, db, user))
 
 
 @router.post("/reports/{report_id}/duplicates/generate")
 def generate_duplicates(report_id: str, db: Session = Depends(get_db), user: User = Depends(require_csrf)):
-    return in_jurisdiction(db, user, duplicates.generate_duplicates(report_id, db, user))
+    return in_jurisdiction(db, user, report_id, duplicates.generate_duplicates(report_id, db, user))
 
 
 # Beyond this, /cases/link wants staff to say they mean it.

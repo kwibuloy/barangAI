@@ -270,7 +270,7 @@ describe('resident reporting', () => {
         throw Error(`unexpected ${url}`)
       }),
     )
-    at('/desk/reports')
+    at('/desk/reports?status=all')
     render(<App />)
     fireEvent.click(await screen.findByRole('link', { name: /review report/i }))
     await waitFor(() =>
@@ -336,6 +336,10 @@ describe('staff overview', () => {
     // Only the pending report needs attention on the overview.
     expect(await screen.findAllByRole('link', { name: /flooding/i })).toHaveLength(1)
     fireEvent.click(screen.getByRole('link', { name: 'Reports' }))
+    // Open reports first; closed ones are one choice away.
+    expect(await screen.findAllByRole('link', { name: /review report/i })).toHaveLength(1)
+    fireEvent.click(screen.getByLabelText('Filter by status'))
+    fireEvent.click(screen.getByRole('option', { name: 'All statuses' }))
     expect(await screen.findAllByRole('link', { name: /review report/i })).toHaveLength(2)
     fireEvent.click(screen.getByLabelText('Filter by status'))
     fireEvent.click(screen.getByRole('option', { name: 'Pending' }))
@@ -857,7 +861,7 @@ describe('localized feedback', () => {
     )
     at('/desk/reports')
     render(<App />)
-    fireEvent.click(await screen.findByRole('link', { name: 'I-review ang ulat: Baha' }))
+    fireEvent.click(await screen.findByRole('link', { name: /^I-review ang ulat: Baha/ }))
     expect(await screen.findByText(/Similarity 0.91/)).toHaveTextContent('Hinihintay')
     fireEvent.error(screen.getByAltText('Na-submit na ulat'))
     expect(await screen.findByRole('alert')).toHaveTextContent(

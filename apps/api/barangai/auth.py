@@ -111,7 +111,8 @@ def user_data(user):
     saved = user.preferences if isinstance(user.preferences, dict) else {}
     preferences = {key: saved[key] for key, allowed in PREFERENCES.items() if saved.get(key) in allowed}
     return {"id": user.id, "email": user.email, "role": user.role, "preferences": preferences,
-            "barangay": user.barangay.name if user.barangay_id else None, "google": bool(user.identities)}
+            "barangay": user.barangay.name if user.barangay_id else None, "google": bool(user.identities),
+            "must_change_password": bool(user.must_change_password)}
 
 
 def proxy_hops():
@@ -245,7 +246,8 @@ def require_role(user: User, roles):
         raise HTTPException(403, "Insufficient role")
 
 
-def require_csrf(request: Request, db: Session = Depends(get_db)):
+def csrf_user(request: Request, db: Session = Depends(get_db)):
+    """The signed-in user of a write. Only changing the password and signing out use this directly."""
     session = current_session(request, db)
     supplied = request.headers.get("X-CSRF-Token", "")
     if (
@@ -255,6 +257,13 @@ def require_csrf(request: Request, db: Session = Depends(get_db)):
     ):
         raise HTTPException(403, "Invalid CSRF token")
     return session.user
+
+
+def require_csrf(user: User = Depends(csrf_user)):
+    """Every other write: refused while the account still has a temporary password someone else has seen."""
+    if user.must_change_password:
+        raise HTTPException(403, "Change your temporary password first")
+    return user
 
 
 @router.post("/register", status_code=201)
@@ -332,7 +341,7 @@ def save_preferences(body: PreferencesInput, db: Session = Depends(get_db), user
 
 
 @router.post("/logout", status_code=204)
-def logout(response: Response, request: Request, db: Session = Depends(get_db), user: User = Depends(require_csrf)):
+def logout(response: Response, request: Request, db: Session = Depends(get_db), user: User = Depends(csrf_user)):
     token = request.cookies.get("session")
     db.delete(db.get(LoginSession, hashlib.sha256(token.encode()).hexdigest()))
     db.commit()

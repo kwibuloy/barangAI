@@ -2,7 +2,10 @@
 service, so a new or reset password is generated here and shown once, for the administrator to hand over in person.
 Residents' passwords are not reset here: that needs an identity check at the hall (docs/mobile.md)."""
 
+import contextlib
+import ipaddress
 import secrets
+import socket
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -44,6 +47,7 @@ def staff_data(account: User) -> dict:
         "role": account.role,
         "barangay": account.barangay.name if account.barangay_id else None,
         "disabled": bool(account.disabled_at),
+        "must_change_password": bool(account.must_change_password),
     }
 
 
@@ -103,7 +107,13 @@ def create_staff(body: StaffInput, request: Request, db: Session = Depends(get_d
         raise HTTPException(409, "Email already registered")
     barangay_id = barangay_id_named(db, body.barangay, body.role)
     password = temporary_password(email)
-    account = User(email=email, password_hash=hash_password(password), role=body.role, barangay_id=barangay_id)
+    account = User(
+        email=email,
+        password_hash=hash_password(password),
+        role=body.role,
+        barangay_id=barangay_id,
+        must_change_password=True,
+    )
     db.add(account)
     try:
         db.commit()
@@ -151,10 +161,52 @@ def reset_staff_password(
         raise HTTPException(409, "Use change password for your own account")
     password = temporary_password(account.email)
     account.password_hash = hash_password(password)
+    account.must_change_password = True
     sign_out(db, account.id)
     clear_login_failures(db, account.email)
     db.commit()
     return {"temporary_password": password}
+
+
+def lan_addresses() -> list[str]:
+    """This computer's private network addresses, the one with the outgoing route first: virtual adapters such as WSL's
+    come last. Connecting a UDP socket sends nothing; it only asks the system which address it would use."""
+    found = []
+    with contextlib.suppress(OSError), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        probe.connect(("192.0.2.1", 9))
+        found.append(probe.getsockname()[0])
+    with contextlib.suppress(OSError):
+        found += [info[4][0] for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)]
+    addresses = []
+    for address in found:
+        ip = ipaddress.ip_address(address)
+        if ip.is_private and not ip.is_loopback and not ip.is_link_local and address not in addresses:
+            addresses.append(address)
+    return addresses
+
+
+def accepts_connections(address: str, port: int) -> bool:
+    """False while the server is bound to this computer only (started without -Lan). A firewall can still stop phones."""
+    try:
+        with socket.create_connection((address, port), timeout=0.3):
+            return True
+    except OSError:
+        return False
+
+
+@router.get("/server-address")
+def server_address(request: Request, user: User = Depends(get_current_user)):
+    """The address residents' phones use to reach this computer. Uses the port the server itself listens on, never the
+    Host header a caller sent."""
+    require_role(user, {"administrator"})
+    server = request.scope.get("server")
+    port = server[1] if server and server[1] else 80
+    return {
+        "addresses": [
+            {"url": f"http://{address}:{port}", "listening": accepts_connections(address, port)}
+            for address in lan_addresses()
+        ]
+    }
 
 
 @router.get("/barangays")

@@ -13,6 +13,8 @@ export type User = {
   preferences?: Preferences
   /** Signs in with Google, so it has no password of its own. */
   google?: boolean
+  /** Still on a temporary password an administrator issued: nothing else works until it is changed. */
+  must_change_password?: boolean
 }
 
 const meKey = ['me'] as const
@@ -117,8 +119,10 @@ function useFinishSession() {
 }
 
 export function useChangePassword() {
+  const client = useQueryClient()
   return useMutation({
     mutationFn: (body: { current_password: string; new_password: string }) => post<void>('/auth/password', body),
+    onSuccess: () => client.setQueryData<User | null>(meKey, me => me && { ...me, must_change_password: false }),
   })
 }
 

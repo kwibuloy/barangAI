@@ -14,6 +14,7 @@ const ENTRY: Record<PointEntry['kind'], string> = {
   redeem: 'Reward redeemed',
   refund: 'Unused code refunded',
   reversal: 'Report removed',
+  merge: 'Grouped reports settled',
 }
 const when = (value: string) => new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' })
 
@@ -204,6 +205,13 @@ export function RewardsPage() {
           <strong className="display block text-[36px] leading-tight tabular-nums">{points.data?.balance ?? 0}</strong>
         </span>
       </div>
+      {(points.data?.owed ?? 0) > 0 && (
+        <p className="px-1 text-[14px] text-muted-foreground">
+          {t(
+            '{n} points to settle: they were already spent when a report was removed or grouped. They come out of your next refund.',
+          ).replace('{n}', String(points.data?.owed))}
+        </p>
+      )}
       <Segmented
         id="rewards-section"
         label={t('Rewards')}

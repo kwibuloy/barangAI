@@ -719,6 +719,198 @@ const filipino: Record<string, string> = {
   "Permission wasn't given in the Rokid AI App.": 'Hindi pinayagan sa Rokid AI App.',
   "Couldn't connect to the glasses. Check they're on and paired.":
     'Hindi maka-connect sa glasses. I-check kung naka-on at naka-pair.',
+  'Choose your own password': 'Pumili ng sarili mong password',
+  'Your administrator gave you a temporary password. Change it first; the app opens right after.':
+    'Pansamantala lang ang password na bigay ng admin. Palitan muna ito; bubukas agad ang app pagkatapos.',
+  'Temporary password': 'Pansamantalang password',
+  'Change your temporary password first': 'Palitan muna ang pansamantalang password mo.',
+  'Choose a new password, not the temporary one': 'Pumili ng bagong password, hindi ang pansamantala.',
+  'Staff accounts': 'Staff accounts',
+  'More sections': 'Iba pang section',
+  'Add an account': 'Magdagdag ng account',
+  'Add account': 'Idagdag ang account',
+  Email: 'Email',
+  Role: 'Role',
+  Staff: 'Staff',
+  'Who can use the desk': 'Sino ang puwedeng gumamit ng desk',
+  Actions: 'Gagawin',
+  'This is you': 'Ikaw ito',
+  'Still on a temporary password': 'Pansamantalang password pa rin',
+  'No barangays loaded': 'Wala pang barangay',
+  Disabled: 'Naka-disable',
+  Active: 'Active',
+  Confirm: 'Kumpirmahin',
+  "They are signed out right away and can't sign in until enabled.":
+    'Masa-sign out agad sila at hindi makakapag-sign in hanggang i-enable ulit.',
+  'They are signed out and the old password stops working.':
+    'Masa-sign out sila at hindi na gagana ang lumang password.',
+  'Yes, disable': 'Oo, i-disable',
+  'Yes, reset': 'Oo, i-reset',
+  Enable: 'I-enable',
+  Disable: 'I-disable',
+  'Reset password': 'I-reset ang password',
+  'Barangay saved.': 'Na-save ang barangay.',
+  'Account disabled.': 'Na-disable ang account.',
+  'Account enabled.': 'Na-enable ang account.',
+  For: 'Para kay',
+  "Give this in person. It is shown only once and can't be seen again.":
+    'Ibigay ito nang personal. Isang beses lang ito lalabas at hindi na makikita ulit.',
+  'They must choose their own password when they first sign in. If it gets lost, reset it again.':
+    'Pipili sila ng sariling password sa unang sign-in. Kapag nawala, i-reset ulit.',
+  "I've given it": 'Naibigay ko na',
+  Copy: 'Kopyahin',
+  Copied: 'Nakopya na',
+  "Couldn't copy. Select the text and copy it yourself.": 'Hindi nakopya. Piliin ang text at ikaw na ang mag-copy.',
+  "Set up a resident's phone": 'I-set up ang phone ng residente',
+  'Open the BarangAI app and enter this address. The phone must be on the same Wi-Fi.':
+    'Buksan ang BarangAI app at ilagay ang address na ito. Dapat nasa parehong Wi-Fi ang phone.',
+  'Phone address': 'Address para sa phone',
+  'No Wi-Fi address found. Connect this computer to the Wi-Fi, then reload this page.':
+    'Walang Wi-Fi address. I-connect ang computer sa Wi-Fi, tapos i-reload ang page.',
+  "Phones can't reach this yet. Restart BarangAI with:":
+    'Hindi pa ito maabot ng phone. I-restart ang BarangAI gamit ang:',
+  "If that doesn't work, try:": 'Kung hindi gumana, subukan:',
+  'Get your barangay started': 'Simulan ang barangay mo',
+  'Barangays loaded': 'Naka-load ang mga barangay',
+  'Done once on this computer: python -m barangai.barangays with the barangay file. See docs/mobile.md.':
+    'Isang beses lang sa computer na ito: python -m barangai.barangays kasama ang barangay file. Tingnan ang docs/mobile.md.',
+  'A staff account exists': 'May staff account na',
+  'Add one under Staff accounts, and give them the temporary password in person.':
+    'Magdagdag sa Staff accounts, at personal na ibigay ang pansamantalang password.',
+  'A reward is in the shop (optional)': 'May reward sa shop (optional)',
+  'Add one under Rewards, if your barangay offers them.': 'Magdagdag sa Rewards, kung meron ang barangay mo.',
+  'First report received': 'Natanggap ang unang ulat',
+  "Set up a resident's phone with the address below, then send a test report.":
+    'I-set up ang phone ng residente gamit ang address sa baba, tapos mag-send ng test na ulat.',
+  'Done:': 'Tapos na:',
+  'To do:': 'Gagawin:',
+  'Rewards log': 'Log ng rewards',
+  'Find a code': 'Hanapin ang code',
+  Find: 'Hanapin',
+  'Show all codes': 'Ipakita lahat ng code',
+  Codes: 'Mga code',
+  'No code matches.': 'Walang tugmang code.',
+  'No codes yet.': 'Wala pang code.',
+  Reward: 'Reward',
+  'Redeemed by': 'Ni-redeem ni',
+  'Honoured by': 'Tinanggap ni',
+  'Price and stock changes': 'Pagbabago sa presyo at stock',
+  'No changes yet.': 'Wala pang pagbabago.',
+  'Who and when': 'Sino at kailan',
+  What: 'Ano',
+  Changed: 'Binago',
+  Stock: 'Stock',
+  Partner: 'Partner',
+  Description: 'Description',
+  'In the shop': 'Nasa shop',
+  Yes: 'Oo',
+  No: 'Hindi',
+  'Grouped reports settled': 'Inayos ang mga pinagsamang ulat',
+  '{n} points to settle: they were already spent when a report was removed or grouped. They come out of your next refund.':
+    'May {n} points na aayusin: nagastos na ito nang ma-remove o mapagsama ang ulat. Ibabawas ito sa susunod mong refund.',
+  'Search words, street or barangay': 'Hanapin: salita, kalye o barangay',
+  'Open reports only': 'Bukas na ulat lang',
+  'See all reports': 'Tingnan lahat ng ulat',
+  'Select several': 'Pumili ng ilan',
+  'Stop selecting': 'Tapos na sa pagpili',
+  'Select report': 'Piliin ang ulat',
+  'is now': 'ay',
+  'The resident can see your note.': 'Makikita ng residente ang note mo.',
+  'Start verification on several reports': 'I-verify ang ilang ulat',
+  'Ready-made notes': 'Handang note',
+  'Ready-made notes: Start verification': 'Handang note: I-verify',
+  'Ready-made notes: Accept report': 'Handang note: Tanggapin',
+  'Ready-made notes: Reject report': 'Handang note: Tanggihan',
+  selected: 'napili',
+  'Note for all of them (required)': 'Note para sa lahat (kailangan)',
+  'The residents see this.': 'Makikita ito ng mga residente.',
+  'Verification started on': 'Sinimulan ang pag-verify sa',
+  'These did not move:': 'Hindi ito gumalaw:',
+  'Save and next': 'I-save, tapos susunod',
+  'Accept and next': 'Tanggapin, tapos susunod',
+  'Reject and next': 'Tanggihan, tapos susunod',
+  'Checking the photo': 'Chine-check ang photo',
+  'We received your report and are checking the photo and the pin.':
+    'Natanggap namin ang ulat mo. Chine-check namin ang photo at pin.',
+  'Visiting the place': 'Pupuntahan ang lugar',
+  'We need to see this in person. A staff member will go and check the place.':
+    'Kailangan itong makita nang personal. May staff na pupunta para i-check ang lugar.',
+  'Confirmed from the photo': 'Kumpirmado sa photo',
+  'We confirmed this problem from a photo and pin. It is now on our work list.':
+    'Kumpirmado ang problemang ito mula sa photo at pin. Nasa listahan na ito ng gagawin namin.',
+  'Confirmed on site': 'Kumpirmado sa lugar',
+  'We went to the place and confirmed the problem. It is now on our work list.':
+    'Pinuntahan namin ang lugar at kumpirmado ang problema. Nasa listahan na ito ng gagawin namin.',
+  'Nothing found': 'Walang nakita',
+  'We went to the place and did not find this problem.':
+    'Pinuntahan namin ang lugar at hindi namin nakita ang problemang ito.',
+  'Unclear photo': 'Malabong photo',
+  'We could not confirm this from the photo and details. Please send a new report with a clearer photo.':
+    'Hindi ito makumpirma sa photo at detalye. Mag-send ng bagong ulat na may mas malinaw na photo.',
+  'Outside our area': 'Labas sa sakop',
+  'This looks to be outside our barangay, so we cannot act on this report. If the pin is wrong, please send a new report.':
+    'Mukhang labas ito sa barangay namin, kaya hindi namin ito maaasikaso. Kung mali ang pin, mag-send ng bagong ulat.',
+  'Not for the barangay': 'Hindi sakop ng barangay',
+  'This is not something the barangay handles, so we cannot act on this report.':
+    'Hindi ito hawak ng barangay, kaya hindi namin ito maaasikaso.',
+  'Work started': 'Nagsimula na',
+  'Work on this has started.': 'Sinimulan na ang trabaho dito.',
+  'Team told': 'Nasabihan ang team',
+  'Our team has been told about this.': 'Nasabihan na ang team namin tungkol dito.',
+  'This note is for: {action}. Change the words to use it for another choice.':
+    'Para sa {action} ang note na ito. Baguhin ang salita para magamit sa iba.',
+  Fixed: 'Naayos',
+  'The work is done and the problem is fixed. Send a new report if it comes back.':
+    'Tapos na ang trabaho at naayos na ang problema. Mag-send ng bagong ulat kung bumalik ito.',
+  'Checked after work': 'Na-check pagkatapos',
+  'We checked the place after the work and the problem is gone.':
+    'Na-check namin ang lugar pagkatapos ng trabaho at wala na ang problema.',
+  'This report': 'Ulat na ito',
+  'Verified:': 'Verified:',
+  'Resident chose:': 'Pinili ng residente:',
+  'Open report': 'Buksan ang ulat',
+  '{n} m apart': '{n} m ang layo',
+  "Check before grouping. This can't be undone.": 'I-check muna bago pagsamahin. Hindi na ito mababawi.',
+  'These reports are {n} m apart.': '{n} m ang layo ng mga ulat na ito.',
+  'Their categories differ:': 'Magkaiba ang kategorya:',
+  'Group them anyway': 'Pagsamahin pa rin',
+  "A grouped case counts as one here and in Reports. Kap's brief counts each report.":
+    'Isa ang bilang ng pinagsamang kaso dito at sa Reports. Bawat ulat ang bilang sa brief ni Kap.',
+  'Show as a table': 'Ipakita bilang table',
+  Day: 'Araw',
+  "Staff-verified category where there is one, otherwise the resident's choice.":
+    'Kategoryang verified ng staff kung meron; kung wala, ang pinili ng residente.',
+  'Handling a report': 'Paano asikasuhin ang ulat',
+  'Open Reports. It shows open reports first; choose All statuses to see closed ones.':
+    'Buksan ang Reports. Bukas na ulat muna ang lalabas; piliin ang Lahat ng status para sa sarado.',
+  "Check the photo, the pin and the category. The AI's guess can be wrong, so you decide.":
+    'I-check ang photo, pin at kategorya. Puwedeng mali ang hula ng AI, kaya ikaw ang magpapasya.',
+  'Pick a ready note or write your own. The resident reads it, so say what you actually did.':
+    'Pumili ng handang note o sumulat ng sarili. Babasahin ito ng residente, kaya sabihin ang totoong ginawa.',
+  'Press the status button, or the "and next" one to go straight to the next report.':
+    'Pindutin ang status button, o ang "tapos susunod" para diretso sa susunod na ulat.',
+  'BarangAI never forwards a report to another office. If one must act, contact them yourself and write it under Document work.':
+    'Hindi kailanman ipinapasa ng BarangAI ang ulat sa ibang opisina. Kung kailangan silang kumilos, ikaw ang kumontak at isulat ito sa Document work.',
+  'Forgot your password?': 'Nakalimutan ang password?',
+  'Staff: reset it under Staff accounts and give the temporary password in person.':
+    'Staff: i-reset sa Staff accounts at personal na ibigay ang pansamantalang password.',
+  'Your own: use the reset command on this computer. See docs/mobile.md.':
+    'Sa sarili mo: gamitin ang reset command sa computer na ito. Tingnan ang docs/mobile.md.',
+  'Ask your administrator. They give you a temporary password in person, and you choose your own when you sign in.':
+    'Magtanong sa admin. Bibigyan ka niya ng pansamantalang password nang personal, at pipili ka ng sarili pag nag-sign in.',
+  'Who to contact': 'Sino ang kokontakin',
+  "Ask your barangay's administrator.": 'Magtanong sa admin ng barangay mo.',
+  'Send feedback': 'Mag-send ng feedback',
+  'What should work better?': 'Ano ang dapat ayusin?',
+  "Your administrator reads this with your account number. Leave out residents' names and details.":
+    'Babasahin ito ng admin kasama ang account number mo. Huwag isama ang pangalan at detalye ng residente.',
+  'Thank you. Your feedback was sent.': 'Salamat. Na-send ang feedback mo.',
+  'You sent feedback a moment ago. Try again in a few minutes.':
+    'Kakasend mo lang ng feedback. Subukan ulit pagkalipas ng ilang minuto.',
+  'Write your feedback first': 'Isulat muna ang feedback mo.',
+  'Feedback received': 'Mga natanggap na feedback',
+  'No feedback yet.': 'Wala pang feedback.',
+  When: 'Kailan',
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

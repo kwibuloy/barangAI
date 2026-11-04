@@ -28,7 +28,8 @@ function Fold({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function ChangePassword() {
+/** Also the whole of the screen an account with a temporary password sees, which names the current one differently. */
+export function ChangePasswordForm({ currentLabel = 'Current password' }: { currentLabel?: string }) {
   const change = useChangePassword()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
@@ -45,46 +46,52 @@ function ChangePassword() {
     )
   }
   return (
-    <Fold title="Change password">
-      <form onSubmit={submit} className="space-y-3">
-        <Field label="Current password">
-          <Input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={current}
-            onChange={event => setCurrent(event.target.value)}
-          />
-        </Field>
-        <Field label="New password">
-          <Input
-            type="password"
-            required
-            minLength={12}
-            maxLength={128}
-            autoComplete="new-password"
-            value={next}
-            onChange={event => setNext(event.target.value)}
-          />
-        </Field>
-        <p className="text-[13px] text-muted-foreground">
-          <Txt>Use at least 12 characters. Your other devices will be signed out.</Txt>
+    <form onSubmit={submit} className="space-y-3">
+      <Field label={currentLabel}>
+        <Input
+          type="password"
+          required
+          autoComplete="current-password"
+          value={current}
+          onChange={event => setCurrent(event.target.value)}
+        />
+      </Field>
+      <Field label="New password">
+        <Input
+          type="password"
+          required
+          minLength={12}
+          maxLength={128}
+          autoComplete="new-password"
+          value={next}
+          onChange={event => setNext(event.target.value)}
+        />
+      </Field>
+      <p className="text-[13px] text-muted-foreground">
+        <Txt>Use at least 12 characters. Your other devices will be signed out.</Txt>
+      </p>
+      {change.error && (
+        <Alert>
+          <Txt>{change.error.message}</Txt>
+        </Alert>
+      )}
+      {change.isSuccess && (
+        <p role="status" className="text-[14px] font-medium text-[var(--status-resolved)]">
+          <Txt>Password changed.</Txt>
         </p>
-        {change.error && (
-          <Alert>
-            <Txt>{change.error.message}</Txt>
-          </Alert>
-        )}
-        {change.isSuccess && (
-          <p role="status" className="text-[14px] font-medium text-[var(--status-resolved)]">
-            <Txt>Password changed.</Txt>
-          </p>
-        )}
-        <Button type="submit" className="w-full" disabled={change.isPending}>
-          {change.isPending && <LoaderCircle className="animate-spin" />}
-          <Txt>Change password</Txt>
-        </Button>
-      </form>
+      )}
+      <Button type="submit" className="w-full" disabled={change.isPending}>
+        {change.isPending && <LoaderCircle className="animate-spin" />}
+        <Txt>Change password</Txt>
+      </Button>
+    </form>
+  )
+}
+
+function ChangePassword() {
+  return (
+    <Fold title="Change password">
+      <ChangePasswordForm />
     </Fold>
   )
 }

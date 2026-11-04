@@ -301,7 +301,8 @@ def report_detail(report_id: str, db: Session = Depends(get_db), user: User = De
 
 
 def log_photo_view(db: Session, report_id: str, user: User):
-    """Staff and administrators leave a trace when they open a photo; residents reading their own do not. One row per
+    """Staff and administrators leave a trace when a photo reaches their screen, as a queue thumbnail or opened in
+    full (the two look the same here); residents reading their own do not. One row per
     person, report and hour, because a screen can load the same photo many times, so most views write nothing."""
     if user.role == "resident":
         return

@@ -3,7 +3,7 @@ import { api, post } from '../../lib/api'
 
 export type PointEntry = {
   id: string
-  kind: 'accepted' | 'resolved' | 'first_reporter' | 'redeem' | 'refund' | 'reversal'
+  kind: 'accepted' | 'resolved' | 'first_reporter' | 'redeem' | 'refund' | 'reversal' | 'merge'
   amount: number
   created_at: string
 }
@@ -49,7 +49,10 @@ const keys = {
 export const pointsKey = keys.points
 
 export const usePoints = () =>
-  useQuery({ queryKey: keys.points, queryFn: () => api<{ balance: number; history: PointEntry[] }>('/points') })
+  useQuery({
+    queryKey: keys.points,
+    queryFn: () => api<{ balance: number; owed?: number; history: PointEntry[] }>('/points'),
+  })
 
 export const useVouchers = () =>
   useQuery({ queryKey: keys.vouchers, queryFn: () => api<{ available: Voucher[]; history: Voucher[] }>('/vouchers') })

@@ -8,6 +8,7 @@ import { sessionExpired } from '../features/auth/queries'
 import { LanguageProvider, Txt } from '../lib/i18n'
 import { AuthPage } from '../features/auth/AuthPage'
 import { isStaff, useMe } from '../features/auth/queries'
+import { ForcedPasswordChange } from '../features/account/ForcedPasswordChange'
 import { PreferenceSync } from '../features/account/PreferenceSync'
 import { NotificationsPage } from '../features/notifications/NotificationsPage'
 import { HomePage } from '../features/home/HomePage'
@@ -15,6 +16,7 @@ import { ReportForm } from '../features/reports/ReportForm'
 import { ReportsPage } from '../features/reports/ReportsPage'
 import { ThemeProvider } from '../lib/theme'
 import { PageSpinner } from '@/components/page'
+import { useRouteTitle } from '@/hooks/use-route-title'
 import { ResidentShell } from './ResidentShell'
 import 'leaflet/dist/leaflet.css'
 import '../styles.css'
@@ -37,6 +39,10 @@ const QueuePage = lazy(() => import('../features/staff/QueuePage').then(module =
 const UpdatesPage = lazy(() =>
   import('../features/staff/UpdatesPage').then(module => ({ default: module.UpdatesPage })),
 )
+const AccountsPage = lazy(() =>
+  import('../features/staff/AccountsPage').then(module => ({ default: module.AccountsPage })),
+)
+const StaffHelpPage = lazy(() => import('../features/staff/HelpPage').then(module => ({ default: module.HelpPage })))
 const MapPage = lazy(() => import('../features/staff/MapPage').then(module => ({ default: module.MapPage })))
 const CommunityPage = lazy(() =>
   import('../features/community/CommunityPage').then(module => ({ default: module.CommunityPage })),
@@ -79,6 +85,7 @@ function ScrollToTop() {
 function AppRoutes() {
   const me = useMe()
   const { pathname } = useLocation()
+  useRouteTitle(pathname, me.isPending || Boolean(me.data), Boolean(me.data?.must_change_password))
   // Readable before signing up, and the same page for every role.
   if (pathname === '/terms' || pathname === '/privacy')
     return (
@@ -96,6 +103,8 @@ function AppRoutes() {
       </div>
     )
   if (!me.data) return <AuthPage />
+  // Before everything else, so nothing that writes starts and fails: the API refuses other writes until this is done.
+  if (me.data.must_change_password) return <ForcedPasswordChange />
   return (
     <>
       <ScrollToTop />
@@ -116,6 +125,8 @@ function AppRoutes() {
             <Route path="desk/updates" element={<UpdatesPage />} />
             <Route path="desk/rewards" element={<RewardsDeskPage />} />
             <Route path="desk/records" element={<RecordsPage />} />
+            <Route path="desk/help" element={<StaffHelpPage />} />
+            {me.data.role === 'administrator' && <Route path="desk/accounts" element={<AccountsPage />} />}
             <Route path="*" element={<Navigate to="/desk" replace />} />
           </Route>
         ) : (

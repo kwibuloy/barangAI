@@ -167,6 +167,7 @@ def test_administrators_create_staff_with_a_password_shown_once(client):
         "role": "staff",
         "barangay": "North",
         "disabled": False,
+        "must_change_password": True,
     }
     assert len(password) >= 12 and password_problem(password, "new@example.test") is None
     assert create(client, email="new@example.test", role="staff", barangay="North").status_code == 409

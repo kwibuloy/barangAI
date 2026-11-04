@@ -17,14 +17,27 @@ export type ReportEvent = {
   rejection_reason?: string | null
 }
 export type StaffAction = { id: string; kind: 'action' | 'coordination' | 'system'; note: string; created_at: string }
+/** One side of a duplicate comparison: enough to tell two reports apart, with their category fields kept separate. */
+export type ReportSummary = {
+  id: string
+  status: Status
+  resident_category: Category
+  verified_category: Category | null
+  created_at: string
+  location_label: string | null
+  image_url: string
+}
 export type Duplicate = {
   id: string
   candidate_report_id: string
   score: number
   decision: 'pending' | 'confirmed' | 'rejected'
+  distance_m?: number
+  candidate?: ReportSummary
 }
 export type DuplicateResult = {
   embedding_available: boolean
+  report?: ReportSummary
   suggestions: Duplicate[]
   manual_review_required: boolean
 }
