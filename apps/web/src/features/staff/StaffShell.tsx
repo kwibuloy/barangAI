@@ -1,6 +1,6 @@
 import { Suspense, type CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { ArrowLeft, Bell, Gift, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
+import { ArrowLeft, Bell, FileText, Gift, Inbox, LayoutGrid, Map as MapIcon } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +37,7 @@ const NAV = [
   { to: '/desk/updates', label: 'Updates', icon: Bell, color: '#ffc800' },
   { to: '/desk/reports', label: 'Reports', icon: Inbox, color: '#1cb0f6' },
   { to: '/desk/rewards', label: 'Rewards', icon: Gift, color: '#58cc02' },
+  { to: '/desk/records', label: 'Monthly report', icon: FileText, color: '#ff4b4b' },
 ]
 const SECTIONS = [
   { label: 'Dashboard', items: NAV.slice(0, 3) },
@@ -54,7 +55,8 @@ function StaffTabBar({ current, unread, waiting }: { current: string; unread: nu
       className="tab-bar pb-safe fixed inset-x-0 bottom-0 z-40 border-t-2 bg-background"
     >
       <ul className="mx-auto flex h-[var(--tabbar)] max-w-2xl items-stretch gap-1 px-2">
-        {NAV.map(item => {
+        {/* Five tabs fit a phone; the monthly report is for the office, and Overview links to it on a phone. */}
+        {NAV.filter(item => item.to !== '/desk/records').map(item => {
           const active = current === item.to
           const badge = item.to === '/desk/updates' ? unread : item.to === '/desk/reports' ? waiting : 0
           return (
@@ -105,9 +107,9 @@ export function StaffShell({ user }: { user: User }) {
   const navigate = useNavigate()
   const phone = useIsMobile()
   useKeyboardMark()
+  useLiveRefresh()
   const reports = useReports()
   const all = reports.data ?? []
-  useLiveRefresh()
   const count = (...statuses: string[]) => all.filter(report => statuses.includes(report.status)).length
   const waiting = count('Pending', 'Under Verification')
   const notices = useNotifications()

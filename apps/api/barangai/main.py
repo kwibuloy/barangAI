@@ -27,6 +27,7 @@ from .media import validate_storage_config
 from .notifications import router as notifications_router
 from .points import router as points_router
 from .reports import router as reports_router
+from .records import router as records_router
 from .workflow import router as workflow_router
 
 
@@ -55,6 +56,7 @@ def create_app():
     app.include_router(brief_router)
     app.include_router(points_router)
     app.add_middleware(RequestBodyLimitMiddleware)
+    app.include_router(records_router)
 
     @app.get("/health", include_in_schema=False)
     def health():

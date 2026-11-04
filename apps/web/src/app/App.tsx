@@ -26,6 +26,9 @@ const RewardsPage = lazy(() =>
 const RewardsDeskPage = lazy(() =>
   import('../features/staff/RewardsDeskPage').then(module => ({ default: module.RewardsDeskPage })),
 )
+const RecordsPage = lazy(() =>
+  import('../features/staff/RecordsPage').then(module => ({ default: module.RecordsPage })),
+)
 const StaffShell = lazy(() => import('../features/staff/StaffShell').then(module => ({ default: module.StaffShell })))
 const OverviewPage = lazy(() =>
   import('../features/staff/OverviewPage').then(module => ({ default: module.OverviewPage })),
@@ -112,6 +115,7 @@ function AppRoutes() {
             <Route path="desk/map" element={<MapPage />} />
             <Route path="desk/updates" element={<UpdatesPage />} />
             <Route path="desk/rewards" element={<RewardsDeskPage />} />
+            <Route path="desk/records" element={<RecordsPage />} />
             <Route path="*" element={<Navigate to="/desk" replace />} />
           </Route>
         ) : (
