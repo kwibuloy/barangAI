@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/select'
 import { DateText } from '@/components/DateText'
 import { EmptyState } from '@/components/page'
 import { cn } from '@/lib/utils'
+import { shownError } from '../../lib/live'
 import { Txt, useText } from '../../lib/i18n'
 import { categories, label, statuses } from '../reports/categories'
 import { CategoryTile } from '../reports/CategoryIcon'
@@ -137,13 +138,13 @@ export function QueuePage() {
             </label>
           </div>
         </div>
-        {reports.error && (
+        {shownError(reports) && (
           <p role="alert" className="p-3 text-[14px] text-destructive">
-            <Txt>{reports.error.message}</Txt>
+            <Txt>{shownError(reports)?.message ?? ''}</Txt>
           </p>
         )}
         <ul className="scroll-thin min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
-          {reports.isSuccess && visible.length === 0 && (
+          {reports.data && visible.length === 0 && (
             <li className="px-3 py-10 text-center text-[14px] text-muted-foreground">
               <Txt>{all?.length ? 'No reports match these filters.' : 'New resident reports will appear here.'}</Txt>
             </li>

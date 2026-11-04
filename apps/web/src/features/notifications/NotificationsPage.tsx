@@ -1,14 +1,17 @@
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { AnimatePresence, m } from 'motion/react'
 import { DateText } from '@/components/DateText'
 import { Alert, EmptyState, LargeTitle } from '@/components/page'
 import { api, post } from '../../lib/api'
+import { every, LIVE_NOTICES_MS, shownError } from '../../lib/live'
 import { Txt, useText } from '../../lib/i18n'
 import { ResidentAccount } from '../../app/ResidentShell'
 import { label } from '../reports/categories'
 import { CategoryTile } from '../reports/CategoryIcon'
-import { useReports } from '../reports/queries'
+import { reportKeys, useReports } from '../reports/queries'
+import { pointsKey } from '../rewards/queries'
 import { StatusBadge } from '../reports/StatusBadge'
 import type { Status } from '../reports/types'
 
@@ -23,15 +26,37 @@ export type Notice = {
 }
 const noticeKey = ['notifications'] as const
 
-/** Refetches when the resident returns to the tab (Query's focus refetch), as status changes arrive. */
+/** Checks every few seconds while the app is on screen, and when the resident returns to it. */
 export function useNotifications() {
-  return useQuery({ queryKey: noticeKey, queryFn: () => api<Notice[]>('/notifications') })
+  return useQuery({
+    queryKey: noticeKey,
+    queryFn: () => api<Notice[]>('/notifications'),
+    refetchInterval: every(LIVE_NOTICES_MS),
+  })
+}
+
+/** When a new notice arrives, brings the reports and points on screen up to date. Mount once, in each shell. */
+export function useLiveRefresh() {
+  const client = useQueryClient()
+  const notices = useNotifications().data
+  const seen = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (!Array.isArray(notices)) return
+    const known = seen.current
+    seen.current = new Set(notices.map(item => item.id))
+    if (known && notices.some(item => !known.has(item.id))) {
+      void client.invalidateQueries({ queryKey: reportKeys.all })
+      void client.invalidateQueries({ queryKey: pointsKey })
+    }
+  }, [client, notices])
 }
 
 export function useMarkRead() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => post<Notice>(`/notifications/${id}/read`),
+    // A check already on its way must not bring back the unread mark.
+    onMutate: () => client.cancelQueries({ queryKey: noticeKey }),
     onSuccess: saved =>
       client.setQueryData<Notice[]>(noticeKey, items => items?.map(item => (item.id === saved.id ? saved : item))),
   })
@@ -61,12 +86,12 @@ export function NotificationsPage() {
         subtitle={unread > 0 ? `${unread} ${t('unread')}` : undefined}
         trailing={<ResidentAccount />}
       />
-      {notices.error && (
+      {shownError(notices) && (
         <Alert className="mb-4">
-          <Txt>{notices.error.message}</Txt>
+          <Txt>{shownError(notices)?.message ?? ''}</Txt>
         </Alert>
       )}
-      {notices.isSuccess && items.length === 0 ? (
+      {notices.data && items.length === 0 ? (
         <EmptyState
           pose="arms"
           title={t('No updates yet.')}

@@ -3,6 +3,7 @@ import { FilePlus2, MessageSquarePlus, Trash2 } from 'lucide-react'
 import { DateText } from '@/components/DateText'
 import { Alert, EmptyState } from '@/components/page'
 import { cn } from '@/lib/utils'
+import { shownError } from '../../lib/live'
 import { Txt, useText } from '../../lib/i18n'
 import { useMarkRead, useNotifications } from '../notifications/NotificationsPage'
 import { label } from '../reports/categories'
@@ -48,12 +49,12 @@ export function UpdatesPage() {
           </button>
         )}
       </div>
-      {notices.error && (
+      {shownError(notices) && (
         <Alert>
-          <Txt>{notices.error.message}</Txt>
+          <Txt>{shownError(notices)?.message ?? ''}</Txt>
         </Alert>
       )}
-      {notices.isSuccess && items.length === 0 ? (
+      {notices.data && items.length === 0 ? (
         <EmptyState
           pose="clipboard"
           title={t('No updates yet.')}

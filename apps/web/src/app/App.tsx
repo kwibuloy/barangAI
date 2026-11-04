@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
-import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { focusManager, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router'
 import { LazyMotion, MotionConfig } from 'motion/react'
 import { LoaderCircle } from 'lucide-react'
 import { ApiError } from '../lib/api'
+import { sessionExpired } from '../features/auth/queries'
 import { LanguageProvider, Txt } from '../lib/i18n'
 import { AuthPage } from '../features/auth/AuthPage'
 import { isStaff, useMe } from '../features/auth/queries'
@@ -132,9 +133,18 @@ function AppRoutes() {
 }
 
 export default function App() {
-  const [client] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry }, mutations: { retry: false } } }),
-  )
+  const [client] = useState(() => {
+    const created: QueryClient = new QueryClient({
+      // Live checks would otherwise stop on an expired session and leave a frozen, signed-in screen.
+      queryCache: new QueryCache({
+        onError: error => {
+          if (error instanceof ApiError && error.status === 401) sessionExpired(created)
+        },
+      }),
+      defaultOptions: { queries: { retry }, mutations: { retry: false } },
+    })
+    return created
+  })
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>

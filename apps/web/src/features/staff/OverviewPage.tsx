@@ -9,6 +9,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DateText } from '@/components/DateText'
 import { EmptyState } from '@/components/page'
+import { shownError } from '../../lib/live'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { categories, label } from '../reports/categories'
 import { CategoryTile, categoryColor } from '../reports/CategoryIcon'
@@ -113,9 +114,9 @@ export function OverviewPage() {
         </div>
       </div>
       <BriefCard />
-      {reports.error && (
+      {shownError(reports) && (
         <p role="alert" className="text-[14px] text-destructive">
-          <Txt>{reports.error.message}</Txt>
+          <Txt>{shownError(reports)?.message ?? ''}</Txt>
         </p>
       )}
 

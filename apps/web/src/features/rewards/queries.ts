@@ -46,6 +46,8 @@ const keys = {
   manage: ['rewards', 'manage'] as const,
 }
 
+export const pointsKey = keys.points
+
 export const usePoints = () =>
   useQuery({ queryKey: keys.points, queryFn: () => api<{ balance: number; history: PointEntry[] }>('/points') })
 

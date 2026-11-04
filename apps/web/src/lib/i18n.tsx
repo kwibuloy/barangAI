@@ -679,6 +679,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = value
     setValue(value)
   }
+  'This report just changed. Your note may not have been sent. Check the history, then write it again.':
+    'Nagbago na ang report na ito. Baka hindi na-send ang note mo. I-check ang history, tapos isulat ulit.',
+  'Your session ended. Please sign in again.': 'Natapos na ang session mo. Mag-sign in ulit.',
   return <LanguageContext.Provider value={{ language, setLanguage }}>{children}</LanguageContext.Provider>
 }
 

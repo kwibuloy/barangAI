@@ -28,7 +28,7 @@ import { Txt, useText } from '../../lib/i18n'
 import { AccountIdentity, AccountMenu } from '../account/AccountMenu'
 import { AccountButton } from '../account/AccountSettings'
 import type { User } from '../auth/queries'
-import { useNotifications } from '../notifications/NotificationsPage'
+import { useLiveRefresh, useNotifications } from '../notifications/NotificationsPage'
 import { useReports } from '../reports/queries'
 
 const NAV = [
@@ -107,6 +107,7 @@ export function StaffShell({ user }: { user: User }) {
   useKeyboardMark()
   const reports = useReports()
   const all = reports.data ?? []
+  useLiveRefresh()
   const count = (...statuses: string[]) => all.filter(report => statuses.includes(report.status)).length
   const waiting = count('Pending', 'Under Verification')
   const notices = useNotifications()

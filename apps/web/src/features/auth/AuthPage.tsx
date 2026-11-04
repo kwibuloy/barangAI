@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LanguageSwitch, Txt, useText } from '../../lib/i18n'
 import { LegalLinks } from '../legal/LegalPage'
-import { isReturningVisitor, useGoogleConfig, useSignIn } from './queries'
+import { useQueryClient } from '@tanstack/react-query'
+import { isReturningVisitor, sessionEndedKey, useGoogleConfig, useSignIn } from './queries'
 
 const GOOGLE_ERRORS: Record<string, string> = {
   google_cancelled: 'Google sign-in was cancelled. Try again or use your password.',
@@ -168,6 +169,7 @@ export function AuthPage() {
     signIn.mutate({ mode, email, password, ...(mode === 'register' ? { accepted_terms: agreed } : {}) })
   }
   const error = signIn.error?.message ?? redirectError
+  const sessionEnded = Boolean(useQueryClient().getQueryData(sessionEndedKey))
   const line = useKapLine({ mode, returning, emailFocus, privacyFocus, revealed: showPassword, failed: Boolean(error) })
   // The hills drift with the pointer (desktop only); layers move by their data-depth (auth.css).
   function parallax(event: PointerEvent<HTMLElement>) {
@@ -290,6 +292,11 @@ export function AuthPage() {
                     .
                   </span>
                 </label>
+              )}
+              {!error && sessionEnded && (
+                <Alert>
+                  <Txt>Your session ended. Please sign in again.</Txt>
+                </Alert>
               )}
               {error && (
                 <Alert>

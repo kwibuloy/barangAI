@@ -30,7 +30,7 @@ Updated 4 November 2026 (Asia/Manila). Local verification does not imply cloud o
 | P1 | Resident Google sign-in | Implemented/tested; OAuth client and hosted callback check pending. |
 | P1 | English/Filipino UI | Implemented; human language review pending. |
 | P1 | Dashboard, filters, map and trend | Implemented and locally tested. |
-| P1 | Notifications/read state | Implemented and tested. |
+| P1 | Notifications/read state and live updates | Implemented and tested. While the app is on screen it checks for new notices every 5 seconds and refreshes the reports and points on screen when one arrives; report lists and details are also checked every 15 seconds. This is polling, not push: nothing arrives while the app is closed or hidden, and it catches up when it comes back. |
 | P2 | Responsive presentation UI | Implemented; physical-device acceptance pending. |
 | Delivery | Render/Supabase configuration and guides | Deployed; on 3 November the live website files and routes matched `e5fcb04`. Render deploys every commit on its branch. Signed-in hosted checks pending. |
 | Research | Reproducible commands and blank evaluation materials | Pilot/v3/v4 evidence saved privately; four v4 runs audited, 21 focused tests passed, selected preprocessing replay matched 44 predictions. Reserved 12-photo diagnostic completed; independent field evaluation and user study pending. |

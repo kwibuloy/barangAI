@@ -7,7 +7,7 @@ import { navIconStyle } from '@/components/nav'
 import { Txt, useText } from '../lib/i18n'
 import type { User } from '../features/auth/queries'
 import { AccountButton } from '../features/account/AccountSettings'
-import { useNotifications } from '../features/notifications/NotificationsPage'
+import { useLiveRefresh, useNotifications } from '../features/notifications/NotificationsPage'
 import { PageSpinner } from '@/components/page'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
@@ -135,6 +135,7 @@ export function useUnread() {
 export function ResidentShell({ user }: { user: User }) {
   const desktop = useMediaQuery(DESKTOP)
   useKeyboardMark()
+  useLiveRefresh()
   return (
     <UserContext.Provider value={user}>
       <div className="resident-shell min-h-dvh">

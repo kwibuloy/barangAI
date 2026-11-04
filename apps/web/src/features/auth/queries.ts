@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { endGlassesSession } from '../glasses/connection'
 import { ApiError, api, post } from '../../lib/api'
 
@@ -38,6 +38,9 @@ export function isReturningVisitor() {
 }
 export const isStaff = (user: User) => user.role === 'staff' || user.role === 'administrator'
 
+/** Set when a session ends by itself, so the sign-in page can say why it appeared. */
+export const sessionEndedKey = ['session-ended'] as const
+
 /** The signed-in user, or null when the session is missing or expired. */
 export function useMe() {
   return useQuery({
@@ -71,7 +74,10 @@ export function useSignIn() {
       password: string
       accepted_terms?: boolean
     }) => post<User>(`/auth/${mode}`, credentials),
-    onSuccess: user => client.setQueryData(meKey, user),
+    onSuccess: user => {
+      client.removeQueries({ queryKey: sessionEndedKey })
+      client.setQueryData(meKey, user)
+    },
   })
 }
 
@@ -80,17 +86,34 @@ export function useSignOut() {
   return useMutation({ mutationFn: () => post<void>('/auth/logout'), onSuccess: finish })
 }
 
+/** Back to sign-in: after signing out, or when a live check finds the session has expired. */
+export function finishSession(client: QueryClient) {
+  // Drop every cached report so the next account starts clean. Keep the `me` entry itself:
+  // useMe stays subscribed to it, so removing it would leave the signed-in screen up.
+  client.removeQueries({
+    predicate: query => query.queryKey[0] !== meKey[0] && query.queryKey[0] !== sessionEndedKey[0],
+  })
+  client.getMutationCache().clear()
+  client.setQueryData(meKey, null)
+  // A shared phone: the next account must not inherit the glasses, their consent or a handed-over photo.
+  endGlassesSession()
+}
+
+/**
+ * A live check found the session gone. The signed-in screen leaves first, and everything else is cleared a moment
+ * later, so no page still on screen can start a new request for what was removed. A request like that could answer
+ * 401 after the next sign-in and end the new session too.
+ */
+export function sessionExpired(client: QueryClient) {
+  if (client.getQueryData(meKey) === null) return
+  client.setQueryData(sessionEndedKey, true)
+  client.setQueryData(meKey, null)
+  setTimeout(() => finishSession(client), 0)
+}
+
 function useFinishSession() {
   const client = useQueryClient()
-  return () => {
-    // Drop every cached report so the next account starts clean. Keep the `me` entry itself:
-    // useMe stays subscribed to it, so removing it would leave the signed-in screen up.
-    client.removeQueries({ predicate: query => query.queryKey[0] !== meKey[0] })
-    client.getMutationCache().clear()
-    client.setQueryData(meKey, null)
-    // A shared phone: the next account must not inherit the glasses, their consent or a handed-over photo.
-    endGlassesSession()
-  }
+  return () => finishSession(client)
 }
 
 export function useChangePassword() {

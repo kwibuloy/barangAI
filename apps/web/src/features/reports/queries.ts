@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, post } from '../../lib/api'
+import { every, LIVE_REPORTS_MS } from '../../lib/live'
 import type {
   Addendum,
   Brief,
@@ -22,7 +23,11 @@ export const reportKeys = {
 }
 
 export function useReports() {
-  return useQuery({ queryKey: reportKeys.all, queryFn: () => api<Report[]>('/reports') })
+  return useQuery({
+    queryKey: reportKeys.all,
+    queryFn: () => api<Report[]>('/reports'),
+    refetchInterval: every(LIVE_REPORTS_MS),
+  })
 }
 
 export function useReport(id: string) {
@@ -30,6 +35,7 @@ export function useReport(id: string) {
   return useQuery({
     queryKey: reportKeys.detail(id),
     queryFn: () => api<Report>(`/reports/${id}`),
+    refetchInterval: every(LIVE_REPORTS_MS),
     // Show the list row immediately while the full history loads.
     placeholderData: () => client.getQueryData<Report[]>(reportKeys.all)?.find(report => report.id === id),
   })

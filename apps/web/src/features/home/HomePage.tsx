@@ -318,7 +318,7 @@ export function HomePage() {
   const byId = new Map(all.map(report => [report.id, report]))
   const items = notices.data ?? []
   const unread = items.filter(item => !item.read_at).length
-  const summary = reports.isSuccess
+  const summary = reports.data
     ? `${active.length} ${t('open')} · ${resolved} ${t('resolved')}`
     : t('Thanks for looking out for your barangay.')
 

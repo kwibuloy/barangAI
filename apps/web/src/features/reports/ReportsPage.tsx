@@ -7,6 +7,7 @@ import { Alert, EmptyState, LargeTitle, LinkRow, Segmented } from '@/components/
 import { Button } from '@/components/ui/button'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/lib/utils'
+import { shownError } from '../../lib/live'
 import { Txt, useText } from '../../lib/i18n'
 import { ResidentAccount } from '../../app/ResidentShell'
 import { label } from './categories'
@@ -34,9 +35,9 @@ export function ReportsPage() {
   return (
     <div className="lg:mx-auto lg:max-w-6xl">
       <LargeTitle title={t('My reports')} trailing={<ResidentAccount />} />
-      {reports.error && (
+      {shownError(reports) && (
         <Alert className="mb-4">
-          <Txt>{reports.error.message}</Txt>
+          <Txt>{shownError(reports)?.message ?? ''}</Txt>
         </Alert>
       )}
       {/* Desktop: the page stays put; the list and the open report scroll inside their own cards. */}
@@ -56,7 +57,7 @@ export function ReportsPage() {
               ]}
             />
           )}
-          {reports.isSuccess && all.length === 0 ? (
+          {reports.data && all.length === 0 ? (
             <EmptyState
               pose="idea"
               title={t('No reports yet')}
@@ -97,7 +98,7 @@ export function ReportsPage() {
               </div>
             )
           )}
-          {reports.isSuccess && all.length > 0 && shown.length === 0 && (
+          {reports.data && all.length > 0 && shown.length === 0 && (
             <EmptyState pose="thinking" title={t('No reports in this view.')} />
           )}
         </div>

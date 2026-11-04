@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/app/App'
+import { ApiError } from '../src/lib/api'
+import { every } from '../src/lib/live'
 
 // Map lifecycle is covered in maps.test.tsx. Keep lazy imports inside this test's lifetime.
 vi.mock('leaflet', () => ({
@@ -547,6 +549,248 @@ describe('resident notifications', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mark read' }))
     await waitFor(() => expect(calls.some(call => call === 'POST /api/notifications/n1/read')).toBe(true))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Mark read' })).not.toBeInTheDocument())
+  })
+
+  it('brings in a status change on its own, with no reload or return to the app', { timeout: 20_000 }, async () => {
+    window.history.replaceState(null, '', '/updates')
+    const notices: object[] = []
+    let reportFetches = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/auth/me'))
+          return Response.json({ id: 'r1', email: 'resident@example.test', role: 'resident' })
+        if (url.endsWith('/notifications')) return Response.json(notices)
+        if (url.endsWith('/reports')) {
+          reportFetches++
+          return Response.json([])
+        }
+        return Response.json([])
+      }),
+    )
+    render(<App />)
+    await screen.findByText('No updates yet.')
+    await waitFor(() => expect(reportFetches).toBeGreaterThan(0))
+    const before = reportFetches
+    notices.push({ id: 'n2', report_id: 'rep1', status: 'Accepted', created_at: '2026-10-14T03:00:00Z', read_at: null })
+    expect(await screen.findByText('Accepted')).toBeInTheDocument()
+    // The new notice refreshes the reports too, well before their own slower check is due.
+    await waitFor(() => expect(reportFetches).toBeGreaterThan(before), { timeout: 3_000 })
+  })
+
+  it(
+    'clears a draft note when a colleague moves the report, so it cannot go out under the new status',
+    { timeout: 20_000 },
+    async () => {
+      window.history.replaceState(null, '', '/desk/reports/rep1')
+      let status = 'Under Verification'
+      const notices: object[] = []
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) => {
+          const url = String(input)
+          if (url.endsWith('/auth/me')) return Response.json({ id: 's1', email: 'staff@example.test', role: 'staff' })
+          if (url.endsWith('/notifications')) return Response.json(notices)
+          if (url.endsWith('/reports/rep1'))
+            return Response.json({
+              id: 'rep1',
+              status,
+              resident_category: 'flooding',
+              created_at: '2026-10-14T03:00:00Z',
+              history: [],
+            })
+          if (url.endsWith('/duplicates')) return Response.json({ embedding_available: false, suggestions: [] })
+          if (url.endsWith('/case')) return Response.json({ case: null })
+          return Response.json([])
+        }),
+      )
+      render(<App />)
+      const note = await screen.findByLabelText(/Reason or description/)
+      fireEvent.change(note, { target: { value: 'Rejecting: no flood found.' } })
+      status = 'Accepted'
+      notices.push({
+        id: 'n3',
+        report_id: 'rep1',
+        status: 'Accepted',
+        kind: 'addendum',
+        created_at: '2026-10-14T03:00:00Z',
+        read_at: null,
+      })
+      expect(await screen.findByText(/This report just changed/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Reason or description/)).toHaveValue('')
+      expect(screen.getByRole('button', { name: 'Mark in progress' })).toBeDisabled()
+    },
+  )
+
+  it('stays quiet when a live check fails over data already on screen', { timeout: 20_000 }, async () => {
+    window.history.replaceState(null, '', '/updates')
+    let offline = false
+    let attempts = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/auth/me'))
+          return Response.json({ id: 'r1', email: 'resident@example.test', role: 'resident' })
+        if (url.endsWith('/notifications')) {
+          if (offline) {
+            attempts++
+            throw new TypeError('Failed to fetch')
+          }
+          return Response.json([
+            { id: 'n1', report_id: 'rep1', status: 'Accepted', created_at: '2026-10-14T03:00:00Z', read_at: null },
+          ])
+        }
+        return Response.json([])
+      }),
+    )
+    render(<App />)
+    await screen.findByText('Accepted')
+    offline = true
+    await waitFor(() => expect(attempts).toBeGreaterThan(0))
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument()
+    expect(screen.getByText('Accepted')).toBeInTheDocument()
+  })
+
+  it('keeps an empty list on screen when a live check fails', { timeout: 20_000 }, async () => {
+    window.history.replaceState(null, '', '/updates')
+    let offline = false
+    let attempts = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/auth/me'))
+          return Response.json({ id: 'r1', email: 'resident@example.test', role: 'resident' })
+        if (url.endsWith('/notifications') && offline) {
+          attempts++
+          throw new TypeError('Failed to fetch')
+        }
+        return Response.json([])
+      }),
+    )
+    render(<App />)
+    await screen.findByText('No updates yet.')
+    offline = true
+    await waitFor(() => expect(attempts).toBeGreaterThan(0))
+    // Query retries before it reports the failure, so wait out those tries too.
+    await new Promise(resolve => setTimeout(resolve, 4_000))
+    expect(screen.getByText('No updates yet.')).toBeInTheDocument()
+  })
+
+  it("does not warn about a staff member's own status change", { timeout: 20_000 }, async () => {
+    window.history.replaceState(null, '', '/desk/reports/rep1')
+    let status = 'Under Verification'
+    let posted = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.endsWith('/auth/me')) return Response.json({ id: 's1', email: 'staff@example.test', role: 'staff' })
+        if (url.endsWith('/reports/rep1/status') && init?.method === 'POST') {
+          status = 'Accepted'
+          posted = true
+          return Response.json({ id: 'rep1', status })
+        }
+        if (url.endsWith('/reports/rep1'))
+          return Response.json({
+            id: 'rep1',
+            status,
+            resident_category: 'flooding',
+            created_at: '2026-10-14T03:00:00Z',
+            history: [],
+          })
+        if (url.endsWith('/duplicates')) return Response.json({ embedding_available: false, suggestions: [] })
+        if (url.endsWith('/case')) return Response.json({ case: null })
+        return Response.json([])
+      }),
+    )
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText(/Reason or description/), { target: { value: 'Confirmed on site.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Accept report' }))
+    expect(await screen.findByRole('button', { name: 'Mark in progress' })).toBeInTheDocument()
+    expect(posted).toBe(true)
+    expect(screen.getByLabelText(/Reason or description/)).toHaveValue('')
+    expect(screen.queryByText(/This report just changed/)).not.toBeInTheDocument()
+  })
+
+  it(
+    'stays signed in when a request from the old session answers 401 after signing back in',
+    { timeout: 30_000 },
+    async () => {
+      window.history.replaceState(null, '', '/reports')
+      const account = { id: 'r1', email: 'resident@example.test', role: 'resident' }
+      let expired = false
+      let signedIn = false
+      let slow = false
+      let sent = 0
+      let answered = 0
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) => {
+          const url = String(input)
+          if (url.endsWith('/auth/google/config')) return Response.json({ enabled: false })
+          if (url.endsWith('/auth/login')) {
+            signedIn = true
+            return Response.json(account)
+          }
+          if (url.endsWith('/auth/me') || url.endsWith('/auth/preferences')) return Response.json(account)
+          if (url.endsWith('/reports') && slow && !signedIn) {
+            sent++
+            await new Promise(resolve => setTimeout(resolve, 4_000))
+            answered++
+            return Response.json({ detail: 'Authentication required' }, { status: 401 })
+          }
+          if (expired && !signedIn) return Response.json({ detail: 'Authentication required' }, { status: 401 })
+          return Response.json([])
+        }),
+      )
+      render(<App />)
+      await screen.findByRole('link', { name: /Updates/ })
+      slow = true
+      await waitFor(() => expect(sent).toBeGreaterThan(0), { timeout: 20_000 })
+      expired = true
+      const email = await screen.findByLabelText('Email address')
+      fireEvent.change(email, { target: { value: account.email } })
+      fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'synthetic-Pass-123!' } })
+      fireEvent.submit(email.closest('form')!)
+      await waitFor(() => expect(signedIn).toBe(true))
+      await waitFor(() => expect(answered).toBe(sent), { timeout: 12_000 })
+      await new Promise(resolve => setTimeout(resolve, 500))
+      expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument()
+    },
+  )
+
+  it('goes back to sign-in when a live check finds the session has expired', { timeout: 20_000 }, async () => {
+    window.history.replaceState(null, '', '/updates')
+    let expired = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/auth/me'))
+          return expired
+            ? Response.json({ detail: 'Authentication required' }, { status: 401 })
+            : Response.json({ id: 'r1', email: 'resident@example.test', role: 'resident' })
+        if (expired) return Response.json({ detail: 'Authentication required' }, { status: 401 })
+        return Response.json([])
+      }),
+    )
+    render(<App />)
+    await screen.findByText('No updates yet.')
+    expired = true
+    expect(await screen.findByLabelText('Email address')).toBeInTheDocument()
+    expect(screen.getByText('Your session ended. Please sign in again.')).toBeInTheDocument()
+  })
+
+  it('stops checking on a client error, such as an expired session, but not on a server or network one', () => {
+    const check = every(5_000)
+    expect(check({ state: { error: new ApiError('Authentication required', 401) } })).toBe(false)
+    expect(check({ state: { error: new ApiError('Report not found', 404) } })).toBe(false)
+    expect(check({ state: { error: new ApiError('Server error', 500) } })).toBe(5_000)
+    expect(check({ state: { error: new TypeError('Failed to fetch') } })).toBe(5_000)
+    expect(check({ state: { error: null } })).toBe(5_000)
   })
 })
 

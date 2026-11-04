@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import {
   ImagePlus,
@@ -18,6 +18,7 @@ import { Select } from '@/components/ui/select'
 import { DateText } from '@/components/DateText'
 import { Alert } from '@/components/page'
 import { cn } from '@/lib/utils'
+import { shownError } from '../../lib/live'
 import { Txt, useText } from '../../lib/i18n'
 import { useMe } from '../auth/queries'
 import { categories, hazardLabels, label, rejectionReasons } from './categories'
@@ -151,9 +152,9 @@ export function ReportView({ id, staff }: { id: string; staff: boolean }) {
           <DuplicateReview id={id} />
         </div>
       )}
-      {report.error && (
+      {shownError(report) && (
         <Alert>
-          <Txt>{report.error.message}</Txt>
+          <Txt>{shownError(report)?.message ?? ''}</Txt>
         </Alert>
       )}
     </div>
@@ -306,17 +307,45 @@ function StatusControls({ detail }: { detail: Report }) {
   const [note, setNote] = useState('')
   const [reason, setReason] = useState('')
   const actions = nextActions(detail.status)
-  if (actions.length === 0) return null
+  const notice = moved && (
+    <Alert>
+      <Txt>This report just changed. Your note may not have been sent. Check the history, then write it again.</Txt>
+    </Alert>
+  )
+  if (actions.length === 0) return notice ? <Panel title="Change status">{notice}</Panel> : null
   const described = Boolean(note.trim())
+  // A colleague can move the report while this note is being written. The note was meant for the old status, so it
+  // must not go out with the new buttons. A change made here is still pending when the status updates.
+  const [moved, setMoved] = useState(false)
+  const lastStatus = useRef(detail.status)
+  useEffect(() => {
+    if (detail.status === lastStatus.current) return
+    lastStatus.current = detail.status
+    if (!change.isPending && note.trim()) {
+      setNote('')
+      setReason('')
+      setMoved(true)
+    }
+  }, [change.isPending, detail.status, note])
   function transition(status: Status) {
     change.mutate(
       {
         status,
+    const from = detail.status
         ...(status === 'Accepted' ? { verified_category: verified } : {}),
         ...(status === 'Rejected' ? { rejection_reason: reason } : {}),
         note: note.trim(),
       },
-      { onSuccess: () => setNote('') },
+      {
+        onSuccess: () => setNote(''),
+        // Refused because a colleague got there first: same as being moved while writing.
+        onError: () => {
+          if (lastStatus.current === from) return
+          setNote('')
+          setReason('')
+          setMoved(true)
+        },
+      },
     )
   }
   return (
@@ -324,6 +353,7 @@ function StatusControls({ detail }: { detail: Report }) {
       {detail.status === 'Under Verification' && (
         <label className={fieldLabel}>
           <Txt>Verified category</Txt>
+      {notice}
           <Select value={verified} onChange={event => setVerified(event.target.value as Category)}>
             {categories.map(item => (
               <option key={item.value} value={item.value}>
@@ -348,7 +378,15 @@ function StatusControls({ detail }: { detail: Report }) {
       )}
       <label className={fieldLabel}>
         <Txt>Reason or description (required)</Txt>
-        <Textarea rows={2} value={note} onChange={event => setNote(event.target.value)} className="text-foreground" />
+        <Textarea
+          rows={2}
+          value={note}
+          onChange={event => {
+            setNote(event.target.value)
+            setMoved(false)
+          }}
+          className="text-foreground"
+        />
         <span className="text-[13px] font-normal text-muted-foreground">
           <Txt>The resident sees this.</Txt>
         </span>
