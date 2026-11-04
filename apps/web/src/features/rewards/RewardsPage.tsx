@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Gift, Ticket } from 'lucide-react'
 import { Alert, EmptyState, LargeTitle, PageSpinner, Segmented } from '@/components/page'
 import { Button } from '@/components/ui/button'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select } from '@/components/ui/select'
 import { Txt, useText } from '../../lib/i18n'
 import { ResidentAccount } from '../../app/ResidentShell'
 import { usePoints, useRedeem, useShop, useShopBarangays, useVouchers, type PointEntry, type Reward } from './queries'
@@ -74,14 +74,14 @@ function Shop({ balance }: { balance: number }) {
     <div className="space-y-3">
       <label className="block space-y-1.5 text-[14px] font-bold">
         <Txt>Choose a barangay</Txt>
-        <NativeSelect value={barangay} onChange={event => setBarangay(event.target.value)}>
+        <Select value={barangay} onChange={event => setBarangay(event.target.value)}>
           <option value="">{t('Choose a barangay')}</option>
           {(barangays.data ?? []).map(item => (
             <option key={item.id} value={item.id}>
               {item.name}
             </option>
           ))}
-        </NativeSelect>
+        </Select>
       </label>
       {barangay && shop.isLoading && <PageSpinner />}
       {barangay && shop.data?.length === 0 && (

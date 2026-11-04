@@ -53,7 +53,8 @@ it('keeps newest first until staff choose to sort by the suggested priority, and
   expect((await order())[0]).toContain(newer.id)
   // Low priority stays quiet in the list; high is marked.
   expect(screen.getAllByText('High priority')).toHaveLength(1)
-  fireEvent.change(screen.getByLabelText('Sort reports'), { target: { value: 'priority' } })
+  fireEvent.click(screen.getByLabelText('Sort reports'))
+  fireEvent.click(screen.getByRole('option', { name: 'Suggested priority' }))
   expect((await order())[0]).toContain(older.id)
   fireEvent.click(screen.getAllByRole('link', { name: /Review report/ })[0])
   const panel = await screen.findByRole('region', { name: 'Suggested priority' })

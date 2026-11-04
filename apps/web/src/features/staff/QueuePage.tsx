@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { AnimatePresence, m } from 'motion/react'
 import { Layers, Link2, MapPin, Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select } from '@/components/ui/select'
 import { DateText } from '@/components/DateText'
 import { EmptyState } from '@/components/page'
 import { cn } from '@/lib/utils'
@@ -79,7 +79,7 @@ export function QueuePage() {
               <span className="sr-only">
                 <Txt>Filter by status</Txt>
               </span>
-              <NativeSelect
+              <Select
                 aria-label={t('Filter by status')}
                 value={status}
                 onChange={event => setFilter('status', event.target.value)}
@@ -90,13 +90,13 @@ export function QueuePage() {
                     {t(item)}
                   </option>
                 ))}
-              </NativeSelect>
+              </Select>
             </label>
             <label>
               <span className="sr-only">
                 <Txt>Filter by category</Txt>
               </span>
-              <NativeSelect
+              <Select
                 aria-label={t('Filter by category')}
                 value={category}
                 onChange={event => setFilter('category', event.target.value)}
@@ -107,7 +107,7 @@ export function QueuePage() {
                     {t(item.label)}
                   </option>
                 ))}
-              </NativeSelect>
+              </Select>
             </label>
             {area.enabled && (
               <BarangayFilter
@@ -125,7 +125,7 @@ export function QueuePage() {
             </p>
             <label className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
               <Txt>Sort</Txt>
-              <NativeSelect
+              <Select
                 aria-label={t('Sort reports')}
                 value={sort}
                 onChange={event => setFilter('sort', event.target.value)}
@@ -133,7 +133,7 @@ export function QueuePage() {
               >
                 <option value="">{t('Newest')}</option>
                 <option value="priority">{t('Suggested priority')}</option>
-              </NativeSelect>
+              </Select>
             </label>
           </div>
         </div>

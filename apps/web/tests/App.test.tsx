@@ -276,7 +276,8 @@ describe('resident reporting', () => {
         within(screen.getByRole('region', { name: 'Report details' })).getByText('Resolved', { selector: 'strong' }),
       ).toBeInTheDocument(),
     )
-    fireEvent.change(screen.getByLabelText(/record type/i), { target: { value: 'coordination' } })
+    fireEvent.click(screen.getByLabelText(/record type/i))
+    fireEvent.click(screen.getByRole('option', { name: 'External coordination' }))
     fireEvent.change(screen.getByLabelText(/^note$/i), { target: { value: 'Called office' } })
     fireEvent.submit(screen.getByRole('button', { name: /save action/i }).closest('form')!)
     await waitFor(() =>
@@ -334,7 +335,8 @@ describe('staff overview', () => {
     expect(await screen.findAllByRole('link', { name: /flooding/i })).toHaveLength(1)
     fireEvent.click(screen.getByRole('link', { name: 'Reports' }))
     expect(await screen.findAllByRole('link', { name: /review report/i })).toHaveLength(2)
-    fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: 'Pending' } })
+    fireEvent.click(screen.getByLabelText('Filter by status'))
+    fireEvent.click(screen.getByRole('option', { name: 'Pending' }))
     expect(screen.getAllByRole('link', { name: /review report/i })).toHaveLength(1)
     expect(screen.getByText('1 of 2 reports')).toBeInTheDocument()
   })
@@ -362,7 +364,8 @@ describe('routing', () => {
     at('/desk/reports')
     render(<App />)
     await screen.findAllByRole('link', { name: /review report/i })
-    fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: 'Pending' } })
+    fireEvent.click(screen.getByLabelText('Filter by status'))
+    fireEvent.click(screen.getByRole('option', { name: 'Pending' }))
     fireEvent.click(screen.getByRole('link', { name: /review report/i }))
     expect(window.location.pathname).toBe('/desk/reports/r1')
     fireEvent.click(await screen.findByRole('button', { name: 'Close details' }))

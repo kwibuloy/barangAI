@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select } from '@/components/ui/select'
 import { DateText } from '@/components/DateText'
 import { Alert } from '@/components/page'
 import { cn } from '@/lib/utils'
@@ -324,26 +324,26 @@ function StatusControls({ detail }: { detail: Report }) {
       {detail.status === 'Under Verification' && (
         <label className={fieldLabel}>
           <Txt>Verified category</Txt>
-          <NativeSelect value={verified} onChange={event => setVerified(event.target.value as Category)}>
+          <Select value={verified} onChange={event => setVerified(event.target.value as Category)}>
             {categories.map(item => (
               <option key={item.value} value={item.value}>
                 <Txt>{item.label}</Txt>
               </option>
             ))}
-          </NativeSelect>
+          </Select>
         </label>
       )}
       {detail.status === 'Under Verification' && (
         <label className={fieldLabel}>
           <Txt>Reason, if rejecting</Txt>
-          <NativeSelect value={reason} onChange={event => setReason(event.target.value)}>
+          <Select value={reason} onChange={event => setReason(event.target.value)}>
             <option value="">{t('Choose a reason')}</option>
             {rejectionReasons.map(item => (
               <option key={item.value} value={item.value}>
                 {t(item.label)}
               </option>
             ))}
-          </NativeSelect>
+          </Select>
         </label>
       )}
       <label className={fieldLabel}>
@@ -391,10 +391,10 @@ function ActionForm({ id }: { id: string }) {
       <Panel title="Document work" className="space-y-3">
         <label className={fieldLabel}>
           <Txt>Record type</Txt>
-          <NativeSelect value={kind} onChange={event => setKind(event.target.value as StaffAction['kind'])}>
+          <Select value={kind} onChange={event => setKind(event.target.value as StaffAction['kind'])}>
             <option value="action">{t('Staff action')}</option>
             <option value="coordination">{t('External coordination')}</option>
-          </NativeSelect>
+          </Select>
         </label>
         <label className={fieldLabel}>
           <Txt>Note</Txt>

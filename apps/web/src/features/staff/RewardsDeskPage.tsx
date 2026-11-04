@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Alert } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select } from '@/components/ui/select'
 import { Txt, useText } from '../../lib/i18n'
 import { useMe } from '../auth/queries'
 import {
@@ -92,7 +92,7 @@ function AddReward() {
       </p>
       <form onSubmit={submit} className="space-y-2.5">
         {administrator && (
-          <NativeSelect
+          <Select
             aria-label={t('Barangay')}
             required
             value={barangay}
@@ -104,7 +104,7 @@ function AddReward() {
                 {item.name}
               </option>
             ))}
-          </NativeSelect>
+          </Select>
         )}
         <Input
           aria-label={t('Reward name')}
@@ -168,7 +168,7 @@ function RewardList() {
       </h2>
       {administrator && (
         <div className="px-4 pb-2">
-          <NativeSelect
+          <Select
             aria-label={t('Filter by barangay')}
             value={barangay}
             onChange={event => setBarangay(event.target.value)}
@@ -179,7 +179,7 @@ function RewardList() {
                 {item.name}
               </option>
             ))}
-          </NativeSelect>
+          </Select>
         </div>
       )}
       <ul className="divide-y-2">

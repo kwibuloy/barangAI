@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select } from '@/components/ui/select'
 import { useText } from '../../lib/i18n'
 import { statuses } from '../reports/categories'
 import { groupCases } from '../reports/grouping'
@@ -40,7 +40,7 @@ export function MapPage() {
       <div className="glass hairline absolute top-3 right-3 z-[500] w-64 space-y-2.5 rounded-2xl p-3 shadow-lg">
         <label className="block">
           <span className="sr-only">{t('Filter by status')}</span>
-          <NativeSelect
+          <Select
             aria-label={t('Filter by status')}
             value={status}
             onChange={event => setFilter('status', event.target.value)}
@@ -51,7 +51,7 @@ export function MapPage() {
                 {t(item)}
               </option>
             ))}
-          </NativeSelect>
+          </Select>
         </label>
         {area.enabled && (
           <BarangayFilter names={area.names} value={barangay} onChange={value => setFilter('barangay', value)} />

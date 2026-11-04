@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select } from '@/components/ui/select'
 import { useText } from '../../lib/i18n'
 import { useMe } from '../auth/queries'
 import type { Report } from '../reports/types'
@@ -27,9 +27,9 @@ export function LockedBarangay({ name, className }: { name: string; className?: 
   return (
     <label className={className ?? 'block'}>
       <span className="sr-only">{t('Your barangay')}</span>
-      <NativeSelect aria-label={t('Your barangay')} value={name} disabled>
+      <Select aria-label={t('Your barangay')} value={name} disabled>
         <option value={name}>{name}</option>
-      </NativeSelect>
+      </Select>
     </label>
   )
 }
@@ -49,7 +49,7 @@ export function BarangayFilter({
   return (
     <label className={className ?? 'block'}>
       <span className="sr-only">{t('Filter by barangay')}</span>
-      <NativeSelect aria-label={t('Filter by barangay')} value={value} onChange={event => onChange(event.target.value)}>
+      <Select aria-label={t('Filter by barangay')} value={value} onChange={event => onChange(event.target.value)}>
         <option value="">{t('All barangays')}</option>
         <option value={OUTSIDE}>{t('Outside every boundary')}</option>
         {names.map(name => (
@@ -57,7 +57,7 @@ export function BarangayFilter({
             {name}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
     </label>
   )
 }

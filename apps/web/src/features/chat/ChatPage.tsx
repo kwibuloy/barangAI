@@ -4,7 +4,7 @@ import { ArrowUp } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
 import { Kap } from '@/components/Kap'
 import { LargeTitle } from '@/components/page'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { post } from '../../lib/api'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
@@ -182,18 +182,18 @@ export function ChatPage() {
       <label className="sr-only" htmlFor="chat-report">
         <Txt>Report to track (optional)</Txt>
       </label>
-      <NativeSelect id="chat-report" value={reportId} onChange={event => setReportId(event.target.value)}>
+      <Select id="chat-report" value={reportId} onChange={event => setReportId(event.target.value)}>
         <option value="">{t('General guidance')}</option>
         {(reports.data ?? []).map(report => (
           <option key={report.id} value={report.id}>
             {t(label(report.resident_category))} · {report.id.slice(0, 8)}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       <label className="sr-only" htmlFor="chat-language">
         <Txt>Language</Txt>
       </label>
-      <NativeSelect
+      <Select
         id="chat-language"
         className="w-32"
         value={language}
@@ -202,7 +202,7 @@ export function ChatPage() {
         <option value="en">English</option>
         <option value="fil">Filipino</option>
         <option value="taglish">Taglish</option>
-      </NativeSelect>
+      </Select>
     </div>
   )
   const disclaimer = (
