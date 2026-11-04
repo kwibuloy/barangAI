@@ -86,14 +86,18 @@ class SiteFiles(StaticFiles):
 def content_policy(index_html: str) -> str:
     """Scripts and styles from this site only, plus the small theme script in index.html, allowed by its hash. Styles
     may be inline because the animation and chart libraries set them. Map tiles come from OpenStreetMap."""
-    hashes = [base64.b64encode(hashlib.sha256(body.encode()).digest()).decode()
-              for body in re.findall(r"<script>(.*?)</script>", index_html, re.S)]
+    hashes = [
+        base64.b64encode(hashlib.sha256(body.encode()).digest()).decode()
+        for body in re.findall(r"<script>(.*?)</script>", index_html, re.S)
+    ]
     scripts = " ".join(f"'sha256-{value}'" for value in hashes)
-    return ("default-src 'self'; "
-            f"script-src 'self' {scripts}; "
-            "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.tile.openstreetmap.org; "
-            "connect-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; object-src 'none'; "
-            "base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+    return (
+        "default-src 'self'; "
+        f"script-src 'self' {scripts}; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.tile.openstreetmap.org; "
+        "connect-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; object-src 'none'; "
+        "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    )
 
 
 def site_app(api, directory):
@@ -114,6 +118,9 @@ def site_app(api, directory):
             response.headers["Strict-Transport-Security"] = "max-age=31536000"
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
+        elif not request.url.path.startswith("/assets/"):
+            # Pages name the build's files, so a phone that reuses an old page keeps showing the old site.
+            response.headers.setdefault("Cache-Control", "no-cache")
         return response
 
     site.mount("/api", api)

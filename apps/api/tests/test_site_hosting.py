@@ -28,6 +28,9 @@ def test_single_origin_site_serves_static_and_protected_api(client, tmp_path):
         assert "url: '/api/openapi.json'" in browser.get("/api/docs").text
         assert browser.get("/").headers["x-content-type-options"] == "nosniff"
         assert browser.get("/api/reports").headers["cache-control"] == "no-store"
+        # A phone that reuses an old page keeps showing the old build.
+        for page in ("/", "/reports/abc"):
+            assert browser.get(page).headers["cache-control"] == "no-cache", page
         assert (
             browser.post(
                 "/api/auth/register",
