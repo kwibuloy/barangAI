@@ -141,7 +141,7 @@ _sanitized_lock = threading.Lock()
 
 
 def sanitize_image(data: bytes) -> bytes:
-    """Rotated upright, at most MAX_IMAGE_EDGE pixels on the long side, faces blurred, every metadata field dropped.
+    """Rotated upright, at most MAX_IMAGE_EDGE pixels on the long side, faces and plates blurred, every metadata field dropped.
 
     The AI preview and the submission upload the same photo, so the result is kept briefly by the upload's hash and
     the second call skips the face check.
@@ -173,6 +173,7 @@ def sanitize_image(data: bytes) -> bytes:
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise HTTPException(422, "Invalid image") from None
     picture, _ = privacy.blur_faces(picture)
+    picture, _ = privacy.blur_plates(picture)
     output = io.BytesIO()
     picture.save(output, format="JPEG", quality=PHOTO_QUALITY, optimize=True, progressive=True)
     result = output.getvalue()

@@ -148,7 +148,7 @@ const PRIVACY: Record<'en' | 'fil', Copy> = {
       {
         title: 'How photos are protected',
         body: [
-          'Photos are resized, faces are blurred where our software finds them, and metadata such as GPS is removed before storage. Face blurring can miss faces and does not cover plate numbers. Photos are kept in private storage, and each view is checked against your account or staff role.',
+          'Photos are resized, faces and license plates are blurred where our software finds them, and metadata such as GPS is removed before storage. Blurring can miss faces and license plates. Photos are kept in private storage, and each view is checked against your account or staff role.',
         ],
       },
       {
@@ -204,7 +204,7 @@ const PRIVACY: Record<'en' | 'fil', Copy> = {
       {
         title: 'Paano pinoprotektahan ang mga larawan',
         body: [
-          'Bago itago, binabago ang laki ng mga larawan, bina-blur ang mga mukhang nakikita ng aming software, at inaalis ang metadata gaya ng GPS. Maaaring may mga mukhang hindi ma-blur, at hindi kasama ang mga plaka. Nasa pribadong storage ang mga larawan, at sinusuri ang bawat pagtingin batay sa iyong account o tungkulin bilang kawani.',
+          'Bago itago, binabago ang laki ng mga larawan, bina-blur ang mga mukha at plakang nakikita ng aming software, at inaalis ang metadata gaya ng GPS. Maaaring may mga mukha at plakang hindi ma-blur. Nasa pribadong storage ang mga larawan, at sinusuri ang bawat pagtingin batay sa iyong account o tungkulin bilang kawani.',
         ],
       },
       {

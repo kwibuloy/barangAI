@@ -25,6 +25,7 @@ def client(tmp_path, monkeypatch):
         monkeypatch.delenv(name, raising=False)
     # Face blurring needs OpenCV, which local test setups may lack; tests that cover it turn it on themselves.
     monkeypatch.setenv("FACE_BLUR", "off")
+    monkeypatch.setenv("PLATE_BLUR", "off")
     from barangai import ai, brief, geo, media, privacy
     from barangai.main import create_app
 
@@ -33,6 +34,7 @@ def client(tmp_path, monkeypatch):
     brief.clear_cache()
     media.clear_sanitized_cache()
     privacy.detector.cache_clear()
+    privacy.plate_detector.cache_clear()
 
     with TestClient(create_app()) as test_client:
         yield test_client

@@ -73,7 +73,7 @@ describe('faces on screen', () => {
     render(<App />)
     fireEvent.change(await screen.findByLabelText(/incident photo/i), { target: { files: [photo()] } })
     expect((await shown())[0]).toHaveClass('blur-2xl')
-    expect(screen.getAllByText('Hiding faces…').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Hiding faces and plates…').length).toBeGreaterThan(0)
     expect(requests.some(url => url.endsWith('/reports/predict'))).toBe(false)
     finish(Response.json({ preview_image: 'data:image/jpeg;base64,AAAA' }))
     await waitFor(() => expect(screen.getAllByAltText('Preview of incident photo')[0]).not.toHaveClass('blur-2xl'))
