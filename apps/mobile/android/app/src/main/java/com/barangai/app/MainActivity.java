@@ -1,5 +1,6 @@
 package com.barangai.app;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
@@ -36,6 +37,7 @@ public class MainActivity extends BridgeActivity {
         String saved = preferences().getString(SERVER_URL, null);
         // Capacitor gives native plugins (GPS) only to its main address, so the laptop has to be that address.
         if (saved != null) config = new CapConfig.Builder(this).setServerUrl(saved).create();
+        registerPlugin(RokidGlassesPlugin.class);
         super.onCreate(savedInstanceState);
         if (saved == null) {
             askForServer(null);
@@ -74,6 +76,14 @@ public class MainActivity extends BridgeActivity {
             }
         );
         timer.postDelayed(() -> askForServer(saved), LOAD_TIMEOUT_MS);
+    }
+
+    /** The Rokid AI App answers its consent screen here. */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        com.getcapacitor.PluginHandle handle = bridge == null ? null : bridge.getPlugin("RokidGlasses");
+        if (handle != null) ((RokidGlassesPlugin) handle.getInstance()).onActivityResult(resultCode, data);
     }
 
     @Override

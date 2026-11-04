@@ -624,6 +624,47 @@ const filipino: Record<string, string> = {
   'Is that you?': 'Ikaw ba iyan?',
   "What's your email?": 'Ano ang email mo?',
   'A safer barangay starts with you.': "Mas ligtas na barangay, simula sa'yo.",
+  // Rokid Glasses (4 Nov 2026): the glasses screens and the account card.
+  'Hold: cancel': 'Hold: cancel',
+  'Check My reports on your phone before trying again.': 'I-check muna ang My reports sa phone bago subukan ulit.',
+  'Kap is ready': 'Ready na si Kap',
+  'See a problem? Look at it and press the button.': 'May problema? Tingnan ito at pindutin ang button.',
+  'Press: take photo': 'Pindot: kuha ng photo',
+  'Taking photo…': 'Kinukuhanan ng photo…',
+  'Hold still.': 'Huwag gumalaw.',
+  'Kap is reading it and finding where you are.': 'Binabasa ni Kap at hinahanap kung nasaan ka.',
+  'Location from your phone': 'Lokasyon mula sa phone mo',
+  'Outside the area we cover. An administrator will review it.': 'Labas sa sakop namin. Admin ang titingin.',
+  'AI can be wrong. Send only if the category and place are right.':
+    'Puwedeng magkamali ang AI. I-send lang kung tama ang kategorya at lugar.',
+  'Press: send · Hold: cancel': 'Pindot: i-send · Hold: cancel',
+  'Sending…': 'Sine-send…',
+  'Sent! Thank you': 'Na-send! Salamat',
+  'Staff will check it. Follow it in My reports.': 'I-check ito ng staff. Sundan sa My reports.',
+  'Press: report another': 'Pindot: mag-report ulit',
+  'Finish on your phone': 'Tapusin sa phone mo',
+  'Press: back': 'Pindot: bumalik',
+  "Kap couldn't tell what this is.": 'Hindi makilala ni Kap kung ano ito.',
+  "Couldn't find your location.": 'Hindi mahanap ang lokasyon mo.',
+  'This may already be reported nearby.': 'Baka naiulat na ito malapit dito.',
+  "Couldn't take the photo": 'Hindi nakuha ang photo',
+  'Press: try again': 'Pindot: subukan ulit',
+  "Couldn't send": 'Hindi na-send',
+  'Rokid Glasses': 'Rokid Glasses',
+  'Connected. Press the glasses button to report.': 'Connected. Pindutin ang button ng glasses para mag-report.',
+  'Paused while the glasses assistant is on.': 'Naka-pause habang bukas ang assistant ng glasses.',
+  'Connecting…': 'Kumokonekta…',
+  'Report hands-free: press the glasses button to take a photo, check what Kap found, and send.':
+    'Mag-report nang hands-free: pindutin ang button ng glasses, i-check ang nakita ni Kap, at i-send.',
+  'Connect glasses': 'I-connect ang glasses',
+  Disconnect: 'I-disconnect',
+  'Photos go from the glasses to your phone through the Rokid AI App, then to BarangAI like any report.':
+    'Dumadaan ang photo mula glasses papunta sa phone mo sa Rokid AI App, tapos sa BarangAI tulad ng ibang ulat.',
+  'Update the Rokid AI App first.': 'I-update muna ang Rokid AI App.',
+  'Install the Rokid AI App and pair your glasses first.': 'I-install muna ang Rokid AI App at i-pair ang glasses.',
+  "Permission wasn't given in the Rokid AI App.": 'Hindi pinayagan sa Rokid AI App.',
+  "Couldn't connect to the glasses. Check they're on and paired.":
+    'Hindi maka-connect sa glasses. I-check kung naka-on at naka-pair.',
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

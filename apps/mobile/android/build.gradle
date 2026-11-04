@@ -21,6 +21,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // Rokid Glasses SDKs (CXR-L on the phone, the service bridge on the glasses).
+        maven { url "https://maven.rokid.com/repository/maven-public/" }
     }
 }
 

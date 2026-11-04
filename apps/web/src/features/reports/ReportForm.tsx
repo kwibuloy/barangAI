@@ -38,6 +38,7 @@ import { devicePosition, photoCoordinates, useBarangayAt, useStreetName, type Lo
 import { compressPhoto, MAX_PICK_BYTES, MAX_UPLOAD_BYTES, photoDetails, type PhotoDetails } from './photo'
 import { findNearby, reportKeys, useCommunityCases, useSubmitReport } from './queries'
 import type { Category, Hazard, Nearby, Prediction, Report } from './types'
+import { takeHandedOffPhoto } from '../glasses/connection'
 
 const UNAVAILABLE: Prediction = { prediction_available: false, model_category: null, confidence: null }
 const NOT_FILLED = { category: false, description: false }
@@ -200,6 +201,22 @@ export function ReportForm() {
     event.target.value = ''
     if (file) pickPhoto(file)
   }
+  // A photo from the Rokid Glasses that needs finishing here (no category, no GPS, or a report nearby).
+  // Keyed on the link, so it also arrives when the form is already open.
+  const fromGlasses = params.get('from') === 'glasses'
+  useEffect(() => {
+    if (!fromGlasses) return
+    const handed = takeHandedOffPhoto()
+    if (handed) pickPhoto(handed)
+    setParams(
+      current => {
+        current.delete('from')
+        return current
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per handoff
+  }, [fromGlasses])
   function pickPhoto(file: File) {
     setPhoto(null)
     setPreview('')

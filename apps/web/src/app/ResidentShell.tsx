@@ -11,9 +11,12 @@ import { useNotifications } from '../features/notifications/NotificationsPage'
 import { PageSpinner } from '@/components/page'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
+import { glassesAvailable } from '../features/glasses/connection'
 
 // Desktop only (1024px and up): phones never download the sidebar or its account menu.
 const SideBar = lazy(() => import('./ResidentSidebar').then(module => ({ default: module.SideBar })))
+// Android app only: the website never downloads the Rokid Glasses code.
+const GlassesLink = lazy(() => import('../features/glasses/Glasses').then(module => ({ default: module.GlassesLink })))
 
 export const TABS = [
   { to: '/home', label: 'Home', icon: House },
@@ -147,6 +150,11 @@ export function ResidentShell({ user }: { user: User }) {
           </Suspense>
         </main>
         {!desktop && <TabBar />}
+        {glassesAvailable() && (
+          <Suspense fallback={null}>
+            <GlassesLink />
+          </Suspense>
+        )}
       </div>
     </UserContext.Provider>
   )

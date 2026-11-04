@@ -1,4 +1,6 @@
 include ':app'
+// BarangAI's Rokid Glasses app, packed into the phone app (apps/mobile/android/glasses).
+include ':glasses'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
 
