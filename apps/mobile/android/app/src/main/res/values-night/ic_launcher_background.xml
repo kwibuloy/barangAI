@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The web app's dark background, so a dark-mode launch never flashes white. -->
+    <color name="splash_background">#131F24</color>
+    <color name="colorAccent">#93D333</color>
+    <color name="splash_icon_background">#1C3A4A</color>
+</resources>

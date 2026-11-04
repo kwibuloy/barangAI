@@ -277,3 +277,22 @@ def test_filipino_tracking_localizes_the_actual_report_status(client, photo, sta
     response = chat(client, "Ano na ang ulat ko?", "fil", report_id)
     assert response.json()["reply"] == f"Ang katayuan ng iyong ulat ay {translated}."
     assert response.json()["source"] == "deterministic"
+
+
+def test_kap_may_explain_when_points_come_but_not_claim_a_status(client, monkeypatch):
+    register(client)
+    explained = "You earn 25 points when your report is accepted, and 10 more once it is resolved."
+    kap_says(monkeypatch, explained)
+    assert chat(client, "How many points do I get?").json()["reply"] == explained
+    kap_says(monkeypatch, "Good news, your report is accepted and will be fixed soon.")
+    assert "accepted" not in chat(client, "Is my report done?").json()["reply"]
+    kap_says(monkeypatch, "Tinanggap na ang ulat mo, salamat.")
+    assert "Tinanggap" not in chat(client, "Ano na ang ulat ko?", "fil").json()["reply"]
+
+
+def test_a_status_claim_cannot_hide_behind_an_explanation():
+    from barangai.chat import claims_status
+
+    assert claims_status("You earn 25 points when your report is accepted. Your report is resolved now.")
+    assert claims_status("Your concern was accepted by staff.")
+    assert not claims_status("Kapag tinanggap ang ulat mo, may points ka.")

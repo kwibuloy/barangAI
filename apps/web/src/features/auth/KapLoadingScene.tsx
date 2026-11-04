@@ -2,9 +2,7 @@ import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { m } from 'motion/react'
 import { KapFlightRig } from './KapFlightRig'
-import covered from '../../assets/kap-cover-eyes-approved-v1.png'
-import away from '../../assets/kap-turn-away-approved-v1.png'
-import neutral from '../../assets/kap-neutral-approved-v2.png'
+import { KAP_POSES } from './KapRig'
 
 type Origin = { x: number; y: number; scale: number }
 /** One full-screen decorative actor; the page owns the live loading announcement. */
@@ -19,7 +17,7 @@ export function KapLoadingScene({
   landing: boolean
   reduced: boolean
   blink: boolean
-  privatePose: 'covered' | 'away' | 'neutral' | null
+  privatePose: 'covered' | 'neutral' | null
 }) {
   const start = useMemo(() => ({ x: origin.x, y: origin.y, scale: origin.scale }), [origin])
   const target = reduced
@@ -60,11 +58,7 @@ export function KapLoadingScene({
         >
           {privatePose ? (
             <div className="kap-loading-private">
-              <img
-                src={privatePose === 'away' ? away : privatePose === 'neutral' ? neutral : covered}
-                alt=""
-                draggable={false}
-              />
+              <img src={KAP_POSES[privatePose]} alt="" draggable={false} />
             </div>
           ) : (
             <KapFlightRig landing={false} blink={blink} failed={false} />

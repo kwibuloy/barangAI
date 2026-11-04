@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useLanguage } from '../../lib/i18n'
 import { useTheme } from '../../lib/theme'
-import type { User } from '../auth/queries'
+import { markReturningVisitor, type User } from '../auth/queries'
 
 /**
  * Keeps appearance and language on the account, so they follow the person to another phone or computer.
@@ -18,6 +18,8 @@ export function PreferenceSync({ user }: { user: User }) {
   useEffect(() => {
     if (applied.current === user.id) return
     applied.current = user.id
+    // Next time the sign-in page opens on this device, Kap says welcome back instead of introducing himself.
+    markReturningVisitor()
     const saved = user.preferences ?? {}
     if (saved.theme && saved.theme !== theme) setTheme(saved.theme)
     if (saved.language && saved.language !== language) setLanguage(saved.language)

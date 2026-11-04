@@ -1,6 +1,5 @@
 package com.barangai.app;
 
-import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
@@ -14,6 +13,8 @@ import android.webkit.WebView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import androidx.annotation.Nullable;
+// AppCompat's dialog takes the app theme: green button, dark mode with the phone.
+import androidx.appcompat.app.AlertDialog;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 import com.getcapacitor.CapConfig;
@@ -97,11 +98,12 @@ public class MainActivity extends BridgeActivity {
         frame.setPadding(margin, 0, margin, 0);
         frame.addView(input);
         dialog = new AlertDialog.Builder(this)
-            .setTitle(current == null ? "Connect to BarangAI" : "Can't reach BarangAI")
-            .setMessage("Enter the phone address shown on the laptop running BarangAI. Both need to be on the same Wi-Fi, or enter localhost when connected by USB. The connection isn't encrypted, so use a network you trust.")
+            .setIcon(R.mipmap.ic_launcher_round)
+            .setTitle(current == null ? "Hi! Let's connect to BarangAI" : "Kap can't reach BarangAI")
+            .setMessage("Type the phone address shown on the laptop running BarangAI. Both need the same Wi-Fi, or type localhost when connected by USB. The connection isn't encrypted, so use a network you trust.")
             .setView(frame)
             .setCancelable(false)
-            .setPositiveButton("Connect", null)
+            .setPositiveButton(current == null ? "Connect" : "Try again", null)
             .create();
         dialog.setOnShowListener(shown ->
             dialog

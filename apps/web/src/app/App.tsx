@@ -1,6 +1,6 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router'
 import { LazyMotion, MotionConfig } from 'motion/react'
 import { LoaderCircle } from 'lucide-react'
 import { ApiError } from '../lib/api'
@@ -61,6 +61,17 @@ function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageSpinner />}>{children}</Suspense>
 }
 
+/** Each new page opens at its top (a tapped card or tab must not inherit the last page's scroll); back and forward
+    keep the browser's own position. */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  const navigation = useNavigationType()
+  useEffect(() => {
+    if (navigation !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, navigation])
+  return null
+}
+
 function AppRoutes() {
   const me = useMe()
   const { pathname } = useLocation()
@@ -83,6 +94,7 @@ function AppRoutes() {
   if (!me.data) return <AuthPage />
   return (
     <>
+      <ScrollToTop />
       <PreferenceSync user={me.data} />
       <Routes>
         {isStaff(me.data) ? (
@@ -130,8 +142,6 @@ export default function App() {
           {/* Motion follows the OS reduce-motion setting. */}
           <LazyMotion features={motionFeatures} strict>
             <MotionConfig reducedMotion="user">
-              {/* The backdrop sun (styles.css); purely decorative. */}
-              <div className="app-sun" aria-hidden="true" />
               <BrowserRouter>
                 <AppRoutes />
               </BrowserRouter>

@@ -52,11 +52,11 @@ export function RequestDeletion({ detail }: { detail: Report }) {
               <Txt>{send.error.message}</Txt>
             </Alert>
           )}
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>
+          <div className="flex flex-wrap gap-2 *:grow *:basis-auto">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               <Txt>Cancel</Txt>
             </Button>
-            <Button type="submit" className="flex-1" disabled={send.isPending}>
+            <Button type="submit" disabled={send.isPending}>
               {send.isPending && <LoaderCircle className="animate-spin" />}
               <Txt>Send request</Txt>
             </Button>
@@ -104,10 +104,10 @@ export function DeletionReview({ detail, canDecide }: { detail: Report; canDecid
               <Txt>{decide.error.message}</Txt>
             </Alert>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 *:grow *:basis-auto">
             <Button
               variant="outline"
-              className="flex-1"
+
               disabled={decide.isPending}
               onClick={() => decide.mutate({ decision: 'declined', note: note.trim() || undefined })}
             >
@@ -115,7 +115,7 @@ export function DeletionReview({ detail, canDecide }: { detail: Report; canDecid
             </Button>
             <Button
               variant="destructive"
-              className="flex-1"
+
               disabled={decide.isPending}
               onClick={() => decide.mutate({ decision: 'approved' }, { onSuccess: () => navigate('/desk/reports') })}
             >

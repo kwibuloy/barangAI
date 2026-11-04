@@ -73,7 +73,7 @@ export function NotificationsPage() {
           body={t('We will tell you here when your reports move.')}
         />
       ) : (
-        <ul className="hairline overflow-hidden rounded-2xl bg-card">
+        <ul className="space-y-2.5 lg:hairline lg:space-y-0 lg:overflow-hidden lg:rounded-2xl lg:bg-card">
           <AnimatePresence initial={false}>
             {items.map(item => {
               const report = byId.get(item.report_id)
@@ -81,12 +81,12 @@ export function NotificationsPage() {
                 <m.li
                   layout
                   key={item.id}
-                  className="flex items-start gap-3.5 py-4 pl-4 [&+&]:border-t"
+                  className="flex items-start gap-3.5 py-4 pl-4 max-lg:rounded-2xl max-lg:border-2 max-lg:border-b-4 max-lg:bg-card max-lg:data-unread:border-[#84d8ff] max-lg:data-unread:bg-sky-soft/50 lg:[&+&]:border-t dark:max-lg:data-unread:border-[#3f8db5]"
                   data-unread={!item.read_at || undefined}
                 >
                   <span
                     aria-hidden="true"
-                    className={`mt-[14px] size-2.5 shrink-0 rounded-full transition-colors ${item.read_at ? 'bg-transparent' : 'bg-primary'}`}
+                    className={`mt-[14px] size-2.5 shrink-0 rounded-full transition-colors ${item.read_at ? 'bg-transparent' : 'bg-sky'}`}
                   />
                   {report && <CategoryTile category={report.resident_category} />}
                   <div className="min-w-0 flex-1 pr-4">
@@ -97,7 +97,9 @@ export function NotificationsPage() {
                       className="block rounded-lg"
                     >
                       <span className="flex items-baseline justify-between gap-2">
-                        <strong className={`truncate text-[16px] ${item.read_at ? 'font-medium' : 'font-semibold'}`}>
+                        <strong
+                          className={`line-clamp-2 text-[16px] leading-snug ${item.read_at ? 'font-bold' : 'font-extrabold'}`}
+                        >
                           {report ? (
                             <Txt>{label(report.resident_category)}</Txt>
                           ) : (
@@ -116,14 +118,15 @@ export function NotificationsPage() {
                         </Txt>
                       </span>
                     </Link>
-                    <div className="mt-2.5 flex min-h-8 items-center justify-between gap-3">
+                    {/* Wraps under the badge when a translation is long ("Markahang nabasa") rather than running off the card. */}
+                    <div className="mt-2.5 flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <StatusBadge status={item.status} />
                       {!item.read_at && (
                         <button
                           type="button"
                           disabled={markRead.isPending}
                           onClick={() => markRead.mutate(item.id)}
-                          className="-my-1.5 -mr-2 inline-flex min-h-11 items-center px-2 text-[14px] font-medium text-primary"
+                          className="-my-1.5 inline-flex min-h-11 shrink-0 items-center px-2 label-caps text-[13px] whitespace-nowrap text-link"
                         >
                           <Txt>Mark read</Txt>
                         </button>

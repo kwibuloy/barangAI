@@ -23,7 +23,7 @@ export function PriorityChip({ priority, className }: { priority: Priority; clas
       // Outlined, unlike the filled status badges, so a priority is never read as a status.
       style={{ color, borderColor: `color-mix(in oklab, ${color} 45%, transparent)` }}
       className={cn(
-        'inline-flex h-6 items-center gap-1 rounded-full border border-dashed px-2 text-[12.5px] font-semibold',
+        'inline-flex h-6 items-center gap-1 rounded-full whitespace-nowrap border border-dashed px-2 text-[12.5px] font-semibold',
         className,
       )}
     >

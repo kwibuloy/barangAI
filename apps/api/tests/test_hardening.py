@@ -688,3 +688,20 @@ def test_the_form_gets_the_blurred_copy_that_will_be_stored(client, photo, monke
     monkeypatch.delenv("MAX_IMAGE_BYTES")
     client.cookies.clear()
     assert client.post("/reports/photo-preview", files=files).status_code in {401, 403}
+
+
+def test_the_preview_takes_a_phone_sized_photo(client):
+    """A real phone photo is far over the small JSON limit; the preview must accept it like /predict does."""
+    import io
+    import os
+
+    from conftest import register
+    from PIL import Image
+
+    register(client)
+    buffer = io.BytesIO()
+    Image.frombytes("RGB", (900, 700), os.urandom(900 * 700 * 3)).save(buffer, "JPEG", quality=95)
+    assert len(buffer.getvalue()) > 200_000
+    files = {"image": ("phone.jpg", buffer.getvalue(), "image/jpeg")}
+    token = {"X-CSRF-Token": client.cookies.get("csrf_token", "")}
+    assert client.post("/reports/photo-preview", files=files, headers=token).status_code == 200

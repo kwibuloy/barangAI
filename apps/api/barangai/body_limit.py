@@ -13,7 +13,9 @@ class RequestBodyLimitMiddleware:
         path = scope.get("path", "").removeprefix(scope.get("root_path", ""))
         if scope["type"] != "http" or scope["method"] not in {"POST", "PUT", "PATCH"}:
             return await self.app(scope, receive, send)
-        uploads = path in {"/reports", "/reports/predict"} or (path.startswith("/reports/") and path.endswith("/addenda"))
+        uploads = path in {"/reports", "/reports/predict", "/reports/photo-preview"} or (
+            path.startswith("/reports/") and path.endswith("/addenda")
+        )
         limit = (int(os.environ.get("MAX_REQUEST_BYTES", int(os.environ.get("MAX_IMAGE_BYTES", 5_000_000)) + 1_000_000))
                  if uploads else JSON_LIMIT)
         headers = dict(scope["headers"])
