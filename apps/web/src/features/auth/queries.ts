@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { endGlassesSession } from '../glasses/connection'
 import { ApiError, api, post } from '../../lib/api'
 
 export type Preferences = { theme?: 'system' | 'light' | 'dark'; language?: 'en' | 'fil' }
@@ -87,6 +88,8 @@ function useFinishSession() {
     client.removeQueries({ predicate: query => query.queryKey[0] !== meKey[0] })
     client.getMutationCache().clear()
     client.setQueryData(meKey, null)
+    // A shared phone: the next account must not inherit the glasses, their consent or a handed-over photo.
+    endGlassesSession()
   }
 }
 

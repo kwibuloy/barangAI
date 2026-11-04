@@ -40,7 +40,21 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    implementation "com.rokid.cxr:client-l:$rokidClientVersion"
 }
+
+// The glasses app rides inside this APK; RokidGlassesPlugin hands it to the Rokid SDK, which installs it on the glasses.
+def glassesAssets = layout.buildDirectory.dir("generated/glassesAssets")
+def packGlassesApp = tasks.register('packGlassesApp', Copy) {
+    dependsOn ':glasses:assembleRelease'
+    from(project(':glasses').layout.buildDirectory.dir('outputs/apk/release')) {
+        include '*.apk'
+        rename { 'glasses.apk' }
+    }
+    into glassesAssets
+}
+android.sourceSets.main.assets.srcDir(glassesAssets)
+tasks.named('preBuild') { dependsOn packGlassesApp }
 
 apply from: 'capacitor.build.gradle'
 

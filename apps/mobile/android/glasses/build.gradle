@@ -1,0 +1,28 @@
+// BarangAI's app for Rokid Glasses: shows the screens the phone sends and reports button presses back.
+// The phone app packs this APK and the Rokid SDK installs it on the glasses when they connect.
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "com.barangai.glasses"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.barangai.glasses"
+        minSdkVersion 28
+        // The Rokid bridge library targets Android 13; the glasses run their own Android build.
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signed with the debug key so `assembleDebug` of the phone app can pack it without a keystore.
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+dependencies {
+    implementation "com.rokid.cxr:cxr-service-bridge:$rokidBridgeVersion"
+}

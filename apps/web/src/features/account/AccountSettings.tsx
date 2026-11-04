@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { LogOut, Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -8,6 +8,9 @@ import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { useSignOut, type User } from '../auth/queries'
 import { LegalLinks } from '../legal/LegalPage'
 import { AccountSecurity } from './AccountSecurity'
+import { glassesAvailable } from '../glasses/connection'
+
+const GlassesSettings = lazy(() => import('../glasses/Glasses').then(module => ({ default: module.GlassesSettings })))
 
 export const ROLE = { resident: 'Resident', staff: 'Barangay staff', administrator: 'Administrator' } as const
 
@@ -68,6 +71,11 @@ export function AccountSettings({ user }: { user: User }) {
           <Txt>{theme === 'system' ? 'Matches your device setting.' : 'Stays this way on this device.'}</Txt>
         </p>
       </div>
+      {user.role === 'resident' && glassesAvailable() && (
+        <Suspense fallback={null}>
+          <GlassesSettings />
+        </Suspense>
+      )}
       <AccountSecurity user={user} />
       {signOut.error && (
         <p role="alert" className="text-[14px] text-destructive">

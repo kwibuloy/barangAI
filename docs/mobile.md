@@ -52,6 +52,16 @@ On first launch, enter the Phone address. The app remembers it and asks again wh
 
 Website changes reach the phone after a website build and an app reload. Only changes under `apps/mobile` need a new APK.
 
+## Rokid Glasses
+
+Residents can report hands-free with Rokid Glasses. The phone needs the Rokid AI App, paired with the glasses. In BarangAI, open the account sheet (the avatar) and tap **Connect glasses**. The Rokid AI App asks for permission once, then the glasses open BarangAI's glasses app, which the phone app installs on them.
+
+- **Press** the glasses button: take a photo. Kap finds the category, and the phone's GPS gives the pin.
+- **Press** again on the confirm screen: send. The screen shows the AI disclaimer, and this press counts as the resident's check of the category and place. **Hold**, double-press or swipe back: cancel.
+- When Kap finds no category, there's no GPS fix, or a report is already open nearby, the glasses say to finish on the phone, and the report form opens with the same photo.
+
+The glasses app lives in `apps/mobile/android/glasses` and is built into the phone APK automatically. The Rokid SDKs come from Rokid's Maven repository, so the first build needs internet. The phone side is `RokidGlassesPlugin.java`, and the web side is `apps/web/src/features/glasses`. Both raise the app's minimum Android version to 9.
+
 ## Data
 
 The launcher always uses `barangai-dev.db` and `private_media/`. For synthetic accounts and reports, see `.claude/skills/seed-demo/SKILL.md`. Forgotten passwords are reset from the command line.
