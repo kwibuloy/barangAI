@@ -1,11 +1,11 @@
-param([int]$Port = 8000, [switch]$Lan)
+param([int]$Port = 8000, [switch]$Lan, [switch]$Demo)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $python = Join-Path $projectRoot '.venv/Scripts/python.exe'
 $checker = Join-Path $projectRoot 'apps/api/models/mobileclip2-s0'
 $website = Join-Path $projectRoot 'apps/web/dist'
-if (!(Test-Path -LiteralPath $python)) { throw 'Create .venv and install the API with its AI extra. See README.md.' }
+if (!(Test-Path -LiteralPath $python)) { throw 'Create .venv and install the API with its AI extra, using deploy/constraints-render.txt. See README.md.' }
 if (!(Test-Path -LiteralPath (Join-Path $checker 'visual.onnx'))) { throw 'The category checker is missing. Run apps/api/tools/export_checker.py.' }
 if (!(Test-Path -LiteralPath (Join-Path $website 'index.html'))) { throw 'Build the website first: cd apps/web; npm run build' }
 
@@ -42,6 +42,19 @@ $env:DATABASE_URL = 'sqlite:///' + (Join-Path $projectRoot 'barangai-dev.db').Re
 $env:MEDIA_STORAGE = 'local'
 $env:PRIVATE_MEDIA_DIR = Join-Path $projectRoot 'private_media'
 
+# Anyone on the Wi-Fi can reach the desk in phone mode, so demo staff accounts need saying out loud.
+if ($Lan) {
+    Push-Location (Join-Path $projectRoot 'apps/api')
+    try {
+        if ($Demo) { & $python -m barangai.lan_check --demo } else { & $python -m barangai.lan_check }
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+    } finally { Pop-Location }
+}
+
+# Warnings and errors, kept after the window closes. Request lines hold addresses and pins, so they stay on screen.
+New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'logs') | Out-Null
+$logConfig = Join-Path $projectRoot 'deploy/uvicorn-logging.json'
+
 $bindAddress = '127.0.0.1'
 Write-Host "BarangAI: http://127.0.0.1:$Port"
 if ($Lan) {
@@ -59,6 +72,6 @@ else { Write-Host 'No backup yet. This laptop holds the only copy: run .\deploy\
 Write-Host 'AI suggestions are experimental and not field validated. Residents review them; staff verify every report.'
 Push-Location (Join-Path $projectRoot 'apps/api')
 try {
-    & $python -m uvicorn barangai.main:app --host $bindAddress --port $Port --timeout-keep-alive 30
+    & $python -m uvicorn barangai.main:app --host $bindAddress --port $Port --timeout-keep-alive 30 --log-config $logConfig
     if ($LASTEXITCODE -ne 0) { throw "API exited with code $LASTEXITCODE" }
 } finally { Pop-Location }

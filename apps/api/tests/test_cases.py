@@ -184,7 +184,7 @@ def test_merged_reports_take_the_staff_verified_category_never_a_residents(clien
     # The bigger, still-pending case is kept; its residents chose "flooding", staff verified "potholes".
     client.post("/cases/link", json={"report_id": pending[0], "other_report_id": pending[1]}, headers=headers(client))
     client.post("/cases/link", json={"report_id": pending[1], "other_report_id": pending[2]}, headers=headers(client))
-    case = client.post("/cases/link", json={"report_id": pending[2], "other_report_id": accepted},
+    case = client.post("/cases/link", json={"report_id": pending[2], "other_report_id": accepted, "confirm_far": True},
                        headers=headers(client)).json()["case"]
     assert case["status"] == "Accepted" and case["category"] == "potholes"
     for report_id in pending:

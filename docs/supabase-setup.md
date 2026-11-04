@@ -14,7 +14,7 @@ Set `DATABASE_URL` only in the server's secret environment settings:
 postgresql://postgres.PROJECT_REF:PERCENT_ENCODED_PASSWORD@COPIED_POOLER_HOST:5432/postgres?sslmode=require
 ```
 
-Percent encode reserved password characters. `sslmode=require` requires encryption; for certificate and hostname verification use `sslmode=verify-full&sslrootcert=/app/supabase-ca.crt` (the image includes that certificate). Never disable TLS verification to work around a connection error. The application uses psycopg2, prechecks reused connections and allows at most five connections per worker (three pooled plus two temporary overflow connections). Start the demo with one worker.
+Percent encode reserved password characters. `sslmode=require` requires encryption; for certificate and hostname verification use `sslmode=verify-full&sslrootcert=/app/supabase-ca.crt` (the image includes that certificate). Never disable TLS verification to work around a connection error. The application uses psycopg2 (the API's `postgres` extra, which the Render image installs), prechecks reused connections and allows at most five connections per worker (three pooled plus two temporary overflow connections). Start the demo with one worker.
 
 Use the table-owner connection (`postgres.PROJECT_REF` in the copied pooler URL) for the demo and migrations. It is privileged: keep the password only on the API server. The application tables have RLS enabled with no client policies; a non-owner role without an explicit server policy would be denied too. A separate restricted runtime role requires a deliberate follow-up design and verification, rather than broad public policies.
 

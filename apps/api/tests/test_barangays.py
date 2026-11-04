@@ -322,7 +322,7 @@ def test_loading_barangays_places_older_reports_and_keeps_cases_together(client,
     lone = submit(client, photo, **NORTH).json()["id"]
     outside = submit(client, photo, **OUTSIDE).json()["id"]
     login(client, "staff@example.test")
-    assert post(client, "/cases/link", report_id=first, other_report_id=linked).status_code == 200
+    assert post(client, "/cases/link", report_id=first, other_report_id=linked, confirm_far=True).status_code == 200
     assert load_areas()["reports_assigned"] == 3
 
     from barangai.barangays import import_boundaries

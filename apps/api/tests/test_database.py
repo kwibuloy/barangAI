@@ -1,6 +1,7 @@
 import io
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from barangai.db import database_url, engine_for_url
@@ -14,6 +15,7 @@ def migration_config(output=None):
 
 
 def test_legacy_postgres_url_and_percent_encoded_password(monkeypatch):
+    pytest.importorskip("psycopg2")  # The optional postgres extra; the base install has no driver.
     monkeypatch.setenv("DATABASE_URL", "postgres://synthetic:p%40ss@localhost/example?sslmode=require")
     assert database_url() == "postgresql://synthetic:p%40ss@localhost/example?sslmode=require"
     engine = engine_for_url(database_url())
@@ -77,7 +79,6 @@ def test_sqlite_start_up_migrates_or_stamps_legacy_create_all_database(tmp_path,
 
 
 def test_sqlite_start_up_refuses_outdated_legacy_database(tmp_path, monkeypatch):
-    import pytest
     from barangai import models  # noqa: F401
     from barangai.db import Base, upgrade_sqlite
 

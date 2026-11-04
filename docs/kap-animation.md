@@ -44,7 +44,7 @@ Follow the root README. Use Python 3.12+ and Node.js 22+.
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e './apps/api[test,ai]'
+.\.venv\Scripts\python.exe -m pip install -c deploy/constraints-render.txt -e './apps/api[test,ai]'
 cd apps/web
 npm ci
 npm run build

@@ -9,7 +9,7 @@ description: Screenshot the BarangAI routes you touched at phone and tablet widt
 
 1. Start a local API on :8000 in the background, from the repo root, with `COOKIE_SECURE=false`, `MEDIA_STORAGE=local`, and `DATABASE_URL`/`PRIVATE_MEDIA_DIR` pointing at the scratchpad:
    `.venv/Scripts/python.exe -m uvicorn barangai.main:app --app-dir apps/api --host 127.0.0.1 --port 8000`. If the user already runs servers on 8000/5173, use 8001 and 5175 instead: start Vite with `API_URL=http://127.0.0.1:8001` and shoot with `BASE_URL=http://127.0.0.1:5175/`.
-   If that database is empty, run the `seed-demo` skill against it with a generated `SEED_DEMO_PASSWORD`, and keep that variable set for step 3.
+   If that database is empty, run the `seed-demo` skill against it with generated `SEED_DEMO_PASSWORD`, `SEED_DEMO_STAFF_PASSWORD` and `SEED_DEMO_ADMIN_PASSWORD`, and keep those variables set for step 3.
 2. Start the web app: the `barangai-web` entry in `.claude/launch.json`, or `npm run dev` in `apps/web` in the background.
 3. From `apps/web`, shoot each role that sees the routes you touched (`home` is `/`; write routes without the leading `/`):
 

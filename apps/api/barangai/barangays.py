@@ -217,8 +217,11 @@ def guard_duplicate_decision(
         raise HTTPException(404, "Suggestion not found")
     # The website groups a confirmed pair, and that would fail, leaving it confirmed with no case. Staff can still
     # dismiss the pair.
-    if report.barangay_id != candidate.barangay_id and decision != "rejected":
-        raise HTTPException(409, "Reports from different barangays cannot be grouped")
+    if decision != "rejected":
+        from . import cases  # Imported here: cases.py builds on this module.
+
+        if problem := cases.link_problem(db, [report, candidate]):
+            raise HTTPException(409, problem)
 
 
 def assign_unassigned(db: Session) -> int:

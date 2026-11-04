@@ -22,7 +22,7 @@ COPY apps/api/alembic.ini ./
 COPY apps/api/migrations ./migrations
 COPY deploy/requirements-render-vision.txt deploy/constraints-render.txt /tmp/
 RUN pip install --no-cache-dir -c /tmp/constraints-render.txt -r /tmp/requirements-render-vision.txt \
-    && pip install --no-cache-dir -c /tmp/constraints-render.txt . \
+    && pip install --no-cache-dir -c /tmp/constraints-render.txt ".[postgres]" \
     && useradd --uid 10001 --create-home app
 COPY apps/api/models/mobileclip2-s0 ./models/mobileclip2-s0
 COPY apps/api/models/yunet ./models/yunet

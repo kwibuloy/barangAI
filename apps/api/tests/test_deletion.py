@@ -44,7 +44,8 @@ def test_default_is_dry_run_with_no_data_or_file_changes(deletion_data, tmp_path
     result = run_deletion(deletion_data, receipt_path=receipt)
     assert result["action"] == "dry-run"
     assert result["dependent_rows"] == {"notifications": 1, "duplicate_suggestions": 2,
-                                        "staff_actions": 1, "report_events": 1, "report_addenda": 0}
+                                        "staff_actions": 1, "report_events": 1, "report_addenda": 0,
+                                        "report_photo_views": 0}
     assert deletion_data[2].is_file()
     assert not receipt.exists()
 
@@ -195,3 +196,14 @@ def test_delete_removes_details_the_resident_added_and_their_photos(client, dele
     with session_for_url() as db:
         assert db.scalar(select(func.count()).select_from(ReportAddendum)) == 0
     assert not extra.exists()
+
+
+def test_a_disabled_administrator_cannot_delete_from_the_command_line(deletion_data):
+    from barangai.db import session_for_url
+    from barangai.models import User, now
+
+    with session_for_url() as db:
+        db.query(User).filter_by(role="administrator").first().disabled_at = now()
+        db.commit()
+    with pytest.raises(PermissionError):
+        run_deletion(deletion_data)

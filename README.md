@@ -16,7 +16,7 @@ Use Python 3.12 and Node.js 22. The local database is SQLite; nothing else needs
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e './apps/api[test,ai]'
+.\.venv\Scripts\python.exe -m pip install -c deploy/constraints-render.txt -e './apps/api[test,ai]'
 cd apps/api
 $env:COOKIE_SECURE = 'false'
 python -m barangai.bootstrap_staff admin@example.test --role administrator
@@ -51,7 +51,7 @@ The report AI has two parts. A Cloudflare Workers AI vision model reads the clea
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e './apps/api[test,ai]'
+.\.venv\Scripts\python.exe -m pip install -c deploy/constraints-render.txt -e './apps/api[test,ai]'
 cd apps/web
 npm ci
 npm run build

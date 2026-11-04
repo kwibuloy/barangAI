@@ -12,7 +12,7 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import delete, func, or_, select, update
 
 from . import points
-from .auth import hasher
+from .auth import clear_login_failures, hasher
 from .cases import members
 from .db import scrub_deleted, session_for_url
 from .media import delete_image
@@ -20,11 +20,16 @@ from .models import (
     Case,
     DeletionRequest,
     DuplicateSuggestion,
+    Erasure,
+    LoginSession,
     Notification,
+    OAuthIdentity,
     Report,
     ReportAddendum,
     ReportEvent,
+    ReportPhotoView,
     StaffAction,
+    Usage,
     User,
     now,
 )
@@ -44,6 +49,7 @@ def dependents(report_id):
         (DuplicateSuggestion, or_(DuplicateSuggestion.report_id == report_id,
                                   DuplicateSuggestion.candidate_report_id == report_id)),
         (StaffAction, StaffAction.report_id == report_id),
+        (ReportPhotoView, ReportPhotoView.report_id == report_id),
         (ReportEvent, ReportEvent.report_id == report_id),
         (ReportAddendum, ReportAddendum.report_id == report_id),
     )
@@ -82,8 +88,32 @@ def erase_rows(db, report):
     db.execute(update(DeletionRequest).where(DeletionRequest.report_id == report_id).values(reason=None, note=None))
     if case_id:
         settle_case(db, case_id, latitude, longitude)
+    # Kept so restoring an older backup can't bring this report back (backup.py).
+    db.merge(Erasure(kind="report", subject_id=report_id))
     db.flush()
     db.expire_all()
+    return images
+
+
+def erase_account(db, user_id):
+    """Removes a resident's account and all its reports, uncommitted, and returns the photos for the caller to delete."""
+    email = db.scalar(select(User.email).where(User.id == user_id))
+    images = []
+    for report in db.scalars(select(Report).where(Report.resident_id == user_id)).all():
+        images += erase_rows(db, report)
+    points.erase_account(db, user_id)
+    for model, column in (
+        (Notification, Notification.user_id),
+        (DeletionRequest, DeletionRequest.requester_id),
+        (OAuthIdentity, OAuthIdentity.user_id),
+        (LoginSession, LoginSession.user_id),
+    ):
+        db.execute(delete(model).where(column == user_id))
+    for name in ("deletion", "preview"):
+        db.execute(delete(Usage).where(Usage.key.like(f"{name}:{user_id}:%")))
+    clear_login_failures(db, email)
+    db.execute(delete(User).where(User.id == user_id))
+    db.merge(Erasure(kind="user", subject_id=user_id))
     return images
 
 
@@ -102,7 +132,7 @@ def delete_report(report_id, email, password, *, confirm=None, receipt_path=None
             authenticated = admin is not None and hasher.verify(admin.password_hash, password)
         except (VerificationError, InvalidHashError):
             authenticated = False
-        if not authenticated or admin.role != "administrator":
+        if not authenticated or admin.role != "administrator" or admin.disabled_at:
             raise PermissionError("Administrator authentication required")
         admin_id = admin.id
 

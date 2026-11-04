@@ -2,6 +2,7 @@ import argparse
 import io
 import os
 import random
+import secrets
 from datetime import datetime, timedelta
 from getpass import getpass
 
@@ -25,6 +26,7 @@ ACCOUNTS = [
     ("resident1@demo.test", "resident"),
     ("resident2@demo.test", "resident"),
 ]
+ROLE_PASSWORD_SETTINGS = {"staff": "SEED_DEMO_STAFF_PASSWORD", "administrator": "SEED_DEMO_ADMIN_PASSWORD"}
 PATH = ["Pending", "Under Verification", "Accepted", "In Progress", "Resolved"]
 
 
@@ -49,16 +51,25 @@ def camera_photo(seed, latitude, longitude, days_ago):
     return photo(seed, exif)
 
 
-def seed(password: str, count: int):
-    if len(password) < 12:
+def seed(password: str, count: int, staff_password: str | None = None, admin_password: str | None = None):
+    """Each role has its own password, so handing out a resident login never hands out the desk. Residents share
+    `password`; staff and administrator passwords are generated and printed once when none is given. Existing accounts
+    keep theirs."""
+    staff_password = staff_password or secrets.token_urlsafe(18)
+    admin_password = admin_password or secrets.token_urlsafe(18)
+    if min(len(password), len(staff_password), len(admin_password)) < 12:
         raise ValueError("Password must be at least 12 characters")
+    if len({password, staff_password, admin_password}) != 3:
+        raise ValueError("Each role needs its own password")
+    passwords = {"resident": password, "staff": staff_password, "administrator": admin_password}
     rng = random.Random(42)
     with session_for_url() as db:
-        users = {}
+        users, created = {}, []
         for email, role in ACCOUNTS:
-            users[email] = db.scalar(select(User).where(User.email == email)) or User(
-                email=email, password_hash=hasher.hash(password), role=role
-            )
+            users[email] = db.scalar(select(User).where(User.email == email))
+            if not users[email]:
+                users[email] = User(email=email, password_hash=hasher.hash(passwords[role]), role=role)
+                created.append((email, role))
             db.add(users[email])
         db.flush()
         staff, residents = users["staff@demo.test"], [users["resident1@demo.test"], users["resident2@demo.test"]]
@@ -114,6 +125,10 @@ def seed(password: str, count: int):
             report.image_path = save_image(report.id, photo(index))
         pitch_story(db, staff, residents)
         db.commit()
+    for email, role in created:
+        # Shown this once, unless it came from the environment: nothing saves it.
+        if role != "resident" and not os.environ.get(ROLE_PASSWORD_SETTINGS[role]):
+            print(f"{email}: {passwords[role]}")
 
 
 def pitch_story(db, staff, residents):
@@ -209,5 +224,10 @@ if __name__ == "__main__":
     if not args.allow_remote and (not is_local() or os.environ.get("MEDIA_STORAGE", "local") != "local"):
         raise SystemExit("Refusing to seed a remote database or storage without --allow-remote")
     if not args.rewards_only:
-        seed(os.environ.get("SEED_DEMO_PASSWORD") or getpass("Demo account password: "), args.count)
+        seed(
+            os.environ.get("SEED_DEMO_PASSWORD") or getpass("Demo resident password: "),
+            args.count,
+            os.environ.get("SEED_DEMO_STAFF_PASSWORD"),
+            os.environ.get("SEED_DEMO_ADMIN_PASSWORD"),
+        )
     print(f"{seed_rewards()} sample rewards added")

@@ -32,7 +32,8 @@ def _sqlite_settings(connection, _record):
 def engine_for_url(url):
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://") :]
-    options = {"pool_pre_ping": True}
+    # hide_parameters: a database error's text would otherwise quote the row's values, and errors reach the log file.
+    options = {"pool_pre_ping": True, "hide_parameters": True}
     if make_url(url).get_backend_name() == "postgresql":
         # One demo worker uses at most five database connections.
         options.update(pool_size=3, max_overflow=2)
@@ -54,7 +55,7 @@ def database_url():
     return url
 
 
-def upgrade_sqlite():
+def upgrade_sqlite(keep_copy=True):
     """Bring a local SQLite database to the migration head, so dev and tests use the deployed schema."""
     from alembic import command
     from alembic.config import Config
@@ -69,7 +70,7 @@ def upgrade_sqlite():
     inspector = inspect(engine_for_url(database_url()))
     tables = set(inspector.get_table_names())
     if "alembic_version" in tables or not tables:
-        if tables:
+        if tables and keep_copy:
             copy_before_upgrade(config)
         command.upgrade(config, "head")
         return

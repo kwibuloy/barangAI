@@ -14,7 +14,7 @@ import sys
 import tempfile
 import time
 
-import psycopg2
+import psycopg2  # The API's postgres extra.
 from psycopg2 import sql
 
 ROOT = Path(__file__).resolve().parents[1]

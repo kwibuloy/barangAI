@@ -3,9 +3,9 @@ from getpass import getpass
 
 from sqlalchemy import delete, select
 
-from .auth import hasher
+from .auth import clear_login_failures, hasher, password_problem
 from .db import session_for_url
-from .models import Barangay, LoginSession, User
+from .models import Barangay, LoginSession, User, now
 
 
 def find_barangay(db, name: str) -> Barangay:
@@ -20,6 +20,8 @@ def create_staff(email: str, password: str, role: str, barangay: str | None = No
         raise ValueError("Valid role and a password of at least 12 characters required")
     if role == "administrator" and barangay:
         raise ValueError("Administrators see every barangay, so they do not belong to one")
+    if problem := password_problem(password, email):
+        raise ValueError(problem)
     with session_for_url() as db:
         if db.scalar(select(User).where(User.email == email.lower())):
             raise ValueError("Email already exists")
@@ -43,12 +45,28 @@ def reset_password(email: str, password: str):
     """For someone who forgot their password: the site sends no email, so an administrator runs this."""
     if len(password) < 12:
         raise ValueError("A password of at least 12 characters required")
+    if problem := password_problem(password, email):
+        raise ValueError(problem)
     with session_for_url() as db:
         user = db.scalar(select(User).where(User.email == email.lower()))
         if not user:
             raise ValueError("No account with that email")
         user.password_hash = hasher.hash(password)
         db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
+        clear_login_failures(db, user.email)
+        db.commit()
+
+
+def set_disabled(email: str, disabled: bool):
+    """Any account, residents included: bans an abuser or stops a former official on the next request. Staff and
+    administrators can also be managed through the API (admin.py)."""
+    with session_for_url() as db:
+        user = db.scalar(select(User).where(User.email == email.lower()))
+        if not user:
+            raise ValueError("No account with that email")
+        user.disabled_at = now() if disabled else None
+        if disabled:
+            db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
         db.commit()
 
 
@@ -59,8 +77,12 @@ if __name__ == "__main__":
     parser.add_argument("--barangay", help="Barangay name, required for staff once barangays are loaded")
     parser.add_argument("--assign", action="store_true", help="Move an existing staff account to --barangay")
     parser.add_argument("--reset-password", action="store_true", help="Set a new password and sign the account out")
+    parser.add_argument("--disable", action="store_true", help="Sign the account out and refuse its sign-ins")
+    parser.add_argument("--enable", action="store_true", help="Let a disabled account sign in again")
     args = parser.parse_args()
-    if args.reset_password:
+    if args.disable or args.enable:
+        set_disabled(args.email, args.disable)
+    elif args.reset_password:
         reset_password(args.email, getpass("New password: "))
     elif args.assign:
         if not args.barangay:

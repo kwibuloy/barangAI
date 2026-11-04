@@ -56,13 +56,17 @@ class User(Base):
     # When this account agreed to the terms and privacy notice, and which version. Empty for older accounts.
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     terms_version: Mapped[str | None] = mapped_column(String(20))
+    # Set when an administrator disables the account: its sessions go and it can't sign in until this is cleared.
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Points that couldn't be taken back because they were already spent; they come out of the next refund (points.py).
+    points_owed: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     identities: Mapped[list["OAuthIdentity"]] = relationship(viewonly=True)
 
 
 class LoginSession(Base):
     __tablename__ = "sessions"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     csrf_token: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     user: Mapped[User] = relationship()
@@ -92,7 +96,7 @@ class Case(Base):
 class Report(Base):
     __tablename__ = "reports"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
-    resident_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    resident_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
@@ -141,7 +145,7 @@ class ReportAddendum(Base):
 class ReportEvent(Base):
     __tablename__ = "report_events"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
-    report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), nullable=False)
+    report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), index=True, nullable=False)
     from_status: Mapped[str | None] = mapped_column(String(30))
     to_status: Mapped[str] = mapped_column(String(30), nullable=False)
     actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -153,7 +157,7 @@ class ReportEvent(Base):
 class StaffAction(Base):
     __tablename__ = "staff_actions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
-    report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), nullable=False)
+    report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), index=True, nullable=False)
     actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     kind: Mapped[str] = mapped_column(String(20), nullable=False)
     note: Mapped[str] = mapped_column(Text, nullable=False)
@@ -164,7 +168,7 @@ class Notification(Base):
     __tablename__ = "notifications"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
-    report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), nullable=False)
+    report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False)
     # "status" tells a resident their report moved; "new_report" and "addendum" tell staff something arrived.
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default="status", server_default="status")
@@ -177,7 +181,7 @@ class DuplicateSuggestion(Base):
     __table_args__ = (UniqueConstraint("report_id", "candidate_report_id", "model_version"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), nullable=False)
-    candidate_report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), nullable=False)
+    candidate_report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), index=True, nullable=False)
     model_version: Mapped[str] = mapped_column(String(100), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     decision: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
@@ -254,5 +258,39 @@ class PointEntry(Base):
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     report_id: Mapped[str | None] = mapped_column(String(36), index=True)
     voucher_id: Mapped[str | None] = mapped_column(String(36))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+
+
+class ReportPhotoView(Base):
+    """Staff or an administrator opened a report's photo. At most one row per person, report and hour; residents' own
+    views aren't logged and residents never see this. Goes with the report when it is erased."""
+
+    __tablename__ = "report_photo_views"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    report_id: Mapped[str] = mapped_column(ForeignKey("reports.id"), index=True, nullable=False)
+    actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+
+
+class RewardChange(Base):
+    """Who made or repriced a reward: the shop's own audit log, read by administrators."""
+
+    __tablename__ = "reward_changes"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    reward_id: Mapped[str] = mapped_column(ForeignKey("rewards.id"), index=True, nullable=False)
+    actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # "created" holds the starting values; "changed" holds {field: [old, new]}.
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    changes: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
+
+
+class Erasure(Base):
+    """Ids of erased accounts and reports, so restoring a backup can't bring them back (backup.py). Opaque ids only:
+    never an email, a name or anything else about what was erased."""
+
+    __tablename__ = "erasures"
+    kind: Mapped[str] = mapped_column(String(10), primary_key=True)  # "user" or "report"
+    subject_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
 

@@ -10,6 +10,6 @@ Run from the repo root and report each result exactly, including failure output.
 3. ML only if `ml/` changed: `cd ml; ../.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider`.
 4. Lint: `.venv/Scripts/python.exe -m ruff check apps/api` and `npx prettier --check src tests` in `apps/web`.
 
-If `.venv` or `apps/web/node_modules` is missing, set them up first: `python -m venv .venv`, `.venv/Scripts/python.exe -m pip install -e "./apps/api[dev]"`, `npm ci` in `apps/web`. If Vite fails to load its config in a restricted shell, retry with `-- --configLoader runner`.
+If `.venv` or `apps/web/node_modules` is missing, set them up first: `python -m venv .venv`, `.venv/Scripts/python.exe -m pip install -c deploy/constraints-render.txt -e "./apps/api[dev]"`, `npm ci` in `apps/web`. If Vite fails to load its config in a restricted shell, retry with `-- --configLoader runner`.
 
 Then run the `rules-reviewer` agent on the diff. Passing tests don't cover AGENTS.md rules.

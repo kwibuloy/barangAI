@@ -8,6 +8,7 @@ A backup holds private photos and account data unencrypted, so keep it on an enc
 
 import argparse
 import json
+import re
 import shutil
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -15,8 +16,8 @@ from pathlib import Path
 
 from sqlalchemy.engine import make_url
 
-from .db import copy_sqlite, database_url
-from .media import local_path, media_dir
+from .db import copy_sqlite, database_url, engine_for_url, scrub_deleted, session_for_url, upgrade_sqlite
+from .media import delete_image, local_path, media_dir
 
 MANILA = timezone(timedelta(hours=8))
 DATABASE_NAME = "barangai.db"
@@ -82,8 +83,55 @@ def create_backup(destination) -> Path:
     return folder
 
 
+def erased_ids(path: Path) -> set[tuple[str, str]] | None:
+    """The erasure ledger in a database file: None when there is no file, empty when it predates the ledger."""
+    if not path.is_file():
+        return None
+    connection = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        if not connection.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'erasures'").fetchone():
+            return set()
+        return set(connection.execute("SELECT kind, subject_id FROM erasures").fetchall())
+    except sqlite3.Error as error:
+        # An unreadable ledger must stop the restore: carrying on would bring back what it lists.
+        raise ValueError(f"Can't read the erasure ledger in {path}: {error}") from error
+    finally:
+        connection.close()
+
+
+def reapply_erasures(erased: set[tuple[str, str]]) -> tuple[dict, list[str]]:
+    """Removes what was erased since this backup was made, by the same code as the original deletion, and returns the
+    counts and the photos that went with it. Migrates first, because the backup may be older than the ledger, without
+    the usual copy: it would hold what is being erased."""
+    from . import delete_report as deletion  # Imported here: it needs the whole app, and creating a backup does not.
+    from .models import Erasure, Report, User
+
+    upgrade_sqlite(keep_copy=False)
+    done = {"reports": 0, "users": 0, "photos": 0}
+    with session_for_url() as db:
+        images = []
+        for kind, subject_id in sorted(erased):
+            db.merge(Erasure(kind=kind, subject_id=subject_id))
+        for subject_id in sorted(subject for kind, subject in erased if kind == "report"):
+            report = db.get(Report, subject_id)
+            if report:
+                images += deletion.erase_rows(db, report)
+                done["reports"] += 1
+        for subject_id in sorted(subject for kind, subject in erased if kind == "user"):
+            if db.get(User, subject_id):
+                images += deletion.erase_account(db, subject_id)
+                done["users"] += 1
+        done["photos"] = len(images)
+        db.commit()
+        scrub_deleted(db)
+    engine_for_url(database_url()).dispose()
+    return done, images
+
+
 def restore_backup(folder, replace=False) -> dict:
-    """Puts a backup in place of the configured database and photo folder. Anything it replaces is renamed, not deleted."""
+    """Puts a backup in place of the configured database and photo folder. Anything it replaces is renamed, not deleted.
+    Accounts and reports erased since the backup was made are erased again, going by the erasure ledger of the database
+    being replaced, plus the backup's own. On a new laptop with no database, only the backup's can be used."""
     folder = Path(folder).resolve()
     copied, manifest_file = folder / DATABASE_NAME, folder / MANIFEST
     if not copied.is_file() or not manifest_file.is_file():
@@ -96,6 +144,9 @@ def restore_backup(folder, replace=False) -> dict:
     finally:
         check.close()
     target = database_file()
+    # Pooled connections would otherwise keep using the file being set aside.
+    engine_for_url(database_url()).dispose()
+    current = erased_ids(target)
     existing = [
         path for path in (target, *(target.with_name(target.name + end) for end in ("-wal", "-shm"))) if path.exists()
     ]
@@ -103,11 +154,34 @@ def restore_backup(folder, replace=False) -> dict:
         raise ValueError(f"{target} already exists. Stop the server and pass --replace to set it aside and restore")
     stamp = f"{datetime.now(MANILA):%Y%m%d-%H%M%S}"
     target.parent.mkdir(parents=True, exist_ok=True)
-    for path in existing:
-        path.rename(path.with_name(f"{target.stem}.replaced-{stamp}{path.name.removeprefix(target.stem)}"))
+    set_aside = [
+        (path, path.with_name(f"{target.stem}.replaced-{stamp}{path.name.removeprefix(target.stem)}"))
+        for path in existing
+    ]
+    for path, aside in set_aside:
+        path.rename(aside)
     shutil.copy2(copied, target)
+    # Before any photo moves. If this fails, what was there goes back, so the newer ledger isn't left in a side file
+    # with the erased rows live.
+    erased = (erased_ids(copied) or set()) | (current or set())
+    reerased, gone = {"reports": 0, "users": 0, "photos": 0}, []
+    if erased:
+        try:
+            reerased, gone = reapply_erasures(erased)
+        except Exception:
+            engine_for_url(database_url()).dispose()
+            for path in (target, *(target.with_name(target.name + end) for end in ("-wal", "-shm"))):
+                path.unlink(missing_ok=True)
+            for path, aside in set_aside:
+                aside.rename(path)
+            raise
+    for location in gone:
+        delete_image(location)
+    gone_names = {re.split(r"[\\/]", location)[-1] for location in gone}
     photos = media_dir()
     for photo in (folder / PHOTOS).iterdir():
+        if photo.name in gone_names:
+            continue
         here = photos / photo.name
         if here.exists() and here.read_bytes() != photo.read_bytes():
             here.rename(here.with_name(f"{here.name}.replaced-{stamp}"))
@@ -117,7 +191,13 @@ def restore_backup(folder, replace=False) -> dict:
         table_counts = counts(connection)
     finally:
         connection.close()
-    return {"database": str(target), "photos": str(photos), "counts": table_counts}
+    return {
+        "database": str(target),
+        "photos": str(photos),
+        "counts": table_counts,
+        "erasure_ledger": "backup only" if current is None else "current database and backup",
+        "reerased": reerased,
+    }
 
 
 def main(argv=None):

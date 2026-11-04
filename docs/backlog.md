@@ -17,6 +17,7 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 | D7 | Honest copy: Kap's privacy facts, short report IDs masked before chat, operator and privacy contact settings reach the launcher, free-hosting wording removed | Tests and reading |
 | D8 | Monthly report (`/desk/records`): counts, typical times, backlog age, rejection reasons, CSV and print, limited to the caller's barangay | `test_records.py`, `records.test.tsx`, screenshots awaiting approval |
 | D9 | Staff report view: the three category fields no longer overlap; a staff account with no barangay is told why its desk is empty | Screenshots awaiting approval |
+| D10 | Security and backend batch, API side (B5, B6, P1 API, M1, M3 to M10, M12 to M14; P7 without unlink): see docs/api.md and docs/architecture.md | `test_admin.py`, `test_limits.py`, `test_points_ledger.py`, `test_links_and_polls.py`, `test_export_erasure_ops.py` |
 
 ## Open: 1. Blockers and current risks
 

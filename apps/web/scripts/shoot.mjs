@@ -1,5 +1,6 @@
 // Screenshot routes in headless Chrome/Edge, signed in as a seeded demo account, and report console errors.
-//   API on :8000 and `npm run dev` on :5173 (see the visual-check skill), seeded with SEED_DEMO_PASSWORD set
+//   API on :8000 and `npm run dev` on :5173 (see the visual-check skill), seeded with SEED_DEMO_PASSWORD set, plus
+//   SEED_DEMO_STAFF_PASSWORD and SEED_DEMO_ADMIN_PASSWORD to shoot those roles (older one-password databases need only the first)
 //   node scripts/shoot.mjs [--as resident|staff|admin|none] [--theme light|dark] [--widths 390,768,1024,1440] [--out <dir>] home reports/<id> report-flow ...
 // Routes are written without the leading "/" (Git Bash mangles it); "home" is the bare URL. Set BASE_URL or CHROME_PATH.
 import { existsSync, mkdirSync } from 'node:fs'
@@ -33,8 +34,10 @@ const chrome = [
 ].find(p => p && existsSync(p))
 if (!chrome) throw new Error('No Chrome or Edge found; set CHROME_PATH.')
 if (role !== 'none' && !ACCOUNTS[role]) throw new Error(`--as must be one of ${Object.keys(ACCOUNTS)}, none`)
-if (role !== 'none' && !process.env.SEED_DEMO_PASSWORD)
-  throw new Error('Set SEED_DEMO_PASSWORD to the seeded demo password.')
+const password =
+  process.env[{ staff: 'SEED_DEMO_STAFF_PASSWORD', admin: 'SEED_DEMO_ADMIN_PASSWORD' }[role]] ??
+  process.env.SEED_DEMO_PASSWORD
+if (role !== 'none' && !password) throw new Error('Set SEED_DEMO_PASSWORD to the seeded demo password.')
 
 mkdirSync(out, { recursive: true })
 // CHROME_NO_SANDBOX=1 for containers that run as root (cloud sessions); never needed on a desktop.
@@ -54,7 +57,7 @@ if (role !== 'none') {
         body: JSON.stringify({ email, password }),
       }).then(r => r.status),
     ACCOUNTS[role],
-    process.env.SEED_DEMO_PASSWORD,
+    password,
   )
   if (status !== 200) throw new Error(`Login as ${role} returned ${status}; run the seed-demo skill first.`)
   await page.close()

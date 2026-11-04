@@ -2,7 +2,8 @@
 
 Staff accepting a report is what makes it valid, so nothing is earned before that and a rejected report earns nothing.
 The ledger is append-only: a balance is the sum of its entries. Amounts are starting values, not tested ones, so each
-can be set in the environment.
+can be set in the environment. A balance never goes below zero: what can't be taken back at once is owed
+(users.points_owed) and comes out of the next refund.
 """
 
 import os
@@ -16,8 +17,8 @@ from sqlalchemy.orm import Session
 
 from .auth import get_current_user, rate_limit, require_csrf, require_role
 from .db import get_db
-from .models import Barangay, PointEntry, Report, Reward, User, Voucher, now, utc_iso
-from .usage import limit_setting
+from .models import Barangay, PointEntry, Report, Reward, RewardChange, User, Voucher, now, utc_iso
+from .usage import day_start, limit_setting
 
 router = APIRouter()
 EARNED = ("accepted", "resolved", "first_reporter")
@@ -67,11 +68,12 @@ def settle(db: Session, report: Report) -> None:
     # One incident pays one resident once, however many reports of it they send.
     theirs = [item.id for item in group if item.resident_id == user_id]
     if not has_entry(db, user_id, "accepted", theirs):
-        since = now() - timedelta(days=1)
+        # A Manila calendar day, like usage.py. It counts the day staff accept, not the day the resident reported, so
+        # a desk clearing a backlog in one sitting can pay a resident less than if it had kept up.
         earned_today = db.scalar(
             select(func.count())
             .select_from(PointEntry)
-            .where(PointEntry.user_id == user_id, PointEntry.kind == "accepted", PointEntry.created_at >= since)
+            .where(PointEntry.user_id == user_id, PointEntry.kind == "accepted", PointEntry.created_at >= day_start())
         )
         if earned_today < limit_setting("MAX_REWARDED_REPORTS_PER_DAY", 5):
             award(db, user_id, report.id, "accepted")
@@ -94,6 +96,41 @@ def settle(db: Session, report: Report) -> None:
             award(db, first.resident_id, first.id, "first_reporter")
 
 
+def take_back(db: Session, user_id: str, amount: int, kind: str) -> None:
+    """Never below zero: what the balance can't cover now is owed, and comes out of the next refund."""
+    taken = min(amount, max(balance(db, user_id), 0))
+    if taken > 0:
+        db.add(PointEntry(user_id=user_id, kind=kind, amount=-taken))
+    if amount > taken:
+        db.execute(update(User).where(User.id == user_id).values(points_owed=User.points_owed + amount - taken))
+    db.flush()
+
+
+def reconcile_case(db: Session, case_id: str) -> None:
+    """After reports join a case: one incident pays each resident each award once, and one first-reporter bonus. The
+    earliest report's award stays; a later one no longer counts for its report, and a "merge" entry takes it back.
+    The bonus goes to whoever reported first in the merged group, once their own report has been paid."""
+    rows = db.execute(
+        select(Report.id, Report.created_at, Report.resident_id).where(Report.case_id == case_id, Report.case_confirmed)
+    ).all()
+    started = {row.id: row.created_at for row in rows}
+    entries = db.scalars(select(PointEntry).where(PointEntry.report_id.in_(started), PointEntry.kind.in_(EARNED))).all()
+    paid, bonus = set(), None
+    for entry in sorted(entries, key=lambda item: started[item.report_id]):
+        slot = entry.kind if entry.kind == "first_reporter" else (entry.user_id, entry.kind)
+        if slot in paid:
+            entry.report_id = None
+            take_back(db, entry.user_id, entry.amount, "merge")
+        elif entry.kind == "first_reporter":
+            bonus = entry
+        paid.add(slot)
+    first = min(rows, key=lambda row: row.created_at)
+    if bonus and bonus.user_id != first.resident_id and (first.resident_id, "accepted") in paid:
+        bonus.report_id = None
+        take_back(db, bonus.user_id, bonus.amount, "merge")
+        award(db, first.resident_id, first.id, "first_reporter")
+
+
 def reverse_report(db: Session, report_id: str, user_id: str) -> None:
     """A deleted report takes its points back, but never below zero; codes already issued stay valid."""
     earned = db.scalar(
@@ -101,11 +138,8 @@ def reverse_report(db: Session, report_id: str, user_id: str) -> None:
             PointEntry.report_id == report_id, PointEntry.kind.in_(EARNED), PointEntry.user_id == user_id
         )
     )
-    taken = min(earned, max(balance(db, user_id), 0))
     db.execute(update(PointEntry).where(PointEntry.report_id == report_id).values(report_id=None))
-    if taken > 0:
-        db.add(PointEntry(user_id=user_id, kind="reversal", amount=-taken))
-    db.flush()
+    take_back(db, user_id, earned, "reversal")
 
 
 def expire_due(db: Session, user_id: str | None = None) -> None:
@@ -120,6 +154,11 @@ def expire_due(db: Session, user_id: str | None = None) -> None:
         if changed.rowcount != 1:
             continue
         db.add(PointEntry(user_id=voucher.user_id, kind="refund", amount=voucher.points_cost, voucher_id=voucher.id))
+        # Points owed for a deleted report or a merge come out of the refund, leaving the balance where it was or above.
+        owed = db.scalar(select(User.points_owed).where(User.id == voucher.user_id))
+        if recovered := min(owed, voucher.points_cost):
+            db.add(PointEntry(user_id=voucher.user_id, kind="reversal", amount=-recovered, voucher_id=voucher.id))
+            db.execute(update(User).where(User.id == voucher.user_id).values(points_owed=User.points_owed - recovered))
         db.execute(
             update(Reward)
             .where(Reward.id == voucher.reward_id, Reward.stock.is_not(None))
@@ -186,7 +225,7 @@ class RewardInput(BaseModel):
     barangay_id: str | None = None
 
 
-class RewardChange(BaseModel):
+class RewardEdit(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=500)
     partner: str | None = Field(default=None, max_length=120)
@@ -199,16 +238,13 @@ class CodeInput(BaseModel):
     code: str = Field(min_length=1, max_length=40)
 
 
-@router.get("/points")
-def my_points(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    require_role(user, {"resident"})
-    user_id = user.id
-    expire_due(db, user_id)
+def my_ledger(db: Session, user_id: str, limit: int | None = None) -> dict:
     entries = db.scalars(
-        select(PointEntry).where(PointEntry.user_id == user_id).order_by(PointEntry.created_at.desc()).limit(100)
+        select(PointEntry).where(PointEntry.user_id == user_id).order_by(PointEntry.created_at.desc()).limit(limit)
     )
     return {
         "balance": balance(db, user_id),
+        "owed": db.scalar(select(User.points_owed).where(User.id == user_id)),
         "history": [
             {
                 "id": item.id,
@@ -220,6 +256,14 @@ def my_points(db: Session = Depends(get_db), user: User = Depends(get_current_us
             for item in entries
         ],
     }
+
+
+@router.get("/points")
+def my_points(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    require_role(user, {"resident"})
+    user_id = user.id
+    expire_due(db, user_id)
+    return my_ledger(db, user_id, 100)
 
 
 @router.get("/rewards/barangays")
@@ -275,6 +319,9 @@ def create_reward(body: RewardInput, db: Session = Depends(get_db), user: User =
     if not reward.name:
         raise HTTPException(422, "Name the reward")
     db.add(reward)
+    db.flush()
+    starting = {"name": reward.name, "points_cost": reward.points_cost, "stock": reward.stock, "partner": reward.partner}
+    db.add(RewardChange(reward_id=reward.id, actor_id=user.id, action="created", changes=starting))
     db.commit()
     db.refresh(reward)
     return reward_data(reward, manage=True)
@@ -282,7 +329,7 @@ def create_reward(body: RewardInput, db: Session = Depends(get_db), user: User =
 
 @router.patch("/rewards/{reward_id}")
 def change_reward(
-    reward_id: str, body: RewardChange, db: Session = Depends(get_db), user: User = Depends(require_csrf)
+    reward_id: str, body: RewardEdit, db: Session = Depends(get_db), user: User = Depends(require_csrf)
 ):
     require_role(user, {"staff", "administrator"})
     reward = managed_reward(db, reward_id, user)
@@ -293,8 +340,14 @@ def change_reward(
         changes.pop("active", None)
     if "name" in changes and not (changes["name"] or "").strip():
         raise HTTPException(422, "Name the reward")
+    changed = {}
     for field, value in changes.items():
-        setattr(reward, field, value.strip() or None if isinstance(value, str) else value)
+        value = value.strip() or None if isinstance(value, str) else value
+        if getattr(reward, field) != value:
+            changed[field] = [getattr(reward, field), value]
+        setattr(reward, field, value)
+    if changed:
+        db.add(RewardChange(reward_id=reward.id, actor_id=user.id, action="changed", changes=changed))
     db.commit()
     db.refresh(reward)
     return reward_data(reward, manage=True)
@@ -337,12 +390,7 @@ def redeem(reward_id: str, request: Request, db: Session = Depends(get_db), user
     return voucher_data(voucher, db)
 
 
-@router.get("/vouchers")
-def my_vouchers(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """The resident's codes still to use, and the ones already used or expired."""
-    require_role(user, {"resident"})
-    user_id = user.id
-    expire_due(db, user_id)
+def my_vouchers_data(db: Session, user_id: str) -> dict:
     vouchers = [
         voucher_data(item, db)
         for item in db.scalars(select(Voucher).where(Voucher.user_id == user_id).order_by(Voucher.created_at.desc()))
@@ -351,6 +399,15 @@ def my_vouchers(db: Session = Depends(get_db), user: User = Depends(get_current_
         "available": [item for item in vouchers if item["status"] == "active"],
         "history": [item for item in vouchers if item["status"] != "active"],
     }
+
+
+@router.get("/vouchers")
+def my_vouchers(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """The resident's codes still to use, and the ones already used or expired."""
+    require_role(user, {"resident"})
+    user_id = user.id
+    expire_due(db, user_id)
+    return my_vouchers_data(db, user_id)
 
 
 @router.post("/vouchers/use")
@@ -378,3 +435,53 @@ def use_voucher(body: CodeInput, request: Request, db: Session = Depends(get_db)
     db.commit()
     db.refresh(voucher)
     return voucher_data(voucher, db)
+
+
+@router.get("/admin/rewards/log")
+def rewards_log(
+    code: str | None = Query(default=None, max_length=40),
+    limit: int = Query(default=500, ge=1, le=2000),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Who priced each reward and, for any code, who redeemed and who honoured it. Account ids only."""
+    require_role(user, {"administrator"})
+    expire_due(db)
+    rewards = {item.id: item for item in db.scalars(select(Reward))}
+    names = dict(db.execute(select(Barangay.id, Barangay.name)).tuples().all())
+    vouchers = select(Voucher).order_by(Voucher.created_at.desc()).limit(limit)
+    if code:
+        vouchers = vouchers.where(Voucher.code == "".join(code.split()).upper())
+    changes = select(RewardChange).order_by(RewardChange.created_at.desc()).limit(limit)
+    return {
+        "reward_changes": [
+            {
+                "id": item.id,
+                "reward_id": item.reward_id,
+                "reward": rewards[item.reward_id].name,
+                "barangay": names.get(rewards[item.reward_id].barangay_id),
+                "actor_id": item.actor_id,
+                "action": item.action,
+                "changes": item.changes,
+                "created_at": utc_iso(item.created_at),
+            }
+            for item in db.scalars(changes)
+        ],
+        "vouchers": [
+            {
+                "id": item.id,
+                "code": item.code,
+                "status": item.status,
+                "reward_id": item.reward_id,
+                "reward": rewards[item.reward_id].name,
+                "barangay": names.get(item.barangay_id),
+                "points_cost": item.points_cost,
+                "redeemed_by": item.user_id,
+                "redeemed_at": utc_iso(item.created_at),
+                "expires_at": utc_iso(item.expires_at),
+                "honoured_by": item.used_by,
+                "honoured_at": utc_iso(item.used_at) if item.used_at else None,
+            }
+            for item in db.scalars(vouchers)
+        ],
+    }

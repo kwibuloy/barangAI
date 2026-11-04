@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import barangays
 from .auth import get_current_user, require_csrf
+from .conditional import conditional_json
 from .db import get_db
 from .models import Notification, Report, User, now, utc_iso
 
@@ -22,12 +23,12 @@ def serialize(item: Notification):
 
 
 @router.get("")
-def list_notifications(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_notifications(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     # Staff moved to another barangay stop seeing notifications for reports they can no longer open.
     visible = select(Report.id).where(barangays.report_filter(db, user))
     items = db.scalars(select(Notification).where(Notification.user_id == user.id, Notification.report_id.in_(visible))
                        .order_by(Notification.created_at.desc()).limit(100)).all()
-    return [serialize(item) for item in items]
+    return conditional_json(request, [serialize(item) for item in items], user.id)
 
 
 @router.post("/{notification_id}/read")

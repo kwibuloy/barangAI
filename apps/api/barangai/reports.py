@@ -5,13 +5,26 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from . import ai, barangays, geo, priority, trust
-from .auth import get_current_user, rate_limit, require_csrf, require_role
+from .auth import get_current_user, rate_limit, require_csrf, require_role, within_address_cap
+from .conditional import conditional_json
 from .db import get_db
 from .media import delete_image, image_response, sanitize_image, save_image
-from .models import CATEGORIES, Case, DeletionRequest, Report, ReportAddendum, ReportEvent, User, now, uid, utc_iso
+from .models import (
+    CATEGORIES,
+    Case,
+    DeletionRequest,
+    Report,
+    ReportAddendum,
+    ReportEvent,
+    ReportPhotoView,
+    User,
+    now,
+    uid,
+    utc_iso,
+)
 from .notifications import notify_staff
 from .usage import limit_setting, period_key, take
 
@@ -205,6 +218,8 @@ def submit_report(
     if case and cases.barangay_of(db, case) != barangay_id:
         case = None
     joined_case = case.id if case else None
+    if not within_address_cap(request, db, "reports_ip", "MAX_REPORTS_PER_ADDRESS_PER_DAY", 100):
+        raise HTTPException(429, "Too many reports from this network today. Please try again tomorrow.")
     # Accounts need no email check, so a cap per resident alone would not protect the 1 GB photo bucket. Counted only
     # now, so one resident's invalid uploads cannot use up the whole site's allowance.
     if not take(db, period_key("reports"), limit_setting("MAX_SITE_REPORTS_PER_DAY", 300)):
@@ -262,16 +277,17 @@ def submit_report(
 
 
 @router.get("")
-def list_reports(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_reports(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     # The newest 2,000: the website filters and maps this list, and the Render instance has 512 MB.
     query = select(Report).order_by(Report.created_at.desc()).limit(2000)
     if user.role == "resident":
         query = query.where(Report.resident_id == user.id)
-        return [serialize_report(report) for report in db.scalars(query)]
-    reports = db.scalars(query.where(barangays.report_filter(db, user))).all()
+        return conditional_json(request, [serialize_report(report) for report in db.scalars(query)], user.id)
+    reports = db.scalars(query.options(joinedload(Report.barangay)).where(barangays.report_filter(db, user))).all()
     # Staff only: a suggested priority with its reasons, never shown to residents.
     scores = priority.for_reports(db, reports)
-    return [{**serialize_report(report, staff=True), "priority": scores[report.id]} for report in reports]
+    data = [{**serialize_report(report, staff=True), "priority": scores[report.id]} for report in reports]
+    return conditional_json(request, data, user.id)
 
 
 @router.get("/{report_id}")
@@ -282,6 +298,25 @@ def report_detail(report_id: str, db: Session = Depends(get_db), user: User = De
         return {**serialize_report(report, detail=True), "deletion_request": deletion}
     return {**serialize_report(report, detail=True, staff=True), "deletion_request": deletion,
             "priority": priority.for_reports(db, [report])[report.id]}
+
+
+def log_photo_view(db: Session, report_id: str, user: User):
+    """Staff and administrators leave a trace when they open a photo; residents reading their own do not. One row per
+    person, report and hour, because a screen can load the same photo many times, so most views write nothing."""
+    if user.role == "resident":
+        return
+    actor_id = user.id
+    if not db.scalar(
+        select(ReportPhotoView.id)
+        .where(
+            ReportPhotoView.report_id == report_id,
+            ReportPhotoView.actor_id == actor_id,
+            ReportPhotoView.created_at >= now() - timedelta(hours=1),
+        )
+        .limit(1)
+    ):
+        db.add(ReportPhotoView(report_id=report_id, actor_id=actor_id))
+        db.commit()
 
 
 # Residents may add to a report until it is closed; afterwards a new report is the right place.
@@ -344,6 +379,7 @@ def addendum_image(report_id: str, addendum_id: str, db: Session = Depends(get_d
     if not addendum or addendum.report_id != report.id or not addendum.image_path:
         raise HTTPException(404, "Image not found")
     location = addendum.image_path
+    log_photo_view(db, report_id, user)
     db.rollback()  # Read only; the database connection goes back while the photo downloads.
     return image_response(location)
 
@@ -351,5 +387,6 @@ def addendum_image(report_id: str, addendum_id: str, db: Session = Depends(get_d
 @router.get("/{report_id}/image")
 def report_image(report_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     location = authorized_report(report_id, db, user).image_path
+    log_photo_view(db, report_id, user)
     db.rollback()  # Read only; the database connection goes back while the photo downloads.
     return image_response(location)

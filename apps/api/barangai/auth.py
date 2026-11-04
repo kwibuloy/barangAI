@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import re
 import secrets
 import threading
 import time
@@ -15,7 +16,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .db import get_db
-from .models import LoginSession, User, now
+from .models import LoginSession, Usage, User, now
 from .usage import limit_setting, period_key, take
 
 router = APIRouter(prefix="/auth")
@@ -45,6 +46,39 @@ def password_matches(stored: str | None, password: str) -> bool:
             return hasher.verify(stored or _decoy, password) and stored is not None
     except VerificationError:
         return False
+
+
+# Words people pick most, compared after dropping capitals, symbols and trailing digits, so "Password@2026!" counts.
+COMMON_PASSWORD_WORDS = frozenset(
+    "password passw0rd passcode qwerty qwertyuiop qwertyui asdfghjkl zxcvbnm abc abcd abcdef abcdefgh iloveyou iloveu "
+    "letmein welcome admin administrator user staff resident changeme secret monkey dragon sunshine princess football "
+    "baseball basketball shadow master superman batman trustno barangay barangai barangaystaff kapitan mahalkita "
+    "mahalko pilipinas philippines maynila manila dasmarinas cavite tagalog".split()
+)
+RUNS = ("1234567890" * 13, "0987654321" * 13, "abcdefghijklmnopqrstuvwxyz" * 5, "qwertyuiopasdfghjklzxcvbnm" * 5)
+
+
+def password_problem(password: str, email: str = "") -> str | None:
+    """Why a chosen password is too easy to guess, or None. Length is checked separately, by each caller's form."""
+    if len(set(password)) == 1:
+        return "A password can't be one character repeated"
+    local = email.partition("@")[0].casefold()
+    # Very short names would refuse ordinary words that happen to contain them.
+    if len(local) >= 4 and local in password.casefold():
+        return "A password can't contain your email name"
+    plain = re.sub(r"[^a-z0-9]", "", password.casefold())
+    word = plain.rstrip("0123456789")
+    if (plain and any(plain in run for run in RUNS)) or (
+        word and any(not word.replace(common, "") for common in COMMON_PASSWORD_WORDS)
+    ):
+        return "This password is too common. Choose another"
+    return None
+
+
+def check_password(password: str, email: str = "") -> None:
+    problem = password_problem(password, email)
+    if problem:
+        raise HTTPException(422, problem)
 
 
 def same(first: str, second: str) -> bool:
@@ -136,6 +170,38 @@ def rate_limit(request, action, count=10, key=None):
     bucket.append(current)
 
 
+def address_digest(request) -> str:
+    """Keeps plain addresses out of the counters. Unsalted, so this is tidiness rather than secrecy."""
+    return hashlib.sha256(client_ip(request).encode()).hexdigest()[:16]
+
+
+def within_address_cap(request, db, name, setting, default) -> bool:
+    """A daily limit per network address, so one device can't use up a site-wide allowance. Generous on purpose: people
+    behind one router share an address. Skipped while callers can't be told apart."""
+    if not address_known(request):
+        return True
+    return take(db, period_key(f"{name}:{address_digest(request)}"), limit_setting(setting, default))
+
+
+def failure_prefix(email: str) -> str:
+    return f"login_fail:{hashlib.sha256(email.encode()).hexdigest()[:32]}"
+
+
+def failure_limits(request, email: str) -> list[tuple[str, int]]:
+    """Wrong passwords allowed today. Counted per email and address, so a stranger on the same Wi-Fi locks out only
+    their own device and not the owner. The much higher cap per email stops guessing spread over many addresses."""
+    prefix = failure_prefix(email)
+    limits = [(period_key(prefix), limit_setting("MAX_LOGIN_FAILURES_PER_EMAIL_PER_DAY", 500))]
+    if address_known(request):
+        limits.append((period_key(f"{prefix}:{address_digest(request)}"), limit_setting("MAX_LOGIN_FAILURES_PER_DAY", 50)))
+    return limits
+
+
+def clear_login_failures(db, email: str) -> None:
+    """After a password reset, so the owner isn't kept out by guesses made before it. The caller commits."""
+    db.execute(delete(Usage).where(Usage.key.like(f"{failure_prefix(email)}:%")))
+
+
 def create_session(response, db, user):
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)
@@ -164,6 +230,8 @@ def current_session(request: Request, db: Session):
     # SQLite returns these without a timezone; PostgreSQL returns them in the connection's.
     expires = session.expires_at
     if (expires if expires.tzinfo else expires.replace(tzinfo=UTC)) < now():
+        raise HTTPException(401, "Authentication required")
+    if session.user.disabled_at:
         raise HTTPException(401, "Authentication required")
     return session
 
@@ -197,8 +265,11 @@ def register(credentials: Credentials, request: Request, response: Response, db:
     if not credentials.accepted_terms:
         raise HTTPException(422, "Please agree to the terms and privacy notice")
     email = credentials.email.lower()
+    check_password(credentials.password, email)
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already registered")
+    if not within_address_cap(request, db, "signups_ip", "MAX_SIGNUPS_PER_ADDRESS_PER_DAY", 30):
+        raise HTTPException(429, "Too many new accounts from this network today. Please try again tomorrow.")
     # Counted across the whole site, because accounts need no email check and each one has its own report allowance.
     if not take(db, period_key("signups", hourly=True), limit_setting("MAX_SIGNUPS_PER_HOUR", 100)):
         raise HTTPException(429, "Too many new accounts right now. Please try again later.")
@@ -221,10 +292,22 @@ def login(credentials: LoginCredentials, request: Request, response: Response, d
         rate_limit(request, "login", key=f"{email}|{client_ip(request)}")
     rate_limit(request, "login_account", 50, key=email)
     rate_limit(request, "login_address", 60)
+    # Slow guessing over a whole day, kept in the database so a restart doesn't reset it. Counted for unknown emails
+    # too, so this answer doesn't reveal which are registered.
+    limits = failure_limits(request, email)
+    for key, limit in limits:
+        counted = db.get(Usage, key)
+        if counted and counted.count >= limit:
+            raise HTTPException(429, "Too many failed sign-ins. Try again tomorrow or ask your barangay hall.")
     user = db.scalar(select(User).where(User.email == credentials.email.lower()))
     stored = user.password_hash if user else None
+    disabled = bool(user and user.disabled_at)
     db.rollback()
     if not password_matches(stored, credentials.password):
+        for key, limit in limits:
+            take(db, key, limit)
+        raise HTTPException(401, "Invalid credentials")
+    if disabled:  # The same answer as a wrong password: this says nothing to whoever is trying.
         raise HTTPException(401, "Invalid credentials")
     create_session(response, db, user)
     return user_data(user)

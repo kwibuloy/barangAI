@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "console": { "()": "uvicorn.logging.DefaultFormatter", "fmt": "%(levelprefix)s %(message)s" },
+    "access": {
+      "()": "uvicorn.logging.AccessFormatter",
+      "fmt": "%(levelprefix)s %(client_addr)s - \"%(request_line)s\" %(status_code)s"
+    },
+    "file": { "format": "%(asctime)s %(levelname)s %(name)s: %(message)s" }
+  },
+  "handlers": {
+    "console": { "class": "logging.StreamHandler", "formatter": "console", "stream": "ext://sys.stderr" },
+    "access": { "class": "logging.StreamHandler", "formatter": "access", "stream": "ext://sys.stdout" },
+    "file": {
+      "class": "logging.handlers.RotatingFileHandler",
+      "formatter": "file",
+      "filename": "../../logs/barangai.log",
+      "maxBytes": 5000000,
+      "backupCount": 5,
+      "encoding": "utf-8"
+    }
+  },
+  "root": { "level": "WARNING", "handlers": ["console", "file"] },
+  "loggers": {
+    "barangai": { "level": "INFO" },
+    "uvicorn": { "level": "INFO", "handlers": [], "propagate": true },
+    "uvicorn.error": { "level": "INFO" },
+    "uvicorn.access": { "level": "INFO", "handlers": ["access"], "propagate": false }
+  }
+}

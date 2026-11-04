@@ -20,6 +20,7 @@ barangai-dev.last-backup.txt
 *.sql
 private_media/
 coverage/
+logs/
 ml/outputs/
 ml/images/
 ml/manifest.csv

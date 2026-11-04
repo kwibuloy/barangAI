@@ -13,7 +13,7 @@ from datetime import UTC, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session, undefer
 
 from . import barangays, duplicates, points
@@ -253,9 +253,61 @@ def generate_duplicates(report_id: str, db: Session = Depends(get_db), user: Use
     return in_jurisdiction(db, user, duplicates.generate_duplicates(report_id, db, user))
 
 
+# Beyond this, /cases/link wants staff to say they mean it.
+LINK_CHECK_M = 1000
+
+
 class LinkInput(BaseModel):
     report_id: str
     other_report_id: str
+    confirm_far: bool = False
+
+
+def link_problem(db: Session, pair: list[Report]) -> str | None:
+    """Why two reports can't be grouped. Also guards confirming a duplicate, which the website follows with a link."""
+    if pair[0].barangay_id != pair[1].barangay_id:
+        return "Reports from different barangays cannot be grouped"
+    for report in pair:
+        if report.status == "Rejected":
+            return "Rejected reports cannot be grouped"
+        if report.case_id and not report.case_confirmed:
+            return "Confirm or reject the case link first"
+    statuses = [report.status for report in pair]
+    statuses += [shared_status(members(db, report.case_id)) for report in pair if report.case_id]
+    if "Resolved" in statuses:
+        # Grouping would close the other report with nobody reviewing it; review it on its own instead.
+        return "This issue is already resolved"
+    return None
+
+
+def far_or_different(db: Session, pair: list[Report]) -> dict | None:
+    """A likely mis-click, since grouping can't be undone: the machine-readable answer asking staff to confirm it."""
+    # Staff already looked at this exact pair and said it was one incident.
+    reviewed = db.scalar(
+        select(DuplicateSuggestion.id)
+        .where(
+            DuplicateSuggestion.decision == "confirmed",
+            or_(
+                and_(DuplicateSuggestion.report_id == pair[0].id, DuplicateSuggestion.candidate_report_id == pair[1].id),
+                and_(DuplicateSuggestion.report_id == pair[1].id, DuplicateSuggestion.candidate_report_id == pair[0].id),
+            ),
+        )
+        .limit(1)
+    )
+    if reviewed:
+        return None
+    apart = distance_m(pair[0].latitude, pair[0].longitude, pair[1].latitude, pair[1].longitude)
+    categories = [report.verified_category or report.resident_category for report in pair]
+    reasons = [*(["far"] if apart > LINK_CHECK_M else []), *(["category"] if categories[0] != categories[1] else [])]
+    if not reasons:
+        return None
+    return {
+        "code": "confirm_far",
+        "message": "These reports are far apart or in different categories. Confirm to group them anyway.",
+        "reasons": reasons,
+        "distance_m": round(apart),
+        "categories": categories,
+    }
 
 
 @router.post("/cases/link")
@@ -265,20 +317,13 @@ def link_reports(body: LinkInput, db: Session = Depends(get_db), user: User = De
     if body.report_id == body.other_report_id:
         raise HTTPException(422, "Choose two different reports")
     pair = [authorized_report(report_id, db, user) for report_id in (body.report_id, body.other_report_id)]
-    if pair[0].barangay_id != pair[1].barangay_id:
-        raise HTTPException(409, "Reports from different barangays cannot be grouped")
-    for report in pair:
-        if report.status == "Rejected":
-            raise HTTPException(409, "Rejected reports cannot be grouped")
-        if report.case_id and not report.case_confirmed:
-            raise HTTPException(409, "Confirm or reject the case link first")
+    if problem := link_problem(db, pair):
+        raise HTTPException(409, problem)
     existing = [db.get(Case, report.case_id) for report in pair if report.case_id]
-    statuses = [report.status for report in pair] + [shared_status(members(db, case.id)) for case in existing]
-    if "Resolved" in statuses:
-        # Grouping would close the other report with nobody reviewing it; review it on its own instead.
-        raise HTTPException(409, "This issue is already resolved")
     if len(existing) == 2 and existing[0].id == existing[1].id:
         return case_data(db, pair[0], user)
+    if not body.confirm_far and (check := far_or_different(db, pair)):
+        raise HTTPException(409, check)
     if existing:
         # Keep the case with more reports (then the older one); the other's reports move across.
         existing.sort(key=lambda case: (-len(members(db, case.id, confirmed_only=False)), case.created_at))
@@ -300,6 +345,7 @@ def link_reports(body: LinkInput, db: Session = Depends(get_db), user: User = De
     log(db, pair[1].id, user.id, f"Grouped with report #{pair[0].id[:8].upper()} in {reference}.")
     db.flush()
     sync(db, case, user.id)
+    points.reconcile_case(db, case.id)
     db.commit()
     return case_data(db, db.get(Report, body.report_id), user)
 
@@ -331,6 +377,7 @@ def decide_evidence(report_id: str, body: CaseDecision, db: Session = Depends(ge
         log(db, report.id, user.id, f"Confirmed as the same incident as {reference}.{note}")
         db.flush()
         sync(db, case, user.id)
+        points.reconcile_case(db, case.id)
     else:
         report.case_id = None
         # Boundaries loaded while it was linked placed it with the case; on its own, its pin decides.

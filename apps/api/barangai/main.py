@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import privacy
 from .accounts import router as accounts_router
+from .admin import router as admin_router
 from .auth import attempts
 from .auth import router as auth_router
 from .barangays import guard_duplicate_decision
@@ -58,6 +59,7 @@ def create_app():
     app.include_router(brief_router)
     app.include_router(records_router)
     app.include_router(points_router)
+    app.include_router(admin_router)
     app.add_middleware(RequestBodyLimitMiddleware)
 
     @app.get("/health", include_in_schema=False)

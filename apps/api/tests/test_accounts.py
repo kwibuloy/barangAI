@@ -205,7 +205,7 @@ def test_unchecked_pin_never_reaches_the_map_when_a_report_is_deleted(client, ph
     second = resident_report(client, jpeg("green"), "cara@example.test", latitude="14.6001")
     staff(client)
     assert client.post("/cases/link", headers=headers(client),
-                       json={"report_id": first, "other_report_id": second}).status_code == 200
+                       json={"report_id": first, "other_report_id": second, "confirm_far": True}).status_code == 200
     create_staff("admin@example.test", PASSWORD, "administrator")
     delete_report(first, "admin@example.test", PASSWORD, confirm=first, reason="resident-request",
                   receipt_path=str(tmp_path / "receipt"))
@@ -298,7 +298,8 @@ def test_grouping_logs_are_not_ordinary_actions(client, photo):
     first = accepted(client, photo)
     second = resident_report(client, jpeg("blue"), "ben@example.test")
     staff(client)
-    client.post("/cases/link", headers=headers(client), json={"report_id": first, "other_report_id": second})
+    client.post("/cases/link", headers=headers(client),
+                json={"report_id": first, "other_report_id": second, "confirm_far": True})
     assert {item.kind for item in rows(StaffAction)} == {"system"}
 
 
@@ -376,7 +377,8 @@ def test_residents_do_not_see_automatic_case_step_notes(client, photo):
     first = accepted(client, photo)
     second = resident_report(client, jpeg("blue"), "ben@example.test")
     staff(client)
-    client.post("/cases/link", headers=headers(client), json={"report_id": first, "other_report_id": second})
+    client.post("/cases/link", headers=headers(client),
+                json={"report_id": first, "other_report_id": second, "confirm_far": True})
     assert any((event["note"] or "").startswith("Updated with case") for event in client.get(f"/reports/{second}").json()["events"])
     login(client, "ben@example.test")
     notes = [event["note"] for event in client.get(f"/reports/{second}").json()["events"]]

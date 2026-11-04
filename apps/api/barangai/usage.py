@@ -5,7 +5,7 @@ daily allowance, the photo bucket and the accounts themselves. Each limit has a 
 """
 
 import os
-from datetime import timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from sqlalchemy import delete, update
 from sqlalchemy.exc import IntegrityError
@@ -25,6 +25,11 @@ def limit_setting(name: str, default: int) -> int:
 
 def period_key(name: str, hourly: bool = False) -> str:
     return f"{name}:{now().astimezone(MANILA).strftime('%Y-%m-%dT%H' if hourly else '%Y-%m-%d')}"
+
+
+def day_start() -> datetime:
+    """Midnight today in the Philippines, for anything counted per calendar day."""
+    return now().astimezone(MANILA).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
 
 
 def take(db: Session, key: str, limit: int) -> bool:

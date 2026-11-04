@@ -566,6 +566,26 @@ const filipino: Record<string, string> = {
     'Dapat 12 characters pataas. Masa-sign out ang ibang device mo.',
   'Password changed.': 'Napalitan na ang password.',
   'Current password is incorrect': 'Mali ang current password.',
+  "A password can't be one character repeated": 'Bawal ang password na iisang character lang ang inuulit.',
+  "A password can't contain your email name": 'Bawal ilagay sa password ang pangalan sa email mo.',
+  'This password is too common. Choose another': 'Masyadong common ang password na ito. Pumili ng iba.',
+  'Too many failed sign-ins. Try again tomorrow or ask your barangay hall.':
+    'Sobrang daming maling sign-in. Subukan ulit bukas o magtanong sa barangay hall.',
+  'Too many new accounts from this network today. Please try again tomorrow.':
+    'Sobrang daming bagong account mula sa network na ito ngayon. Subukan ulit bukas.',
+  'Too many reports from this network today. Please try again tomorrow.':
+    'Sobrang daming ulat mula sa network na ito ngayon. Subukan ulit bukas.',
+  'Account not found': 'Hindi makita ang account.',
+  'Choose staff or administrator': 'Pumili: staff o administrator.',
+  'Administrators see every barangay, so they do not belong to one':
+    'Nakikita ng administrator ang lahat ng barangay, kaya walang sariling barangay.',
+  'Staff need a barangay': 'Kailangan ng barangay ang staff.',
+  'No barangay with that name': 'Walang barangay na ganyan ang pangalan.',
+  "You can't disable your own account": 'Hindi mo puwedeng i-disable ang sarili mong account.',
+  'Use change password for your own account': 'Sa sarili mong account, gamitin ang palitan ang password.',
+  'Reports from different barangays cannot be grouped': 'Hindi puwedeng pagsamahin ang ulat ng magkaibang barangay.',
+  'These reports are far apart or in different categories. Confirm to group them anyway.':
+    'Malayo ang mga ulat o magkaiba ang kategorya. I-confirm kung isasama pa rin.',
   'This account signs in with Google': 'Google ang sign-in ng account na ito.',
   'Delete my account': 'I-delete ang account ko',
   'This permanently deletes your account and all your reports and photos, including reports staff are still working on. It cannot be undone.':

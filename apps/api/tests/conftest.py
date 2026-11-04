@@ -18,9 +18,30 @@ atexit.register(shutil.rmtree, _isolated, ignore_errors=True)
 os.environ.update(DATABASE_URL=f"sqlite:///{Path(_isolated, 'default.db').as_posix()}",
                   PRIVATE_MEDIA_DIR=str(Path(_isolated, "private")), FACE_BLUR="off", PLATE_BLUR="off")
 
+# Cheap password hashing, in this process only. Before anything else imports the hasher by name.
+from argon2 import PasswordHasher  # noqa: E402
+from barangai import auth  # noqa: E402
+
+auth.hasher = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+auth._decoy = auth.hasher.hash("synthetic decoy")
+
+
+@pytest.fixture(scope="session")
+def template_database(tmp_path_factory):
+    """A migrated database, copied for each test: running every migration for every test is most of a test run."""
+    from barangai.db import database_url, engine_for_url, upgrade_sqlite
+
+    path = tmp_path_factory.mktemp("template") / "template.db"
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("DATABASE_URL", f"sqlite:///{path.as_posix()}")
+        upgrade_sqlite()
+        engine_for_url(database_url()).dispose()  # Closing the last connection folds the write-ahead log into the file.
+    return path
+
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
+def client(tmp_path, monkeypatch, template_database):
+    shutil.copy(template_database, tmp_path / "test.db")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'test.db').as_posix()}")
     monkeypatch.setenv("PRIVATE_MEDIA_DIR", str(tmp_path / "private"))
     monkeypatch.setenv("COOKIE_SECURE", "false")
@@ -36,8 +57,7 @@ def client(tmp_path, monkeypatch):
     # Face blurring needs OpenCV, which local test setups may lack; tests that cover it turn it on themselves.
     monkeypatch.setenv("FACE_BLUR", "off")
     monkeypatch.setenv("PLATE_BLUR", "off")
-    from barangai import ai, brief, geo, media, privacy
-    from barangai.main import create_app
+    from barangai import ai, brief, geo, main, media, privacy
 
     ai.clear_cache()
     geo.clear_cache()
@@ -46,7 +66,12 @@ def client(tmp_path, monkeypatch):
     privacy.detector.cache_clear()
     privacy.plate_detector.cache_clear()
 
-    with TestClient(create_app()) as test_client:
+    # The copy is already at the head, and a no-op upgrade still reads every migration file. Later create_app calls in
+    # a test still run the real thing.
+    with monkeypatch.context() as patch:
+        patch.setattr(main, "upgrade_sqlite", lambda: None)
+        app = main.create_app()
+    with TestClient(app) as test_client:
         yield test_client
 
 

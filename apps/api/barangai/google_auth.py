@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .auth import TERMS_VERSION, create_session, hash_password, rate_limit, same
+from .auth import TERMS_VERSION, create_session, hash_password, rate_limit, same, within_address_cap
 from .db import get_db
 from .models import OAuthIdentity, User, now
 from .usage import limit_setting, period_key, take
@@ -157,9 +157,13 @@ def callback(request: Request, db: Session = Depends(get_db)):
         user = db.get(User, identity.user_id)
         if not user or user.role != "resident":
             return finish("google_resident_only")
+        if user.disabled_at:
+            return finish("google_failed")
     else:
         if db.scalar(select(User).where(User.email == email.lower())):
             return finish("google_account_exists")
+        if not within_address_cap(request, db, "signups_ip", "MAX_SIGNUPS_PER_ADDRESS_PER_DAY", 30):
+            return finish("google_failed")
         if not take(db, period_key("signups", hourly=True), limit_setting("MAX_SIGNUPS_PER_HOUR", 100)):
             return finish("google_failed")
         # The sign-in page says that continuing with Google means agreeing to the terms and privacy notice.

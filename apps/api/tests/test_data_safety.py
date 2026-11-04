@@ -205,7 +205,8 @@ def test_a_resident_learns_nothing_about_a_case_before_acceptance(client, photo)
     first = resident_report(client, photo, "ana@example.test", resident_category="potholes")
     second = resident_report(client, photo, "ben@example.test", resident_category="flooding")
     staff_login(client)
-    response = client.post("/cases/link", json={"report_id": second, "other_report_id": first}, headers=headers(client))
+    response = client.post("/cases/link", json={"report_id": second, "other_report_id": first, "confirm_far": True},
+                           headers=headers(client))
     assert response.status_code == 200, response.text
     login(client, "ben@example.test")
     case = client.get(f"/reports/{second}/case").json()["case"]

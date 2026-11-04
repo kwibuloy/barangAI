@@ -5,17 +5,29 @@ import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from . import barangays, points
 from . import delete_report as deletion
-from .auth import MAX_PASSWORD, current_session, hash_password, password_matches, rate_limit, require_csrf, require_role
+from .auth import (
+    MAX_PASSWORD,
+    check_password,
+    current_session,
+    get_current_user,
+    hash_password,
+    password_matches,
+    rate_limit,
+    require_csrf,
+    require_role,
+    user_data,
+)
 from .db import get_db, scrub_deleted
 from .media import delete_image
-from .models import DeletionRequest, LoginSession, Notification, OAuthIdentity, Report, Usage, User, now
-from .reports import authorized_report, deletion_request_data
+from .models import DeletionRequest, LoginSession, Notification, Report, User, now, utc_iso
+from .reports import authorized_report, deletion_request_data, serialize_report
 from .usage import limit_setting, period_key, take
 
 router = APIRouter()
@@ -48,6 +60,7 @@ def change_password(
     db.rollback()
     if not password_matches(stored, body.current_password):
         raise HTTPException(403, "Current password is incorrect")
+    check_password(body.new_password, user.email)
     keep = current_session(request, db).token_hash
     user.password_hash = hash_password(body.new_password)
     db.execute(delete(LoginSession).where(LoginSession.user_id == user.id, LoginSession.token_hash != keep))
@@ -78,21 +91,7 @@ def delete_account(
         db.rollback()
         if not password_matches(stored, body.password or ""):
             raise HTTPException(403, "Current password is incorrect")
-    user_id = user.id
-    images = []
-    for report in db.scalars(select(Report).where(Report.resident_id == user_id)).all():
-        images += deletion.erase_rows(db, report)
-    points.erase_account(db, user_id)
-    for model, column in (
-        (Notification, Notification.user_id),
-        (DeletionRequest, DeletionRequest.requester_id),
-        (OAuthIdentity, OAuthIdentity.user_id),
-        (LoginSession, LoginSession.user_id),
-    ):
-        db.execute(delete(model).where(column == user_id))
-    for name in ("deletion", "preview"):
-        db.execute(delete(Usage).where(Usage.key.like(f"{name}:{user_id}:%")))
-    db.execute(delete(User).where(User.id == user_id))
+    images = deletion.erase_account(db, user.id)
     db.flush()  # Holds the write lock, so the commit below cannot fail on a busy database after the photos are gone.
     # The rows are still uncommitted if storage refuses, so the resident can simply try again.
     for location in images:
@@ -102,6 +101,39 @@ def delete_account(
     log.info("A resident deleted their account (%d photos removed)", len(images))
     response.delete_cookie("session")
     response.delete_cookie("csrf_token")
+
+
+@router.get("/auth/export")
+def export_my_data(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """A resident's own data as JSON, using what they already see on screen: no staff ids, coordination notes,
+    automatic logs or photo checks. Photos aren't included: `report_ids` says which reports have one to open."""
+    require_role(user, {"resident"})
+    rate_limit(request, "export", 5, key=user.id)
+    user_id = user.id
+    points.expire_due(db, user_id)
+    account = {
+        **user_data(user),
+        "terms_accepted_at": utc_iso(user.terms_accepted_at) if user.terms_accepted_at else None,
+        "terms_version": user.terms_version,
+    }
+    reports = db.scalars(
+        select(Report)
+        .options(joinedload(Report.barangay))
+        .where(Report.resident_id == user_id)
+        .order_by(Report.created_at)
+    ).all()
+    data = {
+        "exported_at": utc_iso(now()),
+        "account": account,
+        "report_ids": [report.id for report in reports],
+        "reports": [
+            {**serialize_report(report, detail=True), "deletion_request": deletion_request_data(db, report.id)}
+            for report in reports
+        ],
+        "points": points.my_ledger(db, user_id),
+        "vouchers": points.my_vouchers_data(db, user_id),
+    }
+    return JSONResponse(data, headers={"Content-Disposition": 'attachment; filename="barangai-my-data.json"'})
 
 
 class DeletionInput(BaseModel):

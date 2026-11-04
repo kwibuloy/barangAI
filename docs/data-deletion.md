@@ -24,7 +24,7 @@ python -m barangai.delete_report REPORT_UUID --email administrator@example.test 
 
 On Windows, use a real private absolute path such as `C:\PRIVATE\OPERATOR\deletion-receipts.jsonl`. Its parent directory must already exist. The allowed reason codes are `resident-request`, `retention-expired`, and `synthetic-demo-cleanup`. The command requests the password again and refuses a mismatched confirmation or missing reason/receipt path.
 
-Deletion removes the photo, any added photos and details, the report, notifications for the report, its status history and staff actions, and duplicate suggestions referencing the report in either direction. A case left with no reports is removed, and a case sitting on the deleted report's pin moves to its earliest remaining report, so the shared map keeps no trace of that location. User accounts and other reports remain.
+Deletion removes the photo, any added photos and details, the report, notifications for the report, its status history, staff actions and photo-view log, and duplicate suggestions referencing the report in either direction. A case left with no reports is removed, and a case sitting on the deleted report's pin moves to its earliest remaining report, so the shared map keeps no trace of that location. User accounts and other reports remain.
 
 Residents can also ask for deletion on a report's page, which staff of that barangay or an administrator approve or decline in the staff desk, or delete their own account and all its reports in account settings. Both remove the same data as this command. Forgotten passwords are reset with `python -m barangai.bootstrap_staff EMAIL --reset-password`. Historical links to the removed report will stop working.
 
@@ -40,7 +40,7 @@ If a database commit's outcome is uncertain, inspect the report first. A missing
 
 If deletion succeeded but the receipt could not be saved or synced, the command exits with code `2` and prints a minimal recovery receipt. Preserve that output in the private audit file, checking the report ID to avoid adding it twice. An ordinary successful deletion exits with code `0`; other failures exit with code `1`. A repeated request for an already removed report returns “Report not found” and creates no new success receipt.
 
-This command removes active application records and their stored photo. It does not erase copies in independently retained backups, exports, screenshots, or operator receipts. Apply the approved retention policy to those copies too. Restoring a backup must not silently reintroduce a report whose deletion receipt is already recorded.
+This command removes active application records and their stored photo. It does not erase copies in independently retained backups, exports, screenshots, or operator receipts. Apply the approved retention policy to those copies too. Every erased report and account id is kept in the `erasures` table, with no other detail about it. `backup.restore_backup` erases them again after a restore, going by the ledger of the database it replaces and the backup's own, and reports how many in `reerased`. On a new laptop only the backup's ledger exists, so anything erased after that backup was made has to be erased again by hand. The backup folder itself keeps its copy until it is removed.
 
 ## Evidence and limits
 

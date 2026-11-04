@@ -196,3 +196,22 @@ def test_exchange_uses_pkce_and_google_library_validation(configured, monkeypatc
             google_auth.exchange_code("synthetic-code", "synthetic-verifier", google_auth.settings())
     else:
         assert google_auth.exchange_code("synthetic-code", "synthetic-verifier", google_auth.settings())["sub"] == "synthetic-subject"
+
+
+def test_a_disabled_google_account_gets_no_session(configured, monkeypatch):
+    from barangai.models import LoginSession, now
+
+    response, authorization = begin(configured)
+    stub_google(monkeypatch, authorization)
+    assert configured.get("/auth/google/callback", params={"state": authorization["state"], "code": "synthetic"})
+    with session_for_url() as db:
+        db.query(User).filter_by(email="google-resident@example.test").one().disabled_at = now()
+        db.query(LoginSession).delete()
+        db.commit()
+    configured.cookies.clear()
+    response, authorization = begin(configured)
+    stub_google(monkeypatch, authorization)
+    answer = configured.get("/auth/google/callback", params={"state": authorization["state"], "code": "synthetic"})
+    assert "google_failed" in answer.headers["location"]
+    with session_for_url() as db:
+        assert db.query(LoginSession).count() == 0

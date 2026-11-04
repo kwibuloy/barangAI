@@ -112,7 +112,9 @@ def test_one_resident_is_paid_once_for_one_incident(client, photo):
     staff_login(client)
     assert (
         client.post(
-            "/cases/link", json={"report_id": first, "other_report_id": second}, headers=headers(client)
+            "/cases/link",
+            json={"report_id": first, "other_report_id": second, "confirm_far": True},
+            headers=headers(client),
         ).status_code
         == 200
     )
@@ -312,7 +314,7 @@ def test_the_first_reporter_keeps_the_bonus_with_two_reports_in_the_group(client
     other = resident_report(client, photo, "ben@example.test")
     staff_login(client)
     for report in (extra, other):
-        assert client.post("/cases/link", json={"report_id": first, "other_report_id": report},
+        assert client.post("/cases/link", json={"report_id": first, "other_report_id": report, "confirm_far": True},
                            headers=headers(client)).status_code == 200
     walk(client, first, "Under Verification", "Accepted")
     login(client, "ana@example.test")
