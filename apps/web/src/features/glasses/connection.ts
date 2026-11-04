@@ -35,11 +35,13 @@ export function glassesAvailable() {
   return Boolean(capacitor?.isNativePlatform?.() && capacitor.isPluginAvailable?.('RokidGlasses'))
 }
 
-let plugin: Promise<RokidGlassesPlugin> | null = null
+// A Capacitor plugin object answers every property, `then` included, so a promise resolved with it never settles
+// (seen on the S23+, 4 Nov 2026: Connect glasses did nothing). It travels wrapped in a plain object instead.
+let plugin: Promise<{ glasses: RokidGlassesPlugin }> | null = null
 export const rokid = () =>
-  (plugin ??= import('@capacitor/core').then(({ registerPlugin }) =>
-    registerPlugin<RokidGlassesPlugin>('RokidGlasses'),
-  ))
+  (plugin ??= import('@capacitor/core').then(({ registerPlugin }) => ({
+    glasses: registerPlugin<RokidGlassesPlugin>('RokidGlasses'),
+  })))
 
 /**
  * Connection state shared by the settings card and the report flow. "Wanted" survives restarts on this phone,
@@ -84,7 +86,7 @@ function setWanted(wanted: boolean) {
 
 /** Asks for consent in the Rokid AI App when needed, then starts the session (the glasses app opens on its own). */
 export async function connectGlasses() {
-  const glasses = await rokid()
+  const { glasses } = await rokid()
   setConnection({ phase: 'connecting', problem: null })
   try {
     const status = await glasses.status()
@@ -115,7 +117,7 @@ export async function connectGlasses() {
 export async function disconnectGlasses() {
   setWanted(false)
   setConnection({ phase: 'off', problem: null })
-  await (await rokid()).disconnect().catch(() => {})
+  await (await rokid()).glasses.disconnect().catch(() => {})
 }
 
 /** The SDK's session states, as the settings card shows them. */
@@ -138,7 +140,7 @@ export function endGlassesSession() {
   setWanted(false)
   setConnection({ phase: 'off', problem: null })
   void rokid()
-    .then(glasses => glasses.disconnect({ forget: true }))
+    .then(({ glasses }) => glasses.disconnect({ forget: true }))
     .catch(() => {})
 }
 

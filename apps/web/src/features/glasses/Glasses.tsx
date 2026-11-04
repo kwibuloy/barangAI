@@ -45,7 +45,7 @@ export function GlassesLink() {
   useEffect(() => {
     let stopped = false
     const handles: { remove: () => Promise<void> }[] = []
-    void rokid().then(async glasses => {
+    void rokid().then(async ({ glasses }) => {
       const flow = createGlassesFlow({
         t: text => live.current.t(text),
         show: screen => void glasses.show(screen).catch(() => {}),

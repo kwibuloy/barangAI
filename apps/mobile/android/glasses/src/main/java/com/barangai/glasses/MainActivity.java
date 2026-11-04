@@ -10,8 +10,11 @@ import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.TypedValue;
+import android.os.SystemClock;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import com.rokid.cxr.CXRServiceBridge;
@@ -56,9 +59,41 @@ public class MainActivity extends Activity {
             if (action == null) return;
             // While BarangAI is open, a click means "take the photo" here, not the glasses' own camera.
             if (isOrderedBroadcast()) abortBroadcast();
-            send("button", action);
+            press(action);
         }
     };
+
+    /**
+     * A single press reaches the app on screen as an Enter key, not a broadcast (seen on RG-glasses, 4 Nov 2026:
+     * each press logged KEYCODE_NOTIFICATION, then KEYCODE_ENTER); double and long presses arrive as broadcasts.
+     */
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+            press("click");
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Claimed here too, so the system doesn't also act on the Enter key.
+        if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) return true;
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private String lastPress = "";
+    private long lastPressAt;
+
+    /** One press can arrive both as a key and as a broadcast; the second copy within half a second is dropped. */
+    private void press(String action) {
+        long now = SystemClock.uptimeMillis();
+        if (action.equals(lastPress) && now - lastPressAt < 500) return;
+        lastPress = action;
+        lastPressAt = now;
+        send("button", action);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,12 +165,19 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(Color.BLACK);
         int pad = dp(24);
         root.setPadding(pad, pad, pad, pad);
+        // Kap's owl head, the app logo (the same sticker the phone app uses).
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.kap_logo);
+        logo.setAdjustViewBounds(true);
+        logo.setContentDescription("BarangAI");
+        root.addView(logo, new LinearLayout.LayoutParams(dp(96), LinearLayout.LayoutParams.WRAP_CONTENT));
         title = text(30, GREEN, true);
         body = text(22, GREEN, false);
         hint = text(18, DIM, false);
         root.addView(title);
         root.addView(body);
         root.addView(hint);
+        ((LinearLayout.LayoutParams) title.getLayoutParams()).topMargin = dp(12);
         ((LinearLayout.LayoutParams) body.getLayoutParams()).topMargin = dp(12);
         ((LinearLayout.LayoutParams) hint.getLayoutParams()).topMargin = dp(20);
         return root;

@@ -168,13 +168,15 @@ describe('glasses connection', () => {
       isPluginAvailable: () => true,
       Plugins: {},
     }
-    vi.doMock('@capacitor/core', () => ({ registerPlugin: () => ({ disconnect }) }))
+    // Like a real Capacitor plugin object, it has a `then` that never settles.
+    vi.doMock('@capacitor/core', () => ({ registerPlugin: () => ({ disconnect, then: () => {} }) }))
     localStorage.setItem('barangai-glasses', 'on')
     handOffPhoto(photo)
     endGlassesSession()
     await settle()
     expect(localStorage.getItem('barangai-glasses')).toBeNull()
     expect(takeHandedOffPhoto()).toBeNull()
+    await vi.waitFor(() => expect(disconnect).toHaveBeenCalledWith({ forget: true }))
   })
 
   it('hands a photo to the report form once', () => {

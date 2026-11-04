@@ -3,7 +3,9 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="BarangAI"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/GlassesTheme">
 
         <!-- Started by the Rokid SDK from the phone (SessionConfig glassesActivityName). -->
