@@ -119,7 +119,8 @@ export type CaseMember = {
 /** A grouped case as one report sees it; staff also get its reports. */
 export type ReportCase = {
   id: string
-  category: Category
+  /** Hidden from residents until staff accept the case. */
+  category: Category | null
   location_label?: string | null
   status: Status | null
   confirmed: boolean

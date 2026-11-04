@@ -571,9 +571,10 @@ const filipino: Record<string, string> = {
   'This permanently deletes your account and all your reports and photos, including reports staff are still working on. It cannot be undone.':
     'Permanenteng mabubura ang account mo at lahat ng ulat at photo mo, pati ang inaasikaso pa. Hindi na ito maibabalik.',
   'Type your email address to confirm': 'I-type ang email mo para i-confirm',
-  'You asked for this report to be deleted. An administrator will review it.':
-    'Hiniling mong i-delete ang ulat na ito. Admin ang titingin.',
-  'An administrator declined your deletion request.': 'Hindi tinanggap ng admin ang request mong mag-delete.',
+  "You asked for this report to be deleted. Your barangay's staff will review it.":
+    'Hiniling mong i-delete ang ulat na ito. Staff ng barangay ang titingin.',
+  "Your barangay's staff declined your deletion request.":
+    'Hindi tinanggap ng staff ng barangay ang request mong mag-delete.',
   'Why should it be deleted? (optional)': 'Bakit dapat i-delete? (optional)',
   'For example: my face or house is visible in the photo.': 'Hal.: kita ang mukha o bahay ko sa photo.',
   'Send request': 'I-send ang request',
@@ -584,7 +585,37 @@ const filipino: Record<string, string> = {
   'Note to the resident if you decline (optional)': 'Note sa residente kung hindi tatanggapin (optional)',
   Decline: 'Hindi tanggapin',
   'Approve and delete': 'I-approve at i-delete',
-  'An administrator will decide.': 'Admin ang magdedesisyon.',
+  'Monthly report': 'Buwanang report',
+  'Download spreadsheet': 'I-download ang spreadsheet',
+  Print: 'I-print',
+  Month: 'Buwan',
+  Received: 'Natanggap',
+  'Typical time to accept': 'Karaniwang tagal bago ma-accept',
+  'Typical time to resolve': 'Karaniwang tagal bago maayos',
+  'Based on': 'Batay sa',
+  'Review on its own': 'I-review nang hiwalay',
+  'Not assigned to a barangay': 'Wala pang barangay',
+  hours: 'oras',
+  days: 'araw',
+  incidents: 'insidente',
+  incident: 'insidente',
+  report: 'ulat',
+  'Received this month, by verified category': 'Natanggap ngayong buwan, ayon sa verified category',
+  'Not yet verified': 'Hindi pa na-verify',
+  'Still open today': 'Bukas pa ngayon',
+  'Up to 7 days old': 'Hanggang 7 araw na',
+  '8 to 30 days old': '8 hanggang 30 araw na',
+  'Over 30 days old': 'Lampas 30 araw na',
+  'Why reports were rejected': 'Bakit na-reject ang mga ulat',
+  'Counted from stored reports and status history. Reports staff grouped as one incident count once under incidents. No resident names or photos are included.':
+    'Bilang mula sa mga naka-save na ulat at status history. Isang beses lang binibilang sa insidente ang mga ulat na pinagsama ng staff. Walang pangalan o photo ng residente.',
+  'Prepared by': 'Inihanda ni',
+  'Noted by': 'Noted by',
+  'Choose a period of up to one year': 'Pumili ng period na hanggang isang taon.',
+  "Photos can't be accepted right now. Please try again later.":
+    'Hindi pa makakatanggap ng photo ngayon. Subukan ulit mamaya.',
+  "Your account isn't assigned to a barangay yet, so no reports appear here. Ask your administrator to assign you.":
+    'Wala pang barangay ang account mo, kaya walang lalabas na ulat dito. Sabihan ang admin na i-assign ka.',
   'Deletion was already requested': 'Na-request na ang pag-delete.',
   'Daily limit for deletion requests reached': 'Naabot na ang limit ng delete request ngayong araw.',
   'A resident asked to delete a report': 'May residenteng nagpa-delete ng ulat',
@@ -650,6 +681,9 @@ const filipino: Record<string, string> = {
   "Couldn't take the photo": 'Hindi nakuha ang photo',
   'Press: try again': 'Pindot: subukan ulit',
   "Couldn't send": 'Hindi na-send',
+  'This report just changed. Your note may not have been sent. Check the history, then write it again.':
+    'Nagbago na ang report na ito. Baka hindi na-send ang note mo. I-check ang history, tapos isulat ulit.',
+  'Your session ended. Please sign in again.': 'Natapos na ang session mo. Mag-sign in ulit.',
   'Rokid Glasses': 'Rokid Glasses',
   'Connected. Press the glasses button to report.': 'Connected. Pindutin ang button ng glasses para mag-report.',
   'Paused while the glasses assistant is on.': 'Naka-pause habang bukas ang assistant ng glasses.',
@@ -679,9 +713,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = value
     setValue(value)
   }
-  'This report just changed. Your note may not have been sent. Check the history, then write it again.':
-    'Nagbago na ang report na ito. Baka hindi na-send ang note mo. I-check ang history, tapos isulat ulit.',
-  'Your session ended. Please sign in again.': 'Natapos na ang session mo. Mag-sign in ulit.',
   return <LanguageContext.Provider value={{ language, setLanguage }}>{children}</LanguageContext.Provider>
 }
 

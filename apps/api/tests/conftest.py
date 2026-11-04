@@ -1,5 +1,9 @@
+import atexit
 import io
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -7,6 +11,12 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Tests that build the app without the client fixture must never reach the real database or photos.
+_isolated = tempfile.mkdtemp(prefix="barangai-tests-")
+atexit.register(shutil.rmtree, _isolated, ignore_errors=True)
+os.environ.update(DATABASE_URL=f"sqlite:///{Path(_isolated, 'default.db').as_posix()}",
+                  PRIVATE_MEDIA_DIR=str(Path(_isolated, "private")), FACE_BLUR="off", PLATE_BLUR="off")
 
 
 @pytest.fixture

@@ -208,7 +208,7 @@ def case_data(db: Session, report: Report, user: User):
             "contributors": len({item.resident_id for item in confirmed})}
     if user.role == "resident" and status not in PUBLIC:
         # Before staff accept the case, a resident learns nothing about other residents' reports.
-        data.update(reports=None, contributors=None)
+        data.update(category=None, location_label=None, reports=None, contributors=None)
     if user.role != "resident":
         data["members"] = [{"id": item.id, "status": item.status, "resident_category": item.resident_category,
                             "created_at": utc_iso(item.created_at), "confirmed": item.case_confirmed}
@@ -322,7 +322,11 @@ def decide_evidence(report_id: str, body: CaseDecision, db: Session = Depends(ge
     case = db.get(Case, report.case_id)
     reference = f"case #{case.id[:8].upper()}"
     note = f" {body.note.strip()}" if body.note and body.note.strip() else ""
+    closed = shared_status(members(db, case.id)) not in OPEN_FOR_EVIDENCE
     if body.decision == "confirmed":
+        # As in /cases/link: joining walks the report to the case's status, so a closed case would close it unreviewed.
+        if closed:
+            raise HTTPException(409, "This issue is already resolved")
         report.case_confirmed = True
         log(db, report.id, user.id, f"Confirmed as the same incident as {reference}.{note}")
         db.flush()
@@ -340,7 +344,8 @@ def decide_evidence(report_id: str, body: CaseDecision, db: Session = Depends(ge
                 select(User.id).where(User.role == "staff", User.barangay_id == report.barangay_id)
             ):
                 db.add(Notification(user_id=decider, report_id=report.id, status=report.status, kind="deletion_request"))
-        log(db, report.id, user.id, f"Not the same incident as {reference}; reviewed on its own.{note}")
+        outcome = f"Could not join {reference}, already closed" if closed else f"Not the same incident as {reference}"
+        log(db, report.id, user.id, f"{outcome}; reviewed on its own.{note}")
     db.commit()
     return case_data(db, report, user)
 

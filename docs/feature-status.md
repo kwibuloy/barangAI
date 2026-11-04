@@ -1,6 +1,6 @@
 # Feature status
 
-Updated 4 November 2026 (Asia/Manila). Local verification does not imply cloud or physical-device validation.
+Updated 4 November 2026 (Asia/Manila). BarangAI is a startup-stage product that runs locally; deployment comes last ([backlog](backlog.md)). Local verification does not imply cloud or physical-device validation.
 
 | Priority | Capability | State |
 | --- | --- | --- |
@@ -10,6 +10,8 @@ Updated 4 November 2026 (Asia/Manila). Local verification does not imply cloud o
 | P0 | Private sanitized images | Local and live Supabase upload/download privacy checks passed, including metadata removal, logout and cross-resident denial. Mocked-provider outage tests remain separate evidence. |
 | P0 | PostgreSQL migrations and photo persistence | Docker migration preservation/restart proof and live Supabase migration 0005/TLS/private Storage/client denial passed. Local API reload preserves live cloud reports/photos. Hosted application checks pending. |
 | P0 | Staff verification, status workflow, actions and history | Implemented and tested. No automatic forwarding. |
+| P0 | Backups and data safety | Built 4 November: backup and restore commands, a copy before schema upgrades, write-ahead log, foreign keys, secure delete, blur that refuses photos if it can't run. Restore drill passes in tests on synthetic data. Not yet run by a person on a real second drive. Backups aren't encrypted. |
+| P1 | Monthly report | Built 4 November: a month's counts, typical times, open reports by age and rejection reasons, with CSV and print, limited to the caller's barangay. API and jsdom tested on synthetic data. Not yet shown to barangay staff. |
 | P0 | AI pre-fill and correction | Option C built and tested with mocked Cloudflare: vision model fills category, description and hazards; MobileCLIP2-S0 checker (ONNX, matches PyTorch exactly, ~70 ms locally) cross-checks and backs it up. Before sending, residents must tick that they checked any auto-filled category, description or GPS location (Review step disclaimer). The description gets rough scale only when something in the photo supports it ("about knee-deep", never cm). Untuned prompts, uncalibrated 0.5 cutoff, no accuracy measured yet: run `apps/api/tools/evaluate_ai.py` on the group's verified datasets. Live Cloudflare calls verified locally on 28 October with Mistral Small 3.1 (about 5 neurons and 2 s per photo; descriptions in English and Filipino; an intact road came back as "AI unsure"). Render timing unverified. |
 | P1 | Rokid Glasses reports | Built 4 November from Rokid's CXR-L 1.1.2 package and docs: the Android app connects through the Rokid AI App and installs a small glasses app; a glasses button press takes the photo, Kap and the phone's GPS fill the category and pin, and a second press sends it after a confirm screen with the AI disclaimer (the AI description is not sent from the glasses; hazard flags the AI finds are kept for staff, as they are when a resident doesn't dismiss them on the phone, without being shown on the glasses). No category, no GPS or a report nearby hands the photo to the phone's form. Flow tested in jsdom with a stand-in for the glasses. Not run on real glasses, and the APK has not been built with these changes yet. |
 | P1 | Points and rewards | Built and tested with API tests and basic screens: points for accepted and resolved reports, one balance spent in any barangay's shop for single-use codes, which staff mark as used. Rewards in the demo are samples. Not tried on a phone yet. |
@@ -32,8 +34,8 @@ Updated 4 November 2026 (Asia/Manila). Local verification does not imply cloud o
 | P1 | Dashboard, filters, map and trend | Implemented and locally tested. |
 | P1 | Notifications/read state and live updates | Implemented and tested. While the app is on screen it checks for new notices every 5 seconds and refreshes the reports and points on screen when one arrives; report lists and details are also checked every 15 seconds. This is polling, not push: nothing arrives while the app is closed or hidden, and it catches up when it comes back. |
 | P2 | Responsive presentation UI | Implemented; physical-device acceptance pending. |
-| Delivery | Render/Supabase configuration and guides | Deployed; on 3 November the live website files and routes matched `e5fcb04`. Render deploys every commit on its branch. Signed-in hosted checks pending. |
-| Research | Reproducible commands and blank evaluation materials | Pilot/v3/v4 evidence saved privately; four v4 runs audited, 21 focused tests passed, selected preprocessing replay matched 44 predictions. Reserved 12-photo diagnostic completed; independent field evaluation and user study pending. |
+| Delivery | Render/Supabase configuration and guides | Deployed; on 3 November the live website files and routes matched `e5fcb04`. `render.yaml` has automatic deploys off. Signed-in hosted checks pending. |
+| Evaluation | Reproducible commands and blank evaluation materials | Pilot/v3/v4 evidence saved privately; four v4 runs audited, 21 focused tests passed, selected preprocessing replay matched 44 predictions. Reserved 12-photo diagnostic completed; independent field evaluation and user study pending. |
 
 Hosted end-to-end privacy checks, physical-phone smoke tests and independent model evaluation remain unfinished. Live Supabase API integration passed separately. Do not present manual categorization as measured AI performance or provider integration as public website deployment evidence.
 
@@ -42,6 +44,8 @@ Old EfficientNet classifier evidence (frozen and unused since option C): [tree c
 ## Evidence
 
 Synthetic data only. Raw evidence files live under the ignored `artifacts/` folder; superseded logs are in Git history before this file's 26 October update.
+
+- **Local, 4 November (data safety and monthly report):** 373 API and 115 web tests, the typecheck, lint and production build passed. Restore drill on a copy of the local database: 31 reports and 32 photos backed up and restored into another folder, none missing. On 2,000 synthetic reports, `/notifications` with 200 clients at once gave no errors and a p95 of about 2.1 s, where it had collapsed to about 3 requests a second with errors. Print layout and CSV checked in headless Chrome. Not tried with barangay staff, on a phone, on PostgreSQL, or on a real second drive.
 
 - **Local, 3 November (Dasmariñas barangays):** 212 API tests passed and 1 skipped; 60 web tests and the production build passed. On a throwaway SQLite database, the file loaded through the real import, a Salawag staff account saw 2 of 15 synthetic reports and an administrator saw all 15. Screenshots of the warning, filter and map borders approved by the user. Not run on PostgreSQL, and not loaded to Supabase yet.
 - **Local, 2 November (staff jurisdiction):** 205 API tests passed and 1 skipped, migration 0009 upgraded and downgraded on SQLite with rows kept. 54 web tests, the typecheck and the production build passed; no web files changed. Not run on PostgreSQL, and `deploy/verify-local-postgres.py` then expected revision 0005 (now updated to 0010).

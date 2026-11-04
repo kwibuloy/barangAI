@@ -10,9 +10,9 @@ if (!(Test-Path -LiteralPath (Join-Path $checker 'visual.onnx'))) { throw 'The c
 if (!(Test-Path -LiteralPath (Join-Path $website 'index.html'))) { throw 'Build the website first: cd apps/web; npm run build' }
 
 # Optional keys from the git-ignored .env file in the repo root (see .env.example). Only these names are read,
-# so the file can never point this local presentation at a remote database or storage. Values already set in
+# so the file can never point this local server at a remote database or storage. Values already set in
 # the shell win over the file.
-$allowed = 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_WORKERS_AI_TOKEN', 'CLOUDFLARE_VISION_MODEL', 'GEOCODER_CONTACT'
+$allowed = 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_WORKERS_AI_TOKEN', 'CLOUDFLARE_VISION_MODEL', 'GEOCODER_CONTACT', 'OPERATOR_NAME', 'PRIVACY_CONTACT'
 # Google accepts neither a private network address as a callback nor sign-in from an app's web view.
 if (!$Lan) { $allowed += 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI' }
 else { 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI' | ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'Process') } }
@@ -29,7 +29,7 @@ if (Test-Path -LiteralPath $keysFile) {
 }
 $cloudflare = if ($env:CLOUDFLARE_ACCOUNT_ID -and $env:CLOUDFLARE_WORKERS_AI_TOKEN) { 'on' } else { 'off (no keys found)' }
 
-# Local presentation only. The checker's cutoff is not field calibrated.
+# The checker's cutoff is not field calibrated.
 $env:CHECKER_MODEL_DIR = $checker
 $env:VALIDATED_EMBEDDING_MODEL_VERSION = 'mobileclip2-s0:effec85f7f21'
 $env:CHECKER_THREADS = '2'
@@ -43,7 +43,7 @@ $env:MEDIA_STORAGE = 'local'
 $env:PRIVATE_MEDIA_DIR = Join-Path $projectRoot 'private_media'
 
 $bindAddress = '127.0.0.1'
-Write-Host "Local presentation: http://127.0.0.1:$Port"
+Write-Host "BarangAI: http://127.0.0.1:$Port"
 if ($Lan) {
     $bindAddress = '0.0.0.0'
     # The network card with the internet route, so virtual adapters such as WSL's aren't offered to phones.
@@ -53,9 +53,12 @@ if ($Lan) {
     Write-Host 'Plain HTTP: use a trusted Wi-Fi network. If a phone cannot connect, see docs/mobile.md for the firewall rule.'
 }
 Write-Host "Cloudflare photo descriptions: $cloudflare"
+$lastBackup = Join-Path $projectRoot 'barangai-dev.last-backup.txt'
+if (Test-Path -LiteralPath $lastBackup) { Write-Host "Last backup: $(Get-Content -LiteralPath $lastBackup -TotalCount 1)" }
+else { Write-Host 'No backup yet. This laptop holds the only copy: run .\deploy\backup.ps1 -To <another drive>' -ForegroundColor Yellow }
 Write-Host 'AI suggestions are experimental and not field validated. Residents review them; staff verify every report.'
 Push-Location (Join-Path $projectRoot 'apps/api')
 try {
-    & $python -m uvicorn barangai.main:app --host $bindAddress --port $Port
+    & $python -m uvicorn barangai.main:app --host $bindAddress --port $Port --timeout-keep-alive 30
     if ($LASTEXITCODE -ne 0) { throw "API exited with code $LASTEXITCODE" }
 } finally { Pop-Location }

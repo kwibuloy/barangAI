@@ -27,7 +27,7 @@ _hashing = threading.BoundedSemaphore(2)
 _decoy = hasher.hash(secrets.token_urlsafe(16))
 _chains_logged = set()
 MAX_PASSWORD = 128
-TERMS_VERSION = "2026-11-03"
+TERMS_VERSION = "2026-11-04"
 
 
 def hash_password(password: str) -> str:

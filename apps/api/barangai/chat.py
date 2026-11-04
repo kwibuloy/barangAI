@@ -30,6 +30,7 @@ MIN_ANSWER = 20
 # Details a resident might type that the model has no need for.
 PRIVATE_DETAILS = re.compile(
     r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*|\b[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\b"
+    r"|#[0-9a-f]{8}\b"
     r"|\+?\(?\d(?:[\s()./-]*\d){6,}",
     re.I,
 )
@@ -72,8 +73,9 @@ KAP = (
     "- Deleting: a resident can ask to delete a report from its details (Ask to delete this report); barangay staff "
     "or an administrator decides. The whole account can be deleted from Account settings, which removes all of the resident's reports "
     "and photos.\n"
-    "- Privacy: photos are private to barangay staff and administrators, faces are blurred and photo metadata is "
-    "removed before saving. The Community map shows only accepted issues with approximate pins, never photos, "
+    "- Privacy: only barangay staff and administrators can open a report's photo. Before saving, the app tries to blur "
+    "faces and license plates, which can miss some, and removes photo metadata. When AI is on, Cloudflare also reads "
+    "the cleaned photo to suggest a category. The Community map shows only accepted issues with approximate pins, never photos, "
     "descriptions or names.\n"
     "- Rewards: a resident earns 25 points when staff accept a report, 10 more when it is resolved, and 5 for being "
     "the first to report an issue. Points are spent in any barangay's shop (Rewards) for a single-use code that "

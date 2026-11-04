@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from . import privacy
+from .db import project_root
 
 
 class StorageRequestUncertain(HTTPException):
@@ -22,7 +23,7 @@ class StorageRequestUncertain(HTTPException):
 
 
 def media_dir():
-    path = Path(os.environ.get("PRIVATE_MEDIA_DIR", str(Path(__file__).resolve().parents[1] / "private_media")))
+    path = Path(os.environ.get("PRIVATE_MEDIA_DIR") or project_root() / "private_media")
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -110,13 +111,24 @@ def object_name(location):
     return name
 
 
+def local_candidates(location):
+    """Where a stored photo may be: the current photo folder first, so a restore into another folder keeps working
+    although rows hold the full path of the folder the photo was first saved in; then that recorded path."""
+    return [media_dir() / re.split(r"[\\/]", location)[-1], Path(location)]
+
+
+def local_path(location):
+    return next((path for path in local_candidates(location) if path.is_file()), None)
+
+
 def delete_image(location):
     if location.startswith("supabase:"):
         name = object_name(location)
         bucket = os.environ.get("SUPABASE_STORAGE_BUCKET", "incident-photos")
         storage_request("DELETE", f"object/{bucket}", json={"prefixes": [name]})
     else:
-        Path(location).unlink(missing_ok=True)
+        for path in local_candidates(location):
+            path.unlink(missing_ok=True)
 
 
 def image_response(location):
@@ -126,9 +138,10 @@ def image_response(location):
         bucket = private_bucket()
         data = storage_request("GET", f"object/authenticated/{bucket}/{name}").content
         return Response(data, media_type="image/jpeg", headers=headers)
-    if not Path(location).is_file():
+    path = local_path(location)
+    if not path:
         raise HTTPException(404, "Image not found")
-    return FileResponse(location, media_type="image/jpeg", headers=headers)
+    return FileResponse(path, media_type="image/jpeg", headers=headers)
 
 
 # Stored photos: longest side 1600 px (MAX_IMAGE_EDGE), JPEG quality 80, no metadata. About 200-500 KB for a phone
@@ -170,10 +183,15 @@ def sanitize_image(data: bytes) -> bytes:
                 picture = flat
             # Pixels only: Pillow would otherwise copy the original's JPEG comment, EXIF or ICC profile across.
             picture = Image.frombytes("RGB", picture.size, picture.convert("RGB").tobytes())
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+    # Malformed EXIF or PNG headers surface as SyntaxError, TypeError or ValueError from inside Pillow.
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError, SyntaxError, TypeError, ValueError):
         raise HTTPException(422, "Invalid image") from None
-    picture, _ = privacy.blur_faces(picture)
-    picture, _ = privacy.blur_plates(picture)
+    try:
+        privacy.check_ready()
+        picture, _ = privacy.blur_faces(picture)
+        picture, _ = privacy.blur_plates(picture)
+    except privacy.BlurUnavailable:
+        raise HTTPException(503, "Photos can't be accepted right now. Please try again later.") from None
     output = io.BytesIO()
     picture.save(output, format="JPEG", quality=PHOTO_QUALITY, optimize=True, progressive=True)
     result = output.getvalue()

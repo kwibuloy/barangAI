@@ -1,8 +1,7 @@
 """Best-effort face blurring before a photo is stored or sent to the vision model.
 
-Uses the YuNet face model (232 KB, MIT, models/yunet) through OpenCV when `opencv-python-headless` is installed (the
-Render image has it); without it, photos pass through unchanged, so local tests and setups need nothing extra. YuNet
-replaced a Haar cascade that missed tilted and small faces and fired on the straight lines of wires and poles, which
+Uses the YuNet face model (232 KB, MIT, models/yunet) through OpenCV (`opencv-python-headless`, in the API's ai extra).
+If a blur that is on can't run, photos are refused; see check_ready. YuNet replaced a Haar cascade that missed tilted and small faces and fired on the straight lines of wires and poles, which
 staff need sharp. It can still miss a face that is side-on, strongly tilted, hidden or very small, so the form still
 asks residents to keep faces and plate numbers out. Set FACE_BLUR=off to disable.
 
@@ -43,22 +42,35 @@ def detector():
     try:
         import cv2
     except ImportError:
-        log.warning("OpenCV is not installed; photos are stored without face blurring")
+        log.warning("OpenCV is not installed; photos will be refused")
         return None
     cv2.setNumThreads(1)
     path = os.environ.get("FACE_MODEL_PATH") or str(MODEL_PATH)
     if not os.path.isfile(path):
-        log.warning("Face model missing; photos are stored without face blurring")
+        log.warning("Face model missing; photos will be refused")
         return None
     try:
         return cv2.FaceDetectorYN.create(path, "", (320, 320), MIN_SCORE, 0.3, 200)
     except cv2.error:
-        log.exception("Face model unreadable; photos are stored without face blurring")
+        log.exception("Face model unreadable; photos will be refused")
         return None
 
 
 def enabled() -> bool:
     return detector() is not None
+
+
+class BlurUnavailable(RuntimeError):
+    """A blur that is switched on cannot run. Photos are refused rather than stored or sent on sharp."""
+
+
+def check_ready() -> None:
+    """A broken install must stop reports, not quietly keep every face sharp. FACE_BLUR=off and PLATE_BLUR=off are
+    the only ways to run without a blur."""
+    if os.environ.get("FACE_BLUR", "on").lower() != "off" and detector() is None:
+        raise BlurUnavailable("Face blurring cannot run: install the API's ai extra, or set FACE_BLUR=off on purpose")
+    if os.environ.get("PLATE_BLUR", "on").lower() != "off" and plate_detector() is None:
+        raise BlurUnavailable("Plate blurring cannot run: install the API's ai extra, or set PLATE_BLUR=off on purpose")
 
 
 def _shrunk(image: Image.Image, edge: int) -> Image.Image:
@@ -70,9 +82,9 @@ def _shrunk(image: Image.Image, edge: int) -> Image.Image:
     )
 
 
-def _detect(model, image: Image.Image) -> list[tuple[float, float, float, float]]:
-    """Boxes (left, top, width, height) in this image's pixels, or none if this pass fails. The model reads
-    blue-green-red. One failed pass must not cost the faces another pass finds."""
+def _detect(model, image: Image.Image) -> list[tuple[float, float, float, float]] | None:
+    """Boxes (left, top, width, height) in this image's pixels, or None if this pass fails. The model reads
+    blue-green-red."""
     import numpy
 
     try:
@@ -80,7 +92,7 @@ def _detect(model, image: Image.Image) -> list[tuple[float, float, float, float]
         _, found = model.detect(numpy.asarray(image)[:, :, ::-1].copy())
     except Exception:
         log.exception("A face detection pass failed")
-        return []
+        return None
     if found is None:
         return []
     boxes = [tuple(float(value) for value in row[:4]) for row in found]
@@ -116,6 +128,9 @@ def find_faces(image: Image.Image) -> list[tuple[int, int, int, int]]:
         found = _detect(model, upright)
         turned_left = _detect(model, sideways.transpose(Image.Transpose.ROTATE_90))
         turned_right = _detect(model, sideways.transpose(Image.Transpose.ROTATE_270))
+    # Each pass finds faces the others miss, so a photo checked only in part could keep a face sharp.
+    if found is None or turned_left is None or turned_right is None:
+        raise RuntimeError("A face detection pass failed")
     boxes: list[tuple[int, int, int, int]] = []
     scale = image.width / upright.width
     for box in found:
@@ -134,8 +149,8 @@ def blur_faces(image: Image.Image) -> tuple[Image.Image, int]:
     try:
         boxes = find_faces(image)
     except Exception:
-        log.exception("Face detection failed; the photo is kept unblurred")
-        return image, 0
+        log.exception("Face detection failed; the photo is refused")
+        raise BlurUnavailable("Face detection failed") from None
     blurred = 0
     for left, top, width, height in boxes:
         # A margin covers hair and the edge of the jaw; the radius scales with the face so large faces blur too.
@@ -161,15 +176,15 @@ def plate_detector():
     try:
         import cv2
     except ImportError:
-        log.warning("OpenCV is not installed; photos are stored without plate blurring")
+        log.warning("OpenCV is not installed; photos will be refused")
         return None
     if not PLATE_MODEL_PATH.is_file():
-        log.warning("Plate model missing; photos are stored without plate blurring")
+        log.warning("Plate model missing; photos will be refused")
         return None
     try:
         return cv2.dnn.readNet(str(PLATE_MODEL_PATH))
     except cv2.error:
-        log.exception("Plate model unreadable; photos are stored without plate blurring")
+        log.exception("Plate model unreadable; photos will be refused")
         return None
 
 
@@ -248,8 +263,8 @@ def blur_plates(image: Image.Image) -> tuple[Image.Image, int]:
     try:
         boxes = find_plates(image)
     except Exception:
-        log.exception("Plate detection failed; the photo is kept unblurred")
-        return image, 0
+        log.exception("Plate detection failed; the photo is refused")
+        raise BlurUnavailable("Plate detection failed") from None
     blurred = 0
     for left, top, width, height in boxes:
         pad_x, pad_y = max(2, width // 10), max(2, height // 5)

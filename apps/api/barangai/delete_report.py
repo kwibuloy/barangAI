@@ -14,7 +14,7 @@ from sqlalchemy import delete, func, or_, select, update
 from . import points
 from .auth import hasher
 from .cases import members
-from .db import session_for_url
+from .db import scrub_deleted, session_for_url
 from .media import delete_image
 from .models import (
     Case,
@@ -138,6 +138,7 @@ def delete_report(report_id, email, password, *, confirm=None, receipt_path=None
                 delete_image(location)
             delete_image(own_image)
             db.commit()
+            scrub_deleted(db)
             receipt = {"action": "report-deleted", "report_id": report_id,
                        "administrator_id": admin_id, "time": now().isoformat(), "reason": reason}
             try:

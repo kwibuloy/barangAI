@@ -8,7 +8,7 @@ import { Txt, useText } from '../../lib/i18n'
 import { useDecideDeletion, useRequestDeletion } from './queries'
 import type { Report } from './types'
 
-/** A resident asks an administrator to delete this report. */
+/** A resident asks their barangay's staff to delete this report. */
 export function RequestDeletion({ detail }: { detail: Report }) {
   const t = useText()
   const send = useRequestDeletion(detail.id)
@@ -18,7 +18,7 @@ export function RequestDeletion({ detail }: { detail: Report }) {
   if (current?.status === 'pending')
     return (
       <p role="status" className="px-1 text-[14px] text-muted-foreground">
-        <Txt>You asked for this report to be deleted. An administrator will review it.</Txt>
+        <Txt>You asked for this report to be deleted. Your barangay's staff will review it.</Txt>
       </p>
     )
   function submit(event: FormEvent) {
@@ -29,7 +29,7 @@ export function RequestDeletion({ detail }: { detail: Report }) {
     <div className="space-y-2 px-1">
       {current?.status === 'declined' && (
         <p className="text-[14px]">
-          <Txt>An administrator declined your deletion request.</Txt>
+          <Txt>Your barangay's staff declined your deletion request.</Txt>
           {current.note ? ` ${current.note}` : ''}
         </p>
       )}
@@ -75,8 +75,8 @@ export function RequestDeletion({ detail }: { detail: Report }) {
   )
 }
 
-/** Shown to administrators while a resident's deletion request waits. Staff see that it exists. */
-export function DeletionReview({ detail, canDecide }: { detail: Report; canDecide: boolean }) {
+/** Shown to the barangay's staff and administrators while a resident's deletion request waits. */
+export function DeletionReview({ detail }: { detail: Report }) {
   const decide = useDecideDeletion(detail.id)
   const navigate = useNavigate()
   const [note, setNote] = useState('')
@@ -88,46 +88,38 @@ export function DeletionReview({ detail, canDecide }: { detail: Report; canDecid
         <Txt>The resident asked to delete this report</Txt>
       </h3>
       {current.reason && <p className="text-[15px]">{current.reason}</p>}
-      {canDecide ? (
-        <>
-          <p className="text-[14px] text-muted-foreground">
-            <Txt>Approving permanently deletes the report, its photos and its history.</Txt>
-          </p>
-          <label className="block space-y-1.5 text-[13px] font-medium text-muted-foreground">
-            <span>
-              <Txt>Note to the resident if you decline (optional)</Txt>
-            </span>
-            <Textarea rows={2} maxLength={500} value={note} onChange={event => setNote(event.target.value)} />
-          </label>
-          {decide.error && (
-            <Alert>
-              <Txt>{decide.error.message}</Txt>
-            </Alert>
-          )}
-          <div className="flex flex-wrap gap-2 *:grow *:basis-auto">
-            <Button
-              variant="outline"
-
-              disabled={decide.isPending}
-              onClick={() => decide.mutate({ decision: 'declined', note: note.trim() || undefined })}
-            >
-              <Txt>Decline</Txt>
-            </Button>
-            <Button
-              variant="destructive"
-
-              disabled={decide.isPending}
-              onClick={() => decide.mutate({ decision: 'approved' }, { onSuccess: () => navigate('/desk/reports') })}
-            >
-              <Txt>Approve and delete</Txt>
-            </Button>
-          </div>
-        </>
-      ) : (
-        <p className="text-[14px] text-muted-foreground">
-          <Txt>An administrator will decide.</Txt>
-        </p>
+      <p className="text-[14px] text-muted-foreground">
+        <Txt>Approving permanently deletes the report, its photos and its history.</Txt>
+      </p>
+      <label className="block space-y-1.5 text-[13px] font-medium text-muted-foreground">
+        <span>
+          <Txt>Note to the resident if you decline (optional)</Txt>
+        </span>
+        <Textarea rows={2} maxLength={500} value={note} onChange={event => setNote(event.target.value)} />
+      </label>
+      {decide.error && (
+        <Alert>
+          <Txt>{decide.error.message}</Txt>
+        </Alert>
       )}
+      <div className="flex flex-wrap gap-2 *:grow *:basis-auto">
+        <Button
+          variant="outline"
+
+          disabled={decide.isPending}
+          onClick={() => decide.mutate({ decision: 'declined', note: note.trim() || undefined })}
+        >
+          <Txt>Decline</Txt>
+        </Button>
+        <Button
+          variant="destructive"
+
+          disabled={decide.isPending}
+          onClick={() => decide.mutate({ decision: 'approved' }, { onSuccess: () => navigate('/desk/reports') })}
+        >
+          <Txt>Approve and delete</Txt>
+        </Button>
+      </div>
     </section>
   )
 }

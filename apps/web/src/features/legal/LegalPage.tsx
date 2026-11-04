@@ -7,7 +7,7 @@ import { LanguageSwitch, Txt, useLanguage } from '../../lib/i18n'
 type Section = { title: string; body: string[] }
 type Copy = { title: string; intro: string; sections: Section[] }
 
-const UPDATED = { en: 'Last updated 3 November 2026', fil: 'Huling binago noong 3 Nobyembre 2026' }
+const UPDATED = { en: 'Last updated 4 November 2026', fil: 'Huling binago noong 4 Nobyembre 2026' }
 
 const TERMS: Record<'en' | 'fil', Copy> = {
   en: {
@@ -58,7 +58,7 @@ const TERMS: Record<'en' | 'fil', Copy> = {
       {
         title: 'Availability and limits',
         body: [
-          'The service runs on free hosting. It may be slow to wake, unavailable or changed at any time, and daily limits apply. It is provided as it is, without any promise that it will always work or be free of errors. To the extent the law allows, the operator is not liable for loss caused by relying on it.',
+          'The service runs on a single computer in the local network. It may be unavailable or changed at any time, and daily limits apply. It is provided as it is, without any promise that it will always work or be free of errors. To the extent the law allows, the operator is not liable for loss caused by relying on it.',
           'Accounts that break these terms may be restricted or removed. Residents can delete their own account at any time from your account settings.',
         ],
       },
@@ -116,7 +116,7 @@ const TERMS: Record<'en' | 'fil', Copy> = {
       {
         title: 'Pagiging available at mga limitasyon',
         body: [
-          "Tumatakbo ang serbisyo sa libreng hosting. Maaari itong mabagal magising, hindi magamit o mabago anumang oras, at may mga limitasyon bawat araw. Ibinibigay ito kung ano ito, nang walang pangakong laging gagana o walang mali. Hangga't pinapayagan ng batas, walang pananagutan ang operator sa pinsalang dulot ng pag-asa rito.",
+          "Tumatakbo ang serbisyo sa iisang computer sa local network. Maaari itong hindi magamit o mabago anumang oras, at may mga limitasyon bawat araw. Ibinibigay ito kung ano ito, nang walang pangakong laging gagana o walang mali. Hangga't pinapayagan ng batas, walang pananagutan ang operator sa pinsalang dulot ng pag-asa rito.",
           'Maaaring limitahan o alisin ang mga account na lumalabag sa mga tuntuning ito. Maaaring burahin ng mga residente ang sarili nilang account anumang oras sa mga setting ng account.',
         ],
       },
@@ -177,7 +177,7 @@ const PRIVACY: Record<'en' | 'fil', Copy> = {
       {
         title: 'How long we keep it',
         body: [
-          'There is no automatic deletion schedule yet: reports are kept until you or an administrator delete them. Backups kept by our providers may take longer to clear. After a report is deleted, we keep only a record that a deletion request was decided, with no content from the report.',
+          'There is no automatic deletion schedule yet: reports are kept until you delete your account, or barangay staff or an administrator delete them. Backup copies are not changed by a deletion, so they keep the data until they are removed, and restoring one can bring it back until it is deleted again. After a report is deleted, we keep only a record that a deletion request was decided, with no content from the report.',
         ],
       },
       {
@@ -234,7 +234,7 @@ const PRIVACY: Record<'en' | 'fil', Copy> = {
       {
         title: 'Gaano katagal namin ito itinatago',
         body: [
-          'Wala pang awtomatikong iskedyul ng pagbura: itinatago ang mga ulat hanggang burahin mo o ng administrator. Maaaring mas matagal bago mawala ang mga backup ng aming mga provider. Pagkatapos burahin ang ulat, ang natitira lamang ay tala na napagpasyahan ang hiling na magbura, nang walang nilalaman ng ulat.',
+          'Wala pang awtomatikong iskedyul ng pagbura: itinatago ang mga ulat hanggang burahin mo ang account mo, o burahin ito ng staff ng barangay o ng administrator. Hindi nababago ng pagbura ang mga backup copy, kaya nandoon pa ang data hanggang alisin ang mga ito, at puwede itong bumalik kapag ni-restore hanggang burahin ulit. Pagkatapos burahin ang ulat, ang natitira lamang ay tala na napagpasyahan ang hiling na magbura, nang walang nilalaman ng ulat.',
         ],
       },
       {

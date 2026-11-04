@@ -31,7 +31,7 @@ The Blueprint sets `MEDIA_STORAGE=supabase`, `SUPABASE_STORAGE_BUCKET=incident-p
 
 In Render, choose **New → Blueprint** and select the published repository. Review the resource list before creating it: one Docker web service, **Free**, Singapore. Enter the private settings above. If the name `barangai-watch` already belongs to another service, choose an unused name rather than applying this Blueprint to an unrelated service.
 
-`autoDeployTrigger: commit` deploys every commit on the connected branch, so merging to `main` puts it live. Work on a branch and merge only what is ready. Do not enable automatic Blueprint sync unless changes to the infrastructure are also authorized. See [Render deployment controls](https://render.com/docs/deploys).
+`render.yaml` sets `autoDeployTrigger: "off"`, so nothing goes live on its own. Do not enable automatic Blueprint sync unless changes to the infrastructure are also authorized. See [Render deployment controls](https://render.com/docs/deploys).
 
 The image builds with `deploy/Dockerfile.render`. Startup checks the required environment, upgrades the database with Alembic, and starts one application worker on Render's `PORT`. The free service has no paid pre-deploy step, so migrations run at startup. Keep schema changes compatible with the previous release; rolling back an application image does not undo database migrations. Never run a schema downgrade against live data without a reviewed backup and explicit authorization.
 

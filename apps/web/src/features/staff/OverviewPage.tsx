@@ -13,6 +13,8 @@ import { shownError } from '../../lib/live'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { categories, label } from '../reports/categories'
 import { CategoryTile, categoryColor } from '../reports/CategoryIcon'
+import { useMe } from '../auth/queries'
+import { useBoundaries } from '../reports/boundaries'
 import { useBrief, useReports } from '../reports/queries'
 import { Kap } from '@/components/Kap'
 import { useCountUp } from '@/hooks/use-count-up'
@@ -73,6 +75,10 @@ export function OverviewPage() {
   const navigate = useNavigate()
   const { language } = useLanguage()
   const reports = useReports()
+  const me = useMe()
+  const boundaries = useBoundaries()
+  // With barangays loaded, a staff account without one sees nothing, which would otherwise read as "All caught up".
+  const unassigned = me.data?.role === 'staff' && !me.data.barangay && Boolean(boundaries.data?.features?.length)
   const all = useMemo(() => reports.data ?? [], [reports.data])
   const count = (...statuses: Report['status'][]) => all.filter(report => statuses.includes(report.status)).length
   const trend = useMemo(
@@ -112,7 +118,18 @@ export function OverviewPage() {
             <Txt>Operations overview</Txt>
           </h1>
         </div>
+        <Link to="/desk/records" className="text-[14px] font-bold text-link md:hidden">
+          <Txt>Monthly report</Txt>
+        </Link>
       </div>
+      {unassigned && (
+        <p role="alert" className="hairline rounded-2xl bg-card p-4 text-[15px] font-semibold text-destructive">
+          <Txt>
+            Your account isn't assigned to a barangay yet, so no reports appear here. Ask your administrator to assign
+            you.
+          </Txt>
+        </p>
+      )}
       <BriefCard />
       {shownError(reports) && (
         <p role="alert" className="text-[14px] text-destructive">

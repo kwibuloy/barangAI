@@ -5,7 +5,7 @@ flowchart LR
   R[Resident browser] --> W[React web app]
   S[Staff browser] --> W
   W -->|same-origin /api, cookie + CSRF| A[FastAPI]
-  A --> P[(PostgreSQL)]
+  A --> P[(SQLite on the laptop)]
   A --> M[Private image storage]
   A -. cleaned photo, when configured .-> V[Cloudflare vision model]
   A --> C[MobileCLIP2-S0 checker, ONNX]
@@ -41,6 +41,10 @@ erDiagram
 Before a resident submits, `/nearby` checks for their own open report or a neighbours' open case near the pin; the resident may add the photo and a note to it instead. Such additions are `REPORT_ADDENDUM` rows: append-only, so the report stays as staff first saw it. New reports and additions notify the barangay's staff and every administrator (`NOTIFICATION.kind`). Photos are shrunk in the browser and again on the server (1,600 px), faces are blurred where the YuNet model finds them (`privacy.py`), and all metadata is removed; the capture time, camera and GPS are read first so `trust.py` can give staff hints (pin far from the photo's GPS, old photo, no details). Residents never see those hints. Kap's brief (`brief.py`) counts the queue in SQL; the optional LLM only rewords the counts and is discarded if it states any other number.
 
 Parked since 3 November 2026 (the project now runs locally, see [mobile.md](mobile.md)): the Render container serves website and API under one origin. Supabase stores PostgreSQL rows and private photos. Sessions and authorization remain in FastAPI; Supabase client roles have no application-table policies. Storage credentials stay on the server, which checks report permissions before returning image bytes. Google identities map by provider and subject; matching password-account emails are not automatically linked.
+
+## Data safety
+
+The one laptop holds the only copy. SQLite runs in write-ahead-log mode with foreign keys and secure delete on (`db.py`), so a slow reader can't make a commit fail. Importing the app touches no database: the server builds it on request. Before a schema upgrade the database is copied beside itself. `barangai/backup.py` backs up the database and the photos its rows point to, and restores them to any folder. Rows store the full path of the folder a photo was first saved in; `media.py` looks in today's photo folder first, then that path. If a blur that's switched on can't run, the server won't start and uploads are refused with a 503 (`privacy.check_ready`), so a broken install can't quietly keep faces sharp.
 
 ## Staff jurisdiction
 

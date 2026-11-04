@@ -196,7 +196,7 @@ class Usage(Base):
 
 
 class DeletionRequest(Base):
-    """A resident asking an administrator to delete a report. Outlives the report as the record of the decision, so
+    """A resident asking barangay staff to delete a report. Outlives the report as the record of the decision, so
     report_id is not a foreign key, and an approved request keeps no reason or other content."""
     __tablename__ = "deletion_requests"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)

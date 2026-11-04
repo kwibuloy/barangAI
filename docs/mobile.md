@@ -62,9 +62,25 @@ Residents can report hands-free with Rokid Glasses. The phone needs the Rokid AI
 
 The glasses app lives in `apps/mobile/android/glasses` and is built into the phone APK automatically. The Rokid SDKs come from Rokid's Maven repository, so the first build needs internet. The phone side is `RokidGlassesPlugin.java`, and the web side is `apps/web/src/features/glasses`. Both raise the app's minimum Android version to 9.
 
+## Backups
+
+The laptop holds the only copy of every report, photo and point balance. Back up to another drive, ideally on a schedule; the launcher warns if there's no backup yet. A backup holds private photos and account data unencrypted, so keep it on an encrypted drive. Deletions don't reach old backups: restoring one brings back accounts and reports deleted since it was made, so remove old backups on a set schedule and redo known deletions after any restore.
+
+```powershell
+.\deploy\backup.ps1 -To E:\BarangAI-backups
+```
+
+To restore, stop the server first. Anything replaced is renamed, never deleted, and photos work even if the new laptop uses a different folder:
+
+```powershell
+.\deploy\backup.ps1 -Restore E:\BarangAI-backups\barangai-backup-20261104-220000 -Replace
+```
+
+The server also keeps a copy beside the database, named `barangai-dev.before-<version>-<time>.db`, before each schema upgrade. Delete old copies once you've checked the upgrade: they contain deleted data too.
+
 ## Data
 
-The launcher always uses `barangai-dev.db` and `private_media/`. For synthetic accounts and reports, see `.claude/skills/seed-demo/SKILL.md`. Forgotten passwords are reset from the command line.
+The launcher always uses `barangai-dev.db` and `private_media/`. Some older photos may still sit in `apps/api/private_media`, where database rows point to them; leave that folder until they're moved. For synthetic accounts and reports, see `.claude/skills/seed-demo/SKILL.md`. Forgotten passwords are reset from the command line.
 
 The demo accounts are `resident1@demo.test` (resident), `staff@demo.test` (staff, barangay San Jose) and `admin@demo.test` (administrator). They are for synthetic demos only: before real residents use this database, start a fresh one or give each account its own password with `python -m barangai.bootstrap_staff <email> --reset-password`. Their shared password is the `SEED_DEMO_PASSWORD` used when the database was seeded. Seeding doesn't save it anywhere, so write it in the git-ignored `.env` under that name; nothing reads it from there. A database that was never seeded has no demo accounts, so seed it first (`.claude/skills/seed-demo/SKILL.md`). Editing the note never changes an existing account's password: use `--reset-password` for that. Staff only see reports pinned inside their barangay, so move the account to the demo location's barangay from `apps/api`, with `DATABASE_URL` pointing at `barangai-dev.db`: `python -m barangai.bootstrap_staff staff@demo.test --barangay "Name" --assign`. The administrator sees every report. The database covers Dasmariñas and the barangays around DLSU Taft; at Taft, the official shapes put the campus reading we tested in Barangay 719.
 

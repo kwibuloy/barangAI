@@ -11,7 +11,7 @@ from . import ai, barangays, geo, priority, trust
 from .auth import get_current_user, rate_limit, require_csrf, require_role
 from .db import get_db
 from .media import delete_image, image_response, sanitize_image, save_image
-from .models import CATEGORIES, DeletionRequest, Report, ReportAddendum, ReportEvent, User, now, uid, utc_iso
+from .models import CATEGORIES, Case, DeletionRequest, Report, ReportAddendum, ReportEvent, User, now, uid, utc_iso
 from .notifications import notify_staff
 from .usage import limit_setting, period_key, take
 
@@ -214,6 +214,9 @@ def submit_report(
     analysis = ai.for_submission(sanitized)
     location_label = geo.lookup(latitude, longitude) if geo.enabled() else None
     hazards = [hazard for hazard in analysis.hazards if hazard not in (dismissed_hazards or [])]
+    # The case may have been deleted during the slow steps above; then the report simply stands alone.
+    if joined_case and not db.get(Case, joined_case):
+        joined_case = None
     report_id = uid()
     location = save_image(report_id, sanitized)
     report = Report(

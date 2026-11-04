@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from . import privacy
 from .accounts import router as accounts_router
 from .auth import attempts
 from .auth import router as auth_router
@@ -26,14 +27,15 @@ from .google_auth import router as google_router
 from .media import validate_storage_config
 from .notifications import router as notifications_router
 from .points import router as points_router
-from .reports import router as reports_router
 from .records import router as records_router
+from .reports import router as reports_router
 from .workflow import router as workflow_router
 
 
 def create_app():
     validate_configured_checker()
     validate_storage_config()
+    privacy.check_ready()
     # The public site does not advertise its API; local development keeps the docs.
     hosted = {"docs_url": None, "redoc_url": None, "openapi_url": None} if os.environ.get("STATIC_SITE_DIR") else {}
     app = FastAPI(title="BarangAI API", root_path=os.environ.get("API_ROOT_PATH", ""), **hosted)
@@ -54,9 +56,9 @@ def create_app():
     app.include_router(geo_router)
     app.include_router(barangays_router)
     app.include_router(brief_router)
+    app.include_router(records_router)
     app.include_router(points_router)
     app.add_middleware(RequestBodyLimitMiddleware)
-    app.include_router(records_router)
 
     @app.get("/health", include_in_schema=False)
     def health():
@@ -130,5 +132,12 @@ def site_app(api, directory):
     return site
 
 
-api = create_app()
-app = site_app(api, os.environ["STATIC_SITE_DIR"]) if os.environ.get("STATIC_SITE_DIR") else api
+def __getattr__(name):
+    """Built when the server asks for `barangai.main:app`. Merely importing this module must not touch a database:
+    create_app migrates, and a test run importing it once migrated whatever database it found."""
+    if name != "app":
+        raise AttributeError(name)
+    api = create_app()
+    built = site_app(api, os.environ["STATIC_SITE_DIR"]) if os.environ.get("STATIC_SITE_DIR") else api
+    globals()["app"] = built
+    return built

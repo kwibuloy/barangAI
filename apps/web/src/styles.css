@@ -691,3 +691,26 @@ html::after {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The monthly report prints as a plain page: no navigation, no colour-heavy chrome. */
+@media print {
+  [data-slot='sidebar'],
+  .tab-bar,
+  [data-slot='sidebar-inset'] > header {
+    display: none !important;
+  }
+  [data-slot='sidebar-inset'] {
+    margin: 0 !important;
+  }
+  :root,
+  :root.dark,
+  :root[data-theme='dark'] {
+    color-scheme: light;
+    --background: #fff;
+    --foreground: #000;
+    --card: #fff;
+    --card-foreground: #000;
+    --muted-foreground: #444;
+    --border: #999;
+  }
+}

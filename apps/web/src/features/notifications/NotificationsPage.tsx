@@ -138,7 +138,7 @@ export function NotificationsPage() {
                       <span className="mt-0.5 block text-[15px] text-muted-foreground">
                         <Txt>
                           {item.kind === 'deletion_declined'
-                            ? 'An administrator declined your deletion request.'
+                            ? "Your barangay's staff declined your deletion request."
                             : SENTENCE[item.status]}
                         </Txt>
                       </span>

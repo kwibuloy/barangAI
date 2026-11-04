@@ -241,7 +241,7 @@ def test_detected_faces_are_blurred_before_storage(monkeypatch):
     assert outside > 240  # the rest of the photo is untouched
 
 
-def test_face_blur_failure_keeps_the_photo(monkeypatch):
+def test_face_blur_failure_refuses_the_photo(monkeypatch):
     from barangai import privacy
 
     def broken(_image):
@@ -249,7 +249,8 @@ def test_face_blur_failure_keeps_the_photo(monkeypatch):
 
     monkeypatch.setattr(privacy, "find_faces", broken)
     image = Image.new("RGB", (10, 10), "white")
-    assert privacy.blur_faces(image) == (image, 0)
+    with pytest.raises(privacy.BlurUnavailable):
+        privacy.blur_faces(image)
 
 
 def test_face_blur_is_off_without_opencv_or_when_disabled(monkeypatch):
@@ -262,7 +263,7 @@ def test_face_blur_is_off_without_opencv_or_when_disabled(monkeypatch):
     privacy.detector.cache_clear()
 
 
-def test_face_blur_is_off_when_the_model_file_is_missing(monkeypatch, tmp_path):
+def test_photos_are_refused_when_the_model_file_is_missing(monkeypatch, tmp_path):
     pytest.importorskip("cv2")
     from barangai import media, privacy
 
@@ -272,7 +273,9 @@ def test_face_blur_is_off_when_the_model_file_is_missing(monkeypatch, tmp_path):
     try:
         assert privacy.enabled() is False
         media.clear_sanitized_cache()
-        assert media.sanitize_image(jpeg(scene_with_face(120)))
+        with pytest.raises(media.HTTPException) as refused:
+            media.sanitize_image(jpeg(scene_with_face(120)))
+        assert refused.value.status_code == 503
     finally:
         privacy.detector.cache_clear()
 
@@ -407,13 +410,14 @@ def test_one_face_found_by_two_passes_is_blurred_to_the_outer_edge_of_both(monke
     assert privacy.find_faces(Image.new("RGB", (640, 480))) == [(200, 260, 320, 300)]
 
 
-def test_a_failed_pass_keeps_the_faces_the_other_passes_found(monkeypatch):
+def test_a_failed_pass_refuses_the_photo_rather_than_checking_it_in_part(monkeypatch):
     numpy = pytest.importorskip("numpy")
     from barangai import privacy
 
     upright = numpy.array([[100, 100, 60, 60]], dtype=float)
     monkeypatch.setattr(privacy, "detector", lambda: FakeModel(upright, RuntimeError("synthetic"), RuntimeError("synthetic")))
-    assert privacy.find_faces(Image.new("RGB", (640, 480))) == [(100, 100, 60, 60)]
+    with pytest.raises(RuntimeError):
+        privacy.find_faces(Image.new("RGB", (640, 480)))
 
 
 def test_empty_and_non_finite_boxes_from_the_model_are_ignored(monkeypatch):
@@ -425,7 +429,7 @@ def test_empty_and_non_finite_boxes_from_the_model_are_ignored(monkeypatch):
     assert privacy.find_faces(Image.new("RGB", (640, 480))) == []
 
 
-def test_unreadable_face_model_turns_blurring_off_instead_of_failing(monkeypatch, tmp_path, real_detector):
+def test_unreadable_face_model_counts_as_no_blur(monkeypatch, tmp_path, real_detector):
     broken = tmp_path / "broken.onnx"
     broken.write_bytes(b"not a model")
     monkeypatch.setenv("FACE_MODEL_PATH", str(broken))
@@ -783,7 +787,7 @@ def test_a_stored_photo_has_its_plate_blurred(real_plate_detector):
     assert sharpness(stored, truth) < sharpness(scene, truth) / 2
 
 
-def test_plate_failure_keeps_the_photo_and_plate_blur_can_be_turned_off(client, monkeypatch):
+def test_plate_failure_refuses_the_photo_and_plate_blur_can_be_turned_off(client, monkeypatch):
     from barangai import privacy
 
     def broken(_image):
@@ -792,7 +796,8 @@ def test_plate_failure_keeps_the_photo_and_plate_blur_can_be_turned_off(client, 
     image = Image.new("RGB", (40, 40))
     with monkeypatch.context() as patch:
         patch.setattr(privacy, "find_plates", broken)
-        assert privacy.blur_plates(image) == (image, 0)
+        with pytest.raises(privacy.BlurUnavailable):
+            privacy.blur_plates(image)
     assert privacy.plate_detector() is None
     assert privacy.find_plates(image) == []
 

@@ -2,9 +2,9 @@
 
 > Parked on 3 November 2026: the project now runs locally. See [mobile.md](mobile.md). The staff jurisdiction steps below still apply locally.
 
-The selected route is Render Free + Supabase Free, replacing the earlier OCI proposal. A single container serves the React website and FastAPI under one HTTPS origin. PostgreSQL and private photos persist in Supabase. The public service is [BarangAI](https://barangai-watch.onrender.com). On 3 November 2026 `/api/health` returned `{"status":"ok"}` and its website files and API routes matched commit `e5fcb04`. Because startup runs Alembic before the server, a running service also means its migrations succeeded. This verifies availability, not classification accuracy, signed-in flows or maximum-load memory use.
+The route chosen then was Render Free + Supabase Free, replacing the earlier OCI proposal. A single container serves the React website and FastAPI under one HTTPS origin. PostgreSQL and private photos persist in Supabase. The public service is [BarangAI](https://barangai-watch.onrender.com). On 3 November 2026 `/api/health` returned `{"status":"ok"}` and its website files and API routes matched commit `e5fcb04`. Because startup runs Alembic before the server, a running service also means its migrations succeeded. This verifies availability, not classification accuracy, signed-in flows or maximum-load memory use.
 
-Follow [Render setup](render-setup.md), [Supabase setup](supabase-setup.md), and [Google sign-in setup](google-sign-in.md). The root render.yaml declares one Free Docker service, deployment on every commit and no paid Render database or disk. Credentials belong only in server secret settings. Publishing, project selection and deployment still require the user's authorization.
+Follow [Render setup](render-setup.md), [Supabase setup](supabase-setup.md), and [Google sign-in setup](google-sign-in.md). The root render.yaml declares one Free Docker service, no automatic deployment and no paid Render database or disk. Credentials belong only in server secret settings. Publishing, project selection and deployment still require the user's authorization.
 
 ## Gates before sharing a presentation link
 

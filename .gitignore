@@ -12,6 +12,10 @@ env
 .claude/settings.local.json
 .claude/.last-check
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
+barangai-dev.last-backup.txt
 *.sqlite3
 *.sql
 private_media/

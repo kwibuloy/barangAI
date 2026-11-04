@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from . import barangays, points
 from . import delete_report as deletion
 from .auth import MAX_PASSWORD, current_session, hash_password, password_matches, rate_limit, require_csrf, require_role
-from .db import get_db
+from .db import get_db, scrub_deleted
 from .media import delete_image
-from .models import DeletionRequest, LoginSession, Notification, OAuthIdentity, Report, User, now
+from .models import DeletionRequest, LoginSession, Notification, OAuthIdentity, Report, Usage, User, now
 from .reports import authorized_report, deletion_request_data
 from .usage import limit_setting, period_key, take
 
@@ -90,11 +90,15 @@ def delete_account(
         (LoginSession, LoginSession.user_id),
     ):
         db.execute(delete(model).where(column == user_id))
+    for name in ("deletion", "preview"):
+        db.execute(delete(Usage).where(Usage.key.like(f"{name}:{user_id}:%")))
     db.execute(delete(User).where(User.id == user_id))
+    db.flush()  # Holds the write lock, so the commit below cannot fail on a busy database after the photos are gone.
     # The rows are still uncommitted if storage refuses, so the resident can simply try again.
     for location in images:
         delete_image(location)
     db.commit()
+    scrub_deleted(db)
     log.info("A resident deleted their account (%d photos removed)", len(images))
     response.delete_cookie("session")
     response.delete_cookie("csrf_token")
@@ -151,8 +155,10 @@ def decide_deletion(
         db.commit()
         return {"status": "declined"}
     images = deletion.erase_rows(db, report)
+    db.flush()  # Holds the write lock, so the commit below cannot fail on a busy database after the photos are gone.
     # The rows are still uncommitted if storage refuses, so whoever decided can try again.
     for location in images:
         delete_image(location)
     db.commit()
+    scrub_deleted(db)
     return {"status": "approved"}
