@@ -989,10 +989,10 @@ function ProtectedPhoto({
             {state === 'analysing' && <Sparkles className="size-4 shrink-0" aria-hidden="true" />}
             <Txt>
               {state === 'checking'
-                ? 'Hiding faces…'
+                ? 'Hiding faces and plates…'
                 : state === 'analysing'
                   ? 'Checking the photo…'
-                  : 'Preview hidden. Faces are still checked before saving.'}
+                  : 'Preview hidden. Faces and plates are still checked before saving.'}
             </Txt>
           </span>
         </div>

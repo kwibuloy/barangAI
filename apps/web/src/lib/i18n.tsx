@@ -308,9 +308,9 @@ const filipino: Record<string, string> = {
   'This code has expired': 'Nag-expire na ang code na ito',
   'Code not found': 'Hindi nakita ang code',
   'This reward is out of stock': 'Ubos na ang reward na ito',
-  'Hiding faces…': 'Tinatakpan ang mukha…',
-  'Preview hidden. Faces are still checked before saving.':
-    'Nakatago ang preview. Tinatakpan pa rin ang mukha bago i-save.',
+  'Hiding faces and plates…': 'Tinatakpan ang mukha at plaka…',
+  'Preview hidden. Faces and plates are still checked before saving.':
+    'Nakatago ang preview. Tinatakpan pa rin ang mukha at plaka bago i-save.',
   Back: 'Bumalik',
   'Staff sections': 'Mga section',
   'Your barangay': 'Barangay mo',

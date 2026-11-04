@@ -705,3 +705,99 @@ def test_the_preview_takes_a_phone_sized_photo(client):
     files = {"image": ("phone.jpg", buffer.getvalue(), "image/jpeg")}
     token = {"X-CSRF-Token": client.cookies.get("csrf_token", "")}
     assert client.post("/reports/photo-preview", files=files, headers=token).status_code == 200
+
+
+@pytest.fixture
+def real_plate_detector(monkeypatch):
+    pytest.importorskip("cv2")
+    from barangai import media, privacy
+
+    monkeypatch.setenv("PLATE_BLUR", "on")
+    privacy.plate_detector.cache_clear()
+    media.clear_sanitized_cache()
+    yield privacy
+    privacy.plate_detector.cache_clear()
+    media.clear_sanitized_cache()
+
+
+def scene_with_plate(plate_width, colours=((245, 245, 240), (15, 15, 20)), text="NAB 1234"):
+    """A drawn car from behind with a synthetic Philippine-style plate, and where that plate is."""
+    from PIL import ImageFilter, ImageFont
+
+    scene = Image.new("RGB", (1200, 900), (150, 170, 190))
+    draw = ImageDraw.Draw(scene)
+    draw.rectangle((0, 600, 1200, 900), fill=(80, 80, 84))
+    car_width, middle, level = int(plate_width * 3.6), 600, 560
+    car_height = int(car_width * 0.62)
+    draw.rounded_rectangle(
+        (middle - car_width // 2, level - car_height // 2, middle + car_width // 2, level + car_height // 2),
+        radius=car_width // 12,
+        fill=(170, 40, 45),
+    )
+    plate_height = int(plate_width * 0.32)
+    left, top = middle - plate_width // 2, level + int(car_height * 0.14)
+    draw.rectangle((left, top, left + plate_width, top + plate_height), fill=colours[0], outline=(30, 30, 30), width=2)
+    font = ImageFont.load_default(int(plate_height * 0.72))
+    box = draw.textbbox((0, 0), text, font=font)
+    draw.text(
+        (left + (plate_width - box[2] + box[0]) / 2 - box[0], top + (plate_height - box[3] + box[1]) / 2 - box[1]),
+        text,
+        fill=colours[1],
+        font=font,
+    )
+    return scene.filter(ImageFilter.GaussianBlur(0.6)), (left, top, left + plate_width, top + plate_height)
+
+
+@pytest.mark.parametrize("width", [90, 140, 220, 340])
+@pytest.mark.parametrize(
+    "colours", [((245, 245, 240), (15, 15, 20)), ((235, 245, 235), (10, 90, 45)), ((240, 205, 60), (10, 10, 10))]
+)
+def test_real_plate_detector_finds_and_blurs_drawn_plates(real_plate_detector, width, colours):
+    scene, truth = scene_with_plate(width, colours)
+    boxes = real_plate_detector.find_plates(scene)
+    assert len(boxes) == 1
+    left, top, box_width, box_height = boxes[0]
+    assert left <= (truth[0] + truth[2]) / 2 <= left + box_width
+    assert top <= (truth[1] + truth[3]) / 2 <= top + box_height
+    before = sharpness(scene, truth)
+    blurred, count = real_plate_detector.blur_plates(scene)
+    assert count == 1
+    assert sharpness(blurred, truth) < before / 2
+
+
+def test_real_plate_detector_leaves_signs_wires_and_empty_scenes_sharp(real_plate_detector):
+    sign = Image.new("RGB", (1000, 750), (170, 190, 170))
+    draw = ImageDraw.Draw(sign)
+    draw.rectangle((470, 300, 490, 750), fill=(90, 90, 90))
+    draw.rectangle((340, 120, 620, 300), fill=(245, 245, 240), outline=(10, 10, 10), width=6)
+    draw.rectangle((360, 180, 600, 240), fill=(190, 30, 30))
+    for scene in (Image.new("RGB", (1200, 900), (120, 130, 140)), wiring_scene(), sign):
+        assert real_plate_detector.find_plates(scene) == []
+
+
+def test_a_stored_photo_has_its_plate_blurred(real_plate_detector):
+    from barangai import media
+
+    scene, truth = scene_with_plate(220)
+    stored = Image.open(io.BytesIO(media.sanitize_image(jpeg(scene))))
+    assert sharpness(stored, truth) < sharpness(scene, truth) / 2
+
+
+def test_plate_failure_keeps_the_photo_and_plate_blur_can_be_turned_off(client, monkeypatch):
+    from barangai import privacy
+
+    def broken(_image):
+        raise RuntimeError("synthetic failure")
+
+    image = Image.new("RGB", (40, 40))
+    with monkeypatch.context() as patch:
+        patch.setattr(privacy, "find_plates", broken)
+        assert privacy.blur_plates(image) == (image, 0)
+    assert privacy.plate_detector() is None
+    assert privacy.find_plates(image) == []
+
+
+@pytest.mark.parametrize("size", [(20, 20), (63, 63), (1600, 60), (60, 1600), (200, 60)])
+def test_real_plate_detector_handles_tiny_and_narrow_photos(real_plate_detector, size):
+    assert real_plate_detector.find_plates(Image.new("RGB", size, (120, 130, 140))) == []
+
