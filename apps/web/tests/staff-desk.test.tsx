@@ -217,8 +217,8 @@ const GROUPED = [
 ]
 
 it('opens from each Overview figure a list of exactly that many rows', async () => {
-  // This is the file's first visit to the queue: a slow first load of its code must not eat into the wait for rows.
-  await import('../src/features/staff/QueuePage')
+  // Both lazy routes load before the clock matters: under a parallel run their first load can eat the wait for rows.
+  await Promise.all([import('../src/features/staff/QueuePage'), import('../src/features/staff/OverviewPage')])
   serve(staff, url => (url.endsWith('/reports') ? GROUPED : []))
   at('/desk')
   render(<App />)
@@ -238,7 +238,7 @@ it('opens from each Overview figure a list of exactly that many rows', async () 
     fireEvent.click(screen.getByRole('link', { name: 'Overview' }))
     await screen.findByText('Operations overview')
   }
-})
+}, 60_000) // Four round trips through two heavy pages.
 
 it('labels the category figures and counts the verified category over the resident one', async () => {
   serve(staff, url => (url.endsWith('/reports') ? GROUPED : []))

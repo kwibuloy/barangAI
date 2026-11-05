@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { useText } from '../lib/i18n'
 
 /** Full-body sticker poses cut from the user's own Kap sheet by scripts/kap.py: the mascot on every screen but sign-in,
     which has its own bust frames (features/auth/KapBuddy.tsx). A missing pose renders nothing. */
@@ -33,6 +34,7 @@ export function Kap({
   className?: string
   decorative?: boolean
 }) {
+  const t = useText()
   const [hops, setHops] = useState(0)
   const src = POSES[`../assets/kap/${pose}.webp`]
   if (!src) return null
@@ -53,7 +55,7 @@ export function Kap({
     >
       <img
         src={src}
-        alt={decorative ? '' : 'Kap, the BarangAI mascot'}
+        alt={decorative ? '' : t('Kap, the BarangAI mascot')}
         aria-hidden={decorative || undefined}
         draggable={false}
         className={cn('block h-full w-auto', motion !== 'none' && 'kap-breathe')}

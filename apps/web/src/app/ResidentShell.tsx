@@ -1,4 +1,4 @@
-import { createContext, lazy, Suspense, useContext } from 'react'
+import { createContext, lazy, Suspense, useContext, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { m } from 'motion/react'
 import { Bell, ClipboardList, Gift, House, LifeBuoy, Map as MapIcon, SquarePen } from 'lucide-react'
@@ -9,6 +9,8 @@ import type { User } from '../features/auth/queries'
 import { AccountButton } from '../features/account/AccountSettings'
 import { useLiveRefresh, useNotifications } from '../features/notifications/NotificationsPage'
 import { PageSpinner } from '@/components/page'
+import { OfflineStrip } from '@/components/OfflineStrip'
+import { keepOnlyDraftsOf } from '../features/reports/draft'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
 import { glassesAvailable } from '../features/glasses/connection'
@@ -136,8 +138,12 @@ export function ResidentShell({ user }: { user: User }) {
   const desktop = useMediaQuery(DESKTOP)
   useKeyboardMark()
   useLiveRefresh()
+  useEffect(() => {
+    void keepOnlyDraftsOf(user.id)
+  }, [user.id])
   return (
     <UserContext.Provider value={user}>
+      <OfflineStrip />
       <div className="resident-shell min-h-dvh">
         {desktop && (
           <Suspense fallback={null}>

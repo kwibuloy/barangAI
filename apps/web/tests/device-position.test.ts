@@ -35,7 +35,7 @@ describe('devicePosition', () => {
     ;(window as { Capacitor?: unknown }).Capacitor = { isNativePlatform: () => true }
     getCurrentPosition.mockRejectedValue(new Error('denied'))
     const onPosition = vi.fn()
-    await new Promise<void>(resolve => devicePosition(onPosition, resolve, options))
+    await new Promise<void>(resolve => devicePosition(onPosition, () => resolve(), options))
     expect(onPosition).not.toHaveBeenCalled()
   })
 })

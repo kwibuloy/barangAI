@@ -17,7 +17,7 @@ export function SideBar({ user }: { user: User }) {
   const t = useText()
   const unread = useUnread()
   return (
-    <aside className="scroll-thin fixed inset-y-0 left-0 z-40 flex w-[17rem] flex-col gap-6 overflow-y-auto border-r-2 bg-sidebar px-4 pt-7 pb-4">
+    <aside className="scroll-thin fixed top-[var(--offline-h)] bottom-0 left-0 z-40 flex w-[17rem] flex-col gap-6 overflow-y-auto border-r-2 bg-sidebar px-4 pt-7 pb-4">
       <Link to="/home" className="rounded-xl px-2" aria-label={t('BarangAI home')}>
         <Wordmark />
       </Link>

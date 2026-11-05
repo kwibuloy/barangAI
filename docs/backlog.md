@@ -18,6 +18,7 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 | D8 | Monthly report (`/desk/records`): counts, typical times, backlog age, rejection reasons, CSV and print, limited to the caller's barangay | `test_records.py`, `records.test.tsx`, screenshots awaiting approval |
 | D9 | Staff report view: the three category fields no longer overlap; a staff account with no barangay is told why its desk is empty | Screenshots awaiting approval |
 | D10 | Security and backend batch, API side (B5, B6, P1 API, M1, M3 to M10, M12 to M14; P7 without unlink): see docs/api.md and docs/architecture.md | `test_admin.py`, `test_limits.py`, `test_points_ledger.py`, `test_links_and_polls.py`, `test_export_erasure_ops.py` |
+| D12 | Resident batch: P2, P3, P4, P5, P12, P13 resident side, P14 strings and scan (Filipino review by a person still open), P10 except the primary button, P11 resident side (TalkBack and NVDA not run). Reads refused on a temporary password; a terminal reset makes staff and administrators choose their own; administrators can delete feedback; `backup consolidate-photos` prepared for M11 and not run on real data; M2 | `resident-help.test.tsx`, `contrast.test.ts`, `api-errors-i18n.test.ts`, `mobile-fallback.test.ts`, `test_staff_desk.py`, `test_data_safety.py`, `scripts/journey.mjs`. The Android screens compile but were not run on a device; screenshots await approval |
 | D11 | Staff desk batch: P1 (accounts page, first-run checklist, forced password change, phone address as text), P6, P8 (thumbnails, open-only default, saved phrases, save and next, bulk "Start verification"), P9, P11 for staff screens, P13 staff side, M8 screen, P7's confirm prompt (a safety net so far: screens only link pairs staff already confirmed, which skip the check) | `test_staff_desk.py`, `staff-desk.test.tsx`, screenshots awaiting approval |
 
 ## Open: 1. Blockers and current risks
@@ -36,19 +37,14 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 | ID | Item | Evidence | Why it matters | Effort | Done when | Lead |
 | --- | --- | --- | --- | --- | --- | --- |
 | P1 | Start a barangay without a developer. Left: the address as a QR code (deferred: no QR library in the project, and new dependencies need approval; the address shows as text), and loading barangays still needs a command | C | The biggest barrier to a pilot | S-M | A non-developer gets staff signed in and one synthetic report through, without a terminal | Product |
-| P2 | Friendly screen when the server can't be reached (Filipino too), instead of an address prompt | C | First thing residents see when away from the Wi-Fi | S | Server off: translated screen with Retry | UX |
-| P3 | Network errors: friendly message, upload timeout, "offline · last updated" strip, no sign-in screen on a 5xx | C | Raw "Failed to fetch"; a server error looks like being signed out | S-M | Server stopped mid-session: strip appears within about 20 s | UX |
-| P4 | Keep report drafts across tab switches, reloads and re-sign-in | C | Tapping another tab loses the photo and pin | M | Draft restored; other accounts never see it; wiped after sending or 24 h | UX |
-| P5 | Top of report detail: state, latest staff note, what happens next; "still not fixed" as a linked new report | C and E (first experience drives repeat reports) | Follow-through is the retention driver | S-M | All six statuses show a next step | Product |
 | P6 | Duplicate review shows both photos, distance and date | C | Staff merge blind, and merging moves other residents' status | S-M | Compare without leaving the report | UX |
 | P7 | Grouping can't be undone (the distance check and its prompt are done) | R | A mis-click follows the resident forever and pays points | M | Unlink restores status, points, category and history, audited (status-path exception needs owner) | Backend |
 | P8 | Faster triage: thumbnails, open-only default, saved phrases, save and next | C | Daily staff time, which is what a barangay pays for | S each | Pending to Accepted in two choices and two clicks | UX |
 | P9 | Counts come from the server (figures now equal the lists they open; both stop at the newest 2,000) | C | Lists cut at 2,000 | S-M | A barangay past 2,000 reports still sees true totals | UX |
-| P10 | Contrast: white on green is 2.09:1 on every primary button; also error text, badges, focus rings | R (computed) | Hard to read outdoors; fails WCAG AA | S | Token check at 4.5:1 and owner's screenshot approval | UX |
-| P11 | Screen reader and keyboard gaps, resident side: focus on step change. Staff screens have route titles, row names and a chart table; NVDA check not run | C | Accessibility and public-sector credibility | S-M | TalkBack report and NVDA status change completed | UX |
-| P12 | Location dead-end: Next disabled with no reason, pin drawn when none is set | C | Blocks a report with no explanation | S | Told exactly what to do with GPS denied | UX |
-| P13 | Help path, resident side: "ask your barangay hall" on sign-in, barangay contact details, an entry to `POST /feedback` (staff side done) | C | Locked-out residents have nowhere to go | S-M | Reachable from sign-in and failed chat in both languages | Support |
-| P14 | Remaining translation gaps: 15 API errors, native dialog; hide "Already reported" for grouped cases; Filipino review by a person | R | Trust among non-English users | S | A test fails on an untranslated API error | UX |
+| P10 | Contrast left: white on green is 2.09:1 on every primary button. Error text, links, badges, muted text, focus rings and input borders now pass (`contrast.test.ts`) | R (computed) | Hard to read outdoors; fails WCAG AA | S | Owner picks white or dark labels (Q5) and approves the screenshots | UX |
+| P11 | Screen reader checks not run. Report steps move focus to the heading and announce the pin; both sides have route titles, row names and a chart table | C | Accessibility and public-sector credibility | S-M | TalkBack report and NVDA status change completed | UX |
+| P15 | Report form leftovers from the resident batch: clearing the form leaves the stored draft until it expires or is replaced; "Continue" on an old draft drops a pending "Still not fixed"; a carried pin reaches staff with no source (`previous` is stored as none); a browser that can't redraw a photo stores the original, metadata included, in the draft on that device | C | Small gaps, none visible in the normal flow | S | Each has a test | UX |
+| P14 | Filipino review by a person | R | Trust among non-English users | S | A Filipino speaker has read the screens | UX |
 
 ## Open: 3. Business validation (business-model.md)
 
@@ -66,7 +62,6 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 | ID | Item | Evidence | Effort | Done when |
 | --- | --- | --- | --- | --- |
 | M1 | Points: refund after deletion keeps points for a deleted report; merges pay twice; "a day" is rolling; the daily cap applies at acceptance | R | M | Ledger tests cover these sequences. Do after Q2 |
-| M2 | One browser end-to-end journey on a real server; CI job with the `ai` extra so blur tests run | C | M | Runs in CI, blur tests not skipped |
 | M3 | Product metrics command computed from the database, with no third-party analytics (business-model.md) | C | S | Prints activation, follow-through and retention |
 | M4 | Admin report list: N+1 on barangay names, 1.7 MB every 15 s at 2,000 reports; add indexes; ETag or `?since=` | R | S-M | Ten queries or fewer; unchanged poll returns 304 |
 | M5 | A confirmed duplicate can end with no shared case when linking then fails | R | S | No suggestion confirmed without a case |
@@ -75,7 +70,7 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 | M8 | Admin log of rewards and codes: who priced, redeemed and honoured | R | M | Any code can be traced |
 | M9 | Self-service data download; retention schedule (after B2) | C | M | A resident downloads their data |
 | M10 | Log to a rotating file; faster tests (195 s) with a template database | R | S | Under 90 s; failures survive closing the window |
-| M11 | Move the 24 photos under `apps/api/private_media` into `private_media`, then remove the stray `apps/api/barangai-dev.db` and old `barangai-backup.sql` (a plain-text PostgreSQL dump) | R | S | Owner approves deleting them; all photos load |
+| M11 | Move the 24 photos under `apps/api/private_media` into `private_media` (`python -m barangai.backup consolidate-photos`, a dry run unless `--apply`; prepared and tested, not run on real data), then remove the stray `apps/api/barangai-dev.db` and old `barangai-backup.sql` (a plain-text PostgreSQL dump) | R | S | Owner approves deleting them; all photos load |
 | M12 | Dependencies: install with the constraints file; add `pip-audit` and `npm audit` to CI (no Python vulnerability scan has run) | C | S | CI fails on known-vulnerable pins |
 | M13 | Move psycopg2 to an optional extra | C | S | Base install works without it |
 
@@ -112,4 +107,5 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 - **Q1. MobileCLIP2:** replace it now (recommended), since the licence excludes commercial use and this is now a business?
 - **Q2. Rewards:** keep points in the first paid offer, or sell without public-funded rewards until counsel answers (recommended)?
 - **Q3. Pilot buyer:** Dasmariñas barangays first (recommended), HOAs, or the city?
+- **Q5. Primary button label:** keep white on green (2.09:1, Duolingo's look) or switch to the dark label `#131f24` (recommended on readability, since residents use it outdoors)? Comparison: `.shots/batch5/primary-label-current.png` and `primary-label-dark.png`.
 - **Q4. Same-Wi-Fi limit:** accept that real resident pilots wait on F1 (recommended), or build capture-and-send-later first?

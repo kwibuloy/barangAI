@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
-import { LogOut, Monitor, Moon, Sun } from 'lucide-react'
+import { ChevronRight, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Segmented } from '@/components/page'
@@ -8,6 +8,7 @@ import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { useSignOut, type User } from '../auth/queries'
 import { LegalLinks } from '../legal/LegalPage'
 import { AccountSecurity } from './AccountSecurity'
+import { FeedbackForm } from './FeedbackForm'
 import { glassesAvailable } from '../glasses/connection'
 
 const GlassesSettings = lazy(() => import('../glasses/Glasses').then(module => ({ default: module.GlassesSettings })))
@@ -77,6 +78,18 @@ export function AccountSettings({ user }: { user: User }) {
         </Suspense>
       )}
       <AccountSecurity user={user} />
+      {/* Staff send theirs from the Help page. */}
+      {user.role === 'resident' && (
+        <details className="group hairline rounded-2xl bg-card">
+          <summary className="flex min-h-12 items-center justify-between px-4 text-[16px] font-medium [&::-webkit-details-marker]:hidden">
+            <Txt>Send feedback</Txt>
+            <ChevronRight className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
+          </summary>
+          <div className="px-4 pb-4">
+            <FeedbackForm note="Administrators read this with your account number. Leave out other people's names and details." />
+          </div>
+        </details>
+      )}
       {signOut.error && (
         <p role="alert" className="text-[14px] text-destructive">
           <Txt>{signOut.error.message}</Txt>

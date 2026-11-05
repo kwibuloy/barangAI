@@ -25,6 +25,9 @@ def change(client, current, new=NEW_PASSWORD):
     )
 
 
+TEMPORARY = "Change your temporary password first"
+
+
 def test_a_new_account_can_do_nothing_but_change_its_temporary_password_or_sign_out(client, photo):
     report = resident_report(client, photo, "ana@example.test")
     admin(client)
@@ -36,8 +39,11 @@ def test_a_new_account_can_do_nothing_but_change_its_temporary_password_or_sign_
     assert me["must_change_password"] is True
     assert client.get("/auth/me").json()["must_change_password"] is True
 
-    # Reads still answer, so the screen can load; every write is refused, including a status change.
-    assert client.get("/reports").status_code == 200
+    # /auth/me answers, so the screen can load; every other read is refused too, and a status change with them.
+    for path in ("/reports", f"/reports/{report}", f"/reports/{report}/image", "/notifications", "/auth/export",
+                 "/rewards/manage", "/admin/feedback"):
+        read = client.get(path)
+        assert read.status_code == 403 and read.json()["detail"] == TEMPORARY, path
     status = client.post(
         f"/reports/{report}/status", json={"status": "Under Verification", "note": "x"}, headers=headers(client)
     )
@@ -51,6 +57,7 @@ def test_a_new_account_can_do_nothing_but_change_its_temporary_password_or_sign_
 
     assert change(client, temporary).status_code == 204
     assert client.get("/auth/me").json()["must_change_password"] is False
+    assert client.get("/reports").status_code == 200
     answer = client.post(
         f"/reports/{report}/status", json={"status": "Under Verification", "note": "Checking"}, headers=headers(client)
     )
@@ -276,3 +283,53 @@ def test_duplicate_review_without_a_validated_model_says_so(client, photo):
     staff_login(client)
     data = client.get(f"/reports/{report}/duplicates").json()
     assert data == {"embedding_available": False, "suggestions": [], "manual_review_required": True}
+
+
+def test_a_terminal_reset_makes_staff_choose_their_own_password_but_not_residents(client):
+    from barangai.bootstrap_staff import reset_password
+
+    boss = {"email": "boss@example.test"}
+    admin(client)
+    temporary = create(client, email="desk@example.test", role="staff").json()["temporary_password"]
+    sign_in(client, "desk@example.test", temporary)
+    assert change(client, temporary).status_code == 204
+
+    reset_password("desk@example.test", "typed at the laptop 123")
+    assert sign_in(client, "desk@example.test", "typed at the laptop 123")["must_change_password"] is True
+    assert client.get("/reports").status_code == 403
+    assert change(client, "typed at the laptop 123").status_code == 204
+    assert client.get("/reports").status_code == 200
+
+    reset_password(boss["email"], "typed for the admin 123")
+    assert sign_in(client, boss["email"], "typed for the admin 123")["must_change_password"] is True
+
+    client.cookies.clear()
+    created = client.post("/auth/register", json={"email": "res@example.test", "password": "a resident password 1",
+                                                  "accepted_terms": True})
+    assert created.status_code == 201
+    reset_password("res@example.test", "typed for a resident 123")
+    assert sign_in(client, "res@example.test", "typed for a resident 123")["must_change_password"] is False
+    assert client.get("/reports").status_code == 200
+
+
+def test_only_an_administrator_can_delete_a_feedback_note(client):
+    from barangai.db import session_for_url
+    from barangai.models import Feedback
+
+    admin(client)
+    desk = create(client, email="desk@example.test", role="staff").json()["temporary_password"]
+    sign_in(client, "desk@example.test", desk)
+    change(client, desk)
+    sent = client.post("/feedback", json={"message": "Maria at 5 Rizal St is noisy"}, headers=headers(client))
+    note = sent.json()["id"]
+
+    assert client.delete(f"/admin/feedback/{note}", headers=headers(client)).status_code == 403
+    admin(client)
+    assert client.delete(f"/admin/feedback/{note}").status_code == 403  # No CSRF token.
+    assert client.get("/admin/feedback").json()[0]["id"] == note
+    assert client.delete(f"/admin/feedback/{note}", headers=headers(client)).status_code == 204
+    assert client.get("/admin/feedback").json() == []
+    with session_for_url() as db:
+        assert db.get(Feedback, note) is None
+    gone = client.delete(f"/admin/feedback/{note}", headers=headers(client))
+    assert gone.status_code == 404 and gone.json()["detail"] == "Feedback not found"

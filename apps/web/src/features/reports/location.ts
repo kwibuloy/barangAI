@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../lib/api'
 
 /** Where the pin came from, shown beside it so the resident knows what to double-check. */
-export type LocationSource = 'photo' | 'device' | 'manual' | null
+export type LocationSource = 'photo' | 'device' | 'manual' | 'previous' | null
 
 /**
  * GPS coordinates from the photo's own metadata, read in the browser before upload (the server strips all
@@ -28,7 +28,7 @@ export async function photoCoordinates(file: File): Promise<[number, number] | n
  */
 export function devicePosition(
   onPosition: (position: { coords: { latitude: number; longitude: number } }) => void,
-  onFailure: () => void,
+  onFailure: (reason: unknown) => void,
   options: PositionOptions,
 ) {
   const native = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()
@@ -39,6 +39,20 @@ export function devicePosition(
   void import('@capacitor/geolocation')
     .then(({ Geolocation }) => Geolocation.getCurrentPosition(options))
     .then(onPosition, onFailure)
+}
+
+/**
+ * What to tell the resident when GPS fails. Browsers give a code (1 refused, 2 no position, 3 too slow); the Android
+ * app's plugin gives codes such as OS-PLUG-GLOC-0003 and a message, so the wording decides there.
+ */
+export function locationProblem(reason: unknown) {
+  const { code, message } = (reason ?? {}) as { code?: unknown; message?: unknown }
+  const text = `${String(code ?? '')} ${String(message ?? '')}`
+  if (code === 1 || /permission|denied|GLOC-000[39]/i.test(text))
+    return 'Location permission is off for this app. Allow it in your phone settings, or set the pin on the map.'
+  if (code === 2 || /not enabled|disabled|turned off|location services|GLOC-00(07|16|17)/i.test(text))
+    return 'GPS is off on this phone. Turn on Location and try again, or set the pin on the map.'
+  return "GPS couldn't find you. Try again in an open spot, or set the pin on the map."
 }
 
 /** Which barangay the pin falls in, as a preview; the server works it out again on submit. Null while unknown. */

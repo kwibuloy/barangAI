@@ -4,10 +4,172 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BarangAI</title>
+    <!-- Shown by the Android app when the server can't be reached (?failed=1) and on first launch, when no address is
+         known yet. It stands alone: nothing here can come from the server. Colours are the site's tokens (styles.css).
+         The buttons ask MainActivity to act, through barangai-app:// links that only this page may use. -->
     <style>
-      html { height: 100%; background: #ffffff; }
-      @media (prefers-color-scheme: dark) { html { background: #131f24; } }
+      :root {
+        --background: #ffffff;
+        --foreground: #3c3c3c;
+        --muted: #666666;
+        --primary: #58cc02;
+        --primary-edge: #58a700;
+        --on-primary: #ffffff;
+        --link: #0b6aa8;
+        --ring: #0f7ac0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #131f24;
+          --foreground: #f1f7fb;
+          --muted: #9fb2bc;
+          --primary: #93d333;
+          --primary-edge: #79b933;
+          --on-primary: #131f24;
+          --link: #49c0f8;
+          --ring: #49c0f8;
+        }
+      }
+      html {
+        height: 100%;
+        background: var(--background);
+      }
+      body {
+        display: grid;
+        min-height: 100%;
+        margin: 0;
+        place-items: center;
+        box-sizing: border-box;
+        padding: 16px;
+        color: var(--foreground);
+        font: 600 16px/1.5 ui-rounded, 'SF Pro Rounded', system-ui, Roboto, Arial, sans-serif;
+        text-align: center;
+      }
+      main {
+        width: 100%;
+        max-width: 360px;
+      }
+      img {
+        height: 128px;
+        width: auto;
+      }
+      h1 {
+        margin: 12px 0 0;
+        font-size: 26px;
+        font-weight: 900;
+        line-height: 1.1;
+        letter-spacing: -0.025em;
+      }
+      p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      button {
+        display: block;
+        width: 100%;
+        min-height: 56px;
+        margin-top: 20px;
+        border: 2px solid transparent;
+        border-radius: 20px;
+        padding: 8px 28px;
+        background: var(--primary);
+        box-shadow: 0 4px 0 var(--primary-edge);
+        color: var(--on-primary);
+        font: inherit;
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      button[hidden] {
+        display: none;
+      }
+      button:active {
+        box-shadow: none;
+        transform: translateY(4px);
+      }
+      button.quiet {
+        min-height: 44px;
+        margin-top: 8px;
+        background: none;
+        box-shadow: none;
+        color: var(--link);
+        font-size: 14px;
+      }
+      button:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+      small {
+        display: block;
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        button:active {
+          transform: none;
+        }
+      }
     </style>
   </head>
-  <body></body>
+  <body>
+    <main>
+      <img src="kap.webp" alt="" />
+      <h1 id="title"></h1>
+      <p id="body"></p>
+      <button id="primary" type="button"></button>
+      <button id="advanced" class="quiet" type="button"></button>
+      <small id="emergency"></small>
+    </main>
+    <script>
+      var COPY = {
+        en: {
+          failedTitle: "Can't reach your barangay's server",
+          failedBody: 'Check that you are on the same Wi-Fi as your barangay hall, then try again.',
+          retry: 'Retry',
+          advanced: 'Advanced',
+          firstTitle: "Let's connect to your barangay",
+          firstBody: 'Your barangay hall can give you the phone address.',
+          enter: 'Enter the address',
+          emergency: 'Not for emergencies. If anyone is in danger, call 911.',
+        },
+        fil: {
+          failedTitle: 'Hindi maabot ang server ng barangay mo',
+          failedBody: 'I-check kung pareho kayo ng Wi-Fi ng barangay hall, tapos subukan ulit.',
+          retry: 'Subukan ulit',
+          advanced: 'Advanced',
+          firstTitle: 'Ikonekta natin sa barangay mo',
+          firstBody: 'Puwede mong hingin sa barangay hall ang phone address.',
+          enter: 'Ilagay ang address',
+          emergency: 'Hindi para sa emergency. Kung may nasa panganib, tumawag sa 911.',
+        },
+      }
+      var language = /^(fil|tl)\b/i.test(navigator.language || '') ? 'fil' : 'en'
+      var copy = COPY[language]
+      var failed = /[?&]failed=1\b/.test(location.search)
+      function text(id, value) {
+        document.getElementById(id).textContent = value
+      }
+      function ask(action) {
+        location.href = 'barangai-app://' + action
+      }
+      document.documentElement.lang = language
+      text('title', failed ? copy.failedTitle : copy.firstTitle)
+      text('body', failed ? copy.failedBody : copy.firstBody)
+      text('primary', failed ? copy.retry : copy.enter)
+      text('advanced', copy.advanced)
+      text('emergency', copy.emergency)
+      document.getElementById('primary').onclick = function () {
+        ask(failed ? 'retry' : 'address')
+      }
+      var advanced = document.getElementById('advanced')
+      // With no address yet, the main button already is the address entry.
+      if (failed) advanced.onclick = function () {
+        ask('address')
+      }
+      else advanced.hidden = true
+    </script>
+  </body>
 </html>

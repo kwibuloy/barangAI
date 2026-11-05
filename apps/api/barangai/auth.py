@@ -28,7 +28,7 @@ _hashing = threading.BoundedSemaphore(2)
 _decoy = hasher.hash(secrets.token_urlsafe(16))
 _chains_logged = set()
 MAX_PASSWORD = 128
-TERMS_VERSION = "2026-11-04"
+TERMS_VERSION = "2026-11-05"
 
 
 def hash_password(password: str) -> str:
@@ -237,8 +237,16 @@ def current_session(request: Request, db: Session):
     return session
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
+def signed_in_user(request: Request, db: Session = Depends(get_db)):
+    """Whoever holds the session. Only /auth/me uses this directly, so the app can see a password must be changed."""
     return current_session(request, db).user
+
+
+def get_current_user(user: User = Depends(signed_in_user)):
+    """Every other read: a temporary password someone else has seen opens nothing but the change-password screen."""
+    if user.must_change_password:
+        raise HTTPException(403, "Change your temporary password first")
+    return user
 
 
 def require_role(user: User, roles):
@@ -323,7 +331,7 @@ def login(credentials: LoginCredentials, request: Request, response: Response, d
 
 
 @router.get("/me")
-def me(user: User = Depends(get_current_user)):
+def me(user: User = Depends(signed_in_user)):
     return user_data(user)
 
 

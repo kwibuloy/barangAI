@@ -9,6 +9,7 @@ Run from the repo root and report each result exactly, including failure output.
 2. Web (in `apps/web`): `npm test`, then `npm run build` (runs `tsc -b` first).
 3. ML only if `ml/` changed: `cd ml; ../.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider`.
 4. Lint: `.venv/Scripts/python.exe -m ruff check apps/api` and `npx prettier --check src tests` in `apps/web`.
+5. Journey (in `apps/web`, after the build): `node scripts/journey.mjs --no-build`. One whole resident and staff journey in a real browser, on a real server with a throwaway database. It prints PASS or FAIL per step and exits non-zero on failure. Needs Chrome or Edge (`CHROME_PATH`).
 
 If `.venv` or `apps/web/node_modules` is missing, set them up first: `python -m venv .venv`, `.venv/Scripts/python.exe -m pip install -c deploy/constraints-render.txt -e "./apps/api[dev]"`, `npm ci` in `apps/web`. If Vite fails to load its config in a restricted shell, retry with `-- --configLoader runner`.
 

@@ -26,6 +26,35 @@ jobs:
       - run: ruff check apps/api
       - run: pytest apps/api/tests -q -p no:cacheprovider
 
+  # With the AI extra, so the face and plate blur tests run instead of skipping, and one whole journey in a real browser
+  # with blur on: register, report, staff to Resolved, points, reward, deletion, server stopped.
+  journey:
+    runs-on: ubuntu-latest
+    env:
+      CHROME_NO_SANDBOX: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: pip install -c deploy/constraints-render.txt -c deploy/requirements-render-vision.txt -e "./apps/api[dev,ai]"
+      # A missing library would skip the blur tests silently, so this fails first.
+      - run: python -c "import cv2, numpy, onnxruntime"
+      - run: pytest apps/api/tests -q -p no:cacheprovider -rs
+      - run: npm ci
+        working-directory: apps/web
+      - run: node scripts/journey.mjs
+        working-directory: apps/web
+        env:
+          PYTHON: python
+
   web:
     runs-on: ubuntu-latest
     defaults:

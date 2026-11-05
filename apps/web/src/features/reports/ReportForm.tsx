@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, m } from 'motion/react'
 import {
@@ -28,20 +28,29 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Alert, LargeTitle } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
-import { post } from '../../lib/api'
+import { post, reportErrorMessage } from '../../lib/api'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
-import { ResidentAccount } from '../../app/ResidentShell'
+import { ResidentAccount, useResident } from '../../app/ResidentShell'
 import { categories, hazardLabels, label } from './categories'
 import { CategoryTile } from './CategoryIcon'
 import { MapPicker } from './MapPicker'
-import { devicePosition, photoCoordinates, useBarangayAt, useStreetName, type LocationSource } from './location'
+import {
+  devicePosition,
+  locationProblem,
+  photoCoordinates,
+  useBarangayAt,
+  useStreetName,
+  type LocationSource,
+} from './location'
+import { clearDraft, loadDraft, saveDraft, type ReportDraft } from './draft'
 import { compressPhoto, MAX_PICK_BYTES, MAX_UPLOAD_BYTES, photoDetails, type PhotoDetails } from './photo'
 import { findNearby, reportKeys, useCommunityCases, useSubmitReport } from './queries'
-import type { Category, Hazard, Nearby, Prediction, Report } from './types'
+import type { Category, FollowUp, Hazard, Nearby, Prediction, Report } from './types'
 import { takeHandedOffPhoto } from '../glasses/connection'
 
 const UNAVAILABLE: Prediction = { prediction_available: false, model_category: null, confidence: null }
 const NOT_FILLED = { category: false, description: false }
+const NO_AI = { category: null, description: null }
 const STEPS = ['Photo', 'Location', 'Details', 'Review'] as const
 /** Kap coaches each step from beside the progress bar, like Duolingo's owl over a lesson. */
 const COACH: { pose: KapPose; line: string }[] = [
@@ -93,6 +102,8 @@ export function ReportForm() {
   const [showMap, setShowMap] = useState(false)
   const [locating, setLocating] = useState(false)
   const [error, setError] = useState('')
+  // Why GPS gave no pin, kept for the Location step even when the attempt was the quiet one after a photo.
+  const [gpsProblem, setGpsProblem] = useState('')
   const [submitted, setSubmitted] = useState<Report | null>(null)
   // Which fields the AI filled from the photo; editing a field hands it back to the resident.
   const [aiFilled, setAiFilled] = useState(NOT_FILLED)
@@ -123,13 +134,23 @@ export function ReportForm() {
   }, [joining])
   // A field counts as the AI's only while it still holds the AI's text: a choice the resident made while the
   // photo was being checked is theirs, even though the AI's answer arrived afterwards.
-  const aiCategory = aiFilled.category && category === prediction?.model_category
-  const aiDescription = aiFilled.description && description === prediction?.suggested_description
-  const autoLocation = locationSource === 'photo' || locationSource === 'device'
+  // A restored draft remembers what the AI wrote: the fresh answer may differ, fail or come after Submit.
+  const [restoredAi, setRestoredAi] = useState<{ category: string | null; description: string | null }>(NO_AI)
+  const aiCategory =
+    (aiFilled.category && category === prediction?.model_category) ||
+    (Boolean(category) && category === restoredAi.category)
+  const aiDescription =
+    (aiFilled.description && description === prediction?.suggested_description) ||
+    (Boolean(description) && description === restoredAi.description)
+  const autoLocation = locationSource === 'photo' || locationSource === 'device' || locationSource === 'previous'
   // The case's staff-verified category, offered to the resident; it becomes theirs only once they confirm it.
   const caseCategory = Boolean(joining) && category === joining?.category
+  // The category a follow-up came with, possibly staff's: likewise the resident's only once confirmed. A new
+  // photo's AI answer doesn't replace it.
+  const carriedCategory = useRef<Category | null>(null)
+  const carried = Boolean(category) && category === carriedCategory.current
   // Auto-fill only assists: whatever it filled must be confirmed by the resident before sending.
-  const autoFilled = aiCategory || aiDescription || autoLocation || caseCategory
+  const autoFilled = aiCategory || aiDescription || autoLocation || caseCategory || carried
   // The tick covers the exact values the resident saw for this photo, so a late GPS fix, AI answer or new
   // photo clears it.
   const shown = [pickKey, category, description, latitude, longitude, locationSource].join('|')
@@ -187,13 +208,140 @@ export function ReportForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photo])
 
+  // Saved on this device per account, so another tab, a reload or a dropped session doesn't lose the report.
+  const accountId = useResident().id
+  const { state: arrival } = useLocation()
+  const followUp = (arrival as { followUp?: FollowUp } | null)?.followUp
+  const [offer, setOffer] = useState<ReportDraft | null>(null)
+  // Nothing is saved until the saved draft has been looked at, or it would be replaced before it could be offered.
+  const [draftChecked, setDraftChecked] = useState(false)
+  const unsaved = useRef<ReportDraft | null>(null)
+  function applyFollowUp() {
+    if (!followUp) return
+    carriedCategory.current = followUp.category
+    setCategory(followUp.category)
+    setDescription(`${t('Still not fixed. Follow-up to report')} #${followUp.reportId.slice(0, 8).toUpperCase()}.`)
+    setLatitude(String(followUp.latitude))
+    setLongitude(String(followUp.longitude))
+    setLocationSource('previous')
+    navigate('/report', { replace: true, state: null })
+  }
+  useEffect(() => {
+    let alive = true
+    void loadDraft(accountId).then(found => {
+      if (!alive) return
+      // Arriving to add to a case or finish a photo from the glasses: that is what the resident came to do.
+      if (found && !caseId && !fromGlasses) setOffer(found)
+      else {
+        applyFollowUp()
+        setDraftChecked(true)
+      }
+    })
+    return () => {
+      alive = false
+    }
+    // Once, when the form opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountId])
+  function restoreDraft(draft: ReportDraft) {
+    pickId.current += 1
+    setPickKey(pickId.current)
+    setPhoto(draft.photo)
+    setCategory(draft.category)
+    setDescription(draft.description)
+    setLatitude(draft.latitude)
+    setLongitude(draft.longitude)
+    setLocationSource(draft.locationSource)
+    pinnedByHand.current = draft.locationSource === 'manual'
+    setDetails(draft.details)
+    setPhotoGps(draft.photoGps)
+    setDismissedHazards(draft.dismissedHazards)
+    setRestoredAi({ category: draft.aiCategory, description: draft.aiDescription })
+    carriedCategory.current = draft.carriedCategory
+    if (draft.caseId) setParams({ case: draft.caseId }, { replace: true })
+    setStep(Math.min(draft.step, STEPS.length - 1))
+    setOffer(null)
+    setDraftChecked(true)
+    if (followUp) navigate('/report', { replace: true, state: null })
+  }
+  function discardDraft() {
+    void clearDraft(accountId)
+    setOffer(null)
+    applyFollowUp()
+    setDraftChecked(true)
+  }
+  useEffect(() => {
+    if (!draftChecked || submitted) return
+    const worthKeeping = photo || description.trim() || validCoordinates(latitude, longitude)
+    unsaved.current = worthKeeping
+      ? {
+          photo,
+          category,
+          description,
+          latitude,
+          longitude,
+          locationSource,
+          details,
+          photoGps,
+          dismissedHazards,
+          aiCategory: aiCategory ? category : null,
+          aiDescription: aiDescription ? description : null,
+          carriedCategory: carriedCategory.current,
+          caseId,
+          step,
+          savedAt: Date.now(),
+        }
+      : null
+    if (!unsaved.current) return
+    const timer = setTimeout(() => {
+      if (unsaved.current) void saveDraft(accountId, unsaved.current)
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the values above
+  }, [
+    draftChecked,
+    submitted,
+    photo,
+    category,
+    description,
+    latitude,
+    longitude,
+    locationSource,
+    details,
+    photoGps,
+    dismissedHazards,
+    caseId,
+    step,
+  ])
+  // Leaving the tab can't wait for the timer above.
+  useEffect(
+    () => () => {
+      if (unsaved.current) void saveDraft(accountId, unsaved.current)
+    },
+    [accountId],
+  )
+  function reportSent() {
+    unsaved.current = null
+    void clearDraft(accountId)
+  }
+
+  // Focus follows the step, for screen readers and keyboards: a heading, so a phone's keyboard stays closed.
+  const stepHeading = useRef<HTMLHeadingElement>(null)
+  const openedAtStep = useRef(step)
+  useEffect(() => {
+    if (openedAtStep.current === step) return
+    openedAtStep.current = -1
+    stepHeading.current?.focus({ preventScroll: true })
+  }, [step])
+
   // Faces first, then the AI's classification; the photo is revealed once both are done (or the AI is unavailable).
   const photoState: PreviewState = previewState === 'ready' && !prediction ? 'analysing' : previewState
   function go(next: number) {
     setDirection(next > step ? 1 : -1)
     setError('')
     setStep(next)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' })
   }
   function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -221,7 +369,8 @@ export function ReportForm() {
     setPhoto(null)
     setPreview('')
     // "I see this too" keeps the case's category; otherwise the new photo's AI answer fills it.
-    setCategory(joining?.category ?? '')
+    setCategory(joining?.category ?? carriedCategory.current ?? '')
+    setRestoredAi(NO_AI)
     if (aiDescription) setDescription('')
     setAiFilled(NOT_FILLED)
     setPrediction(null)
@@ -273,6 +422,7 @@ export function ReportForm() {
     setLatitude(lat)
     setLongitude(lng)
     setLocationSource('manual')
+    setGpsProblem('')
     pinnedByHand.current = true
   }
   /**
@@ -281,7 +431,7 @@ export function ReportForm() {
    */
   function locate(quiet = false, pick = pickId.current) {
     if (!navigator.geolocation) {
-      if (!quiet) setError('GPS is unavailable. Enter coordinates or place a pin on the map.')
+      setGpsProblem('GPS is unavailable. Enter coordinates or place a pin on the map.')
       return
     }
     setLocating(true)
@@ -295,11 +445,11 @@ export function ReportForm() {
         setLongitude(position.coords.longitude.toFixed(6))
         setLocationSource('device')
         setLocating(false)
-        if (!quiet) setError('')
+        setGpsProblem('')
       },
-      () => {
+      reason => {
         setLocating(false)
-        if (!quiet) setError('Location access was unavailable. Enter coordinates or place a pin on the map.')
+        setGpsProblem(locationProblem(reason))
       },
       { enableHighAccuracy: true, timeout: 10000 },
     )
@@ -347,9 +497,10 @@ export function ReportForm() {
     submitReport.mutate(form, {
       onSuccess: report => {
         navigator.vibrate?.(25)
+        reportSent()
         setSubmitted(report)
       },
-      onError: caught => setError(caught.message),
+      onError: caught => setError(reportErrorMessage(caught)),
     })
   }
   /** Adds this photo and note to the resident's own open report instead of opening a second one. */
@@ -362,11 +513,12 @@ export function ReportForm() {
     try {
       await post(`/reports/${reportId}/addenda`, form)
       await queryClient.invalidateQueries({ queryKey: reportKeys.all })
+      reportSent()
       setNearby(null)
       navigate(`/reports/${reportId}`)
     } catch (caught) {
       setNearby(null)
-      setError(caught instanceof Error ? caught.message : 'Request failed')
+      setError(reportErrorMessage(caught))
     } finally {
       setAdding(false)
     }
@@ -387,13 +539,17 @@ export function ReportForm() {
     setShowMap(false)
     setAiFilled(NOT_FILLED)
     setLocationSource(null)
+    setGpsProblem('')
     setConfirmedFor(null)
+    carriedCategory.current = null
+    setRestoredAi(NO_AI)
     pinnedByHand.current = false
     setDirection(-1)
     setStep(0)
   }
 
   if (submitted) return <SuccessView report={submitted} onAnother={startOver} />
+  if (offer) return <ContinueDraft draft={offer} onContinue={() => restoreDraft(offer)} onDiscard={discardDraft} />
 
   const ready = [Boolean(photo), validCoordinates(latitude, longitude), Boolean(category), true]
   const located = validCoordinates(latitude, longitude)
@@ -436,13 +592,17 @@ export function ReportForm() {
         <div>
           <div className="mb-3 lg:mb-5">
             <div className="mb-2 flex items-baseline justify-between text-[15px]">
-              <strong className="font-extrabold">
+              <h2 ref={stepHeading} tabIndex={-1} className="text-[15px] font-extrabold tracking-normal outline-none">
                 <Txt>{STEPS[step]}</Txt>
-              </strong>
+              </h2>
               <span className="font-bold text-muted-foreground">
                 {t('Step')} {step + 1} {t('of')} {STEPS.length}
               </span>
             </div>
+            {/* Said aloud: the green line below appears without moving focus. */}
+            <span className="sr-only" aria-live="polite">
+              {step === 1 && located ? `${t('Location set')}: ${streetName ?? coordinates}` : ''}
+            </span>
             {/* Duolingo's lesson bar: one thick track, a springy green fill with a highlight along its top. */}
             <div className="h-4 overflow-hidden rounded-full bg-muted" aria-hidden="true">
               <m.i
@@ -452,9 +612,14 @@ export function ReportForm() {
                 transition={{ type: 'spring', stiffness: 260, damping: 24 }}
               />
             </div>
-            {/* Shorter phones drop the coach on Details and Review, the two fullest steps, so each fits. */}
+            {/* Shorter phones drop the coach on Details and Review, the two fullest steps, and the open map needs
+                his room on Location, so each fits. */}
             <div
-              className={cn('mt-2 flex items-end gap-2 lg:hidden', step >= 2 && '[@media(max-height:820px)]:hidden')}
+              className={cn(
+                'mt-2 flex items-end gap-2 lg:hidden',
+                step >= 2 && '[@media(max-height:820px)]:hidden',
+                step === 1 && showMap && 'hidden',
+              )}
             >
               <Kap key={step} pose={COACH[step].pose} motion="pop" interactive className="h-14 shrink-0" />
               <AnimatePresence mode="wait" initial={false}>
@@ -530,7 +695,13 @@ export function ReportForm() {
                           <Txt>Location set</Txt> · {streetName ?? coordinates}
                           {locationSource && locationSource !== 'manual' && (
                             <span className="block text-[13px] font-normal opacity-80">
-                              <Txt>{locationSource === 'photo' ? 'From your photo' : 'From your phone'}</Txt>
+                              <Txt>
+                                {locationSource === 'photo'
+                                  ? 'From your photo'
+                                  : locationSource === 'previous'
+                                    ? 'From your earlier report'
+                                    : 'From your phone'}
+                              </Txt>
                               {streetName && ` · ${coordinates}`}
                             </span>
                           )}
@@ -541,6 +712,15 @@ export function ReportForm() {
                           )}
                         </span>
                       </m.p>
+                    )}
+                    {!located && gpsProblem && (
+                      <p
+                        role="alert"
+                        className="flex items-start gap-2 rounded-xl bg-[color-mix(in_oklab,var(--status-pending)_14%,transparent)] px-3 py-2.5 text-[14px] text-[var(--status-pending)]"
+                      >
+                        <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                        <Txt>{gpsProblem}</Txt>
+                      </p>
                     )}
                     {located && place?.active && !place.barangay && (
                       <p
@@ -748,7 +928,12 @@ export function ReportForm() {
                           edit: 1,
                           auto: autoLocation,
                         },
-                        { term: 'Incident category', value: t(label(category || null)), edit: 2, auto: aiCategory },
+                        {
+                          term: 'Incident category',
+                          value: t(label(category || null)),
+                          edit: 2,
+                          auto: aiCategory || carried,
+                        },
                         {
                           term: 'Description (optional)',
                           value: description.trim() || t('No description added'),
@@ -805,6 +990,11 @@ export function ReportForm() {
               <Txt>{error}</Txt>
             </Alert>
           )}
+          {step === 1 && !located && (
+            <p id="location-needed" className="mt-3 px-1 text-[13px] leading-snug text-muted-foreground">
+              <Txt>Set the location to continue: tap Use GPS, or open the map and tap the spot.</Txt>
+            </p>
+          )}
           {/* Phones: a solid action bar pinned above the tabs, like Duolingo's CHECK bar. */}
           <div className="sticky bottom-[var(--tab-offset)] z-20 -mx-4 mt-4 flex gap-2.5 border-t-2 bg-background px-4 py-2.5 sm:-mx-6 sm:px-6 md:bottom-24 md:mx-0 md:rounded-2xl md:border-2 md:px-3 lg:static lg:border-0 lg:p-0">
             {step > 0 && (
@@ -824,6 +1014,7 @@ export function ReportForm() {
                 className="flex-1 max-lg:min-h-12"
                 type="button"
                 disabled={!ready[step]}
+                aria-describedby={step === 1 && !located ? 'location-needed' : undefined}
                 onClick={() => go(step + 1)}
               >
                 <Txt>Next</Txt> <ChevronRight />
@@ -859,6 +1050,52 @@ export function ReportForm() {
           description={description.trim()}
           onEdit={go}
         />
+      </div>
+    </div>
+  )
+}
+
+/** Back on the Report tab with a report still unsent. The photo isn't shown here: it stays blurred until checked. */
+function ContinueDraft({
+  draft,
+  onContinue,
+  onDiscard,
+}: {
+  draft: ReportDraft
+  onContinue: () => void
+  onDiscard: () => void
+}) {
+  const t = useText()
+  const facts = [
+    draft.category ? t(label(draft.category)) : '',
+    draft.photo ? `${t('Photo')}: ${t('Added')}` : '',
+    t(validCoordinates(draft.latitude, draft.longitude) ? 'Location set' : 'Location not set'),
+  ].filter(Boolean)
+  return (
+    <div data-fit className="pt-3 lg:mx-auto lg:max-w-md lg:pt-0">
+      <LargeTitle bar title={t('Make a report')} trailing={<ResidentAccount />} />
+      <div className="flex flex-col items-center pt-4 text-center">
+        <Kap pose="clipboard" motion="pop" className="h-28 w-auto sm:h-36" />
+        <h2 className="display mt-3 text-[26px]">
+          <Txt>Continue your report?</Txt>
+        </h2>
+        <p className="mt-2 text-[15px] font-bold">{facts.join(' · ')}</p>
+        <p className="mt-1 text-[14px] text-muted-foreground">
+          <Txt>Saved on this device</Txt> · <DateText value={new Date(draft.savedAt).toISOString()} compact />
+        </p>
+        <div className="mt-5 grid w-full gap-2.5">
+          <Button size="lg" onClick={onContinue}>
+            <Txt>Continue</Txt>
+          </Button>
+          <Button size="lg" variant="secondary" onClick={onDiscard}>
+            <Txt>Start over</Txt>
+          </Button>
+        </div>
+        <p className="mt-4 text-[13px] text-muted-foreground">
+          <Txt>
+            Your unsent report, with its photo, stays on this device until you send it, sign out, or 24 hours pass.
+          </Txt>
+        </p>
       </div>
     </div>
   )

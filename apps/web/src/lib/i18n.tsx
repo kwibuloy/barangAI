@@ -6,7 +6,7 @@ const LanguageContext = createContext<{ language: Language; setLanguage: (value:
   setLanguage: () => {},
 })
 
-const filipino: Record<string, string> = {
+export const filipino: Record<string, string> = {
   'This pin is outside the area we cover. You can still send it, and an administrator will review it.':
     'Labas sa sakop namin ang pin na ito. Puwede mo pa rin itong i-send; admin ang titingin.',
   'Filter by barangay': 'I-filter ang barangay',
@@ -380,7 +380,7 @@ const filipino: Record<string, string> = {
   'Snap a photo and pin the spot. Your barangay takes it from there.':
     'Kumuha ng photo at i-pin ang lugar. Barangay na ang bahala.',
   'Report a concern': 'Mag-ulat',
-  'Open reports': 'Mga bukas na ulat',
+  'Open reports': 'Bukas pa',
   'See all': 'Tingnan lahat',
   'Nothing open right now': 'Walang bukas na ulat',
   'Reports you send will show up here.': 'Dito lalabas ang mga ulat mo.',
@@ -911,6 +911,84 @@ const filipino: Record<string, string> = {
   'Feedback received': 'Mga natanggap na feedback',
   'No feedback yet.': 'Wala pang feedback.',
   When: 'Kailan',
+  "Can't reach your barangay's server. Try again.": 'Hindi maabot ang server ng barangay mo. Subukan ulit.',
+  "Can't reach your barangay's server. Your report is still here. Try again.":
+    'Hindi maabot ang server ng barangay mo. Nandito pa ang ulat mo. Subukan ulit.',
+  "Can't reach your barangay's server": 'Hindi maabot ang server ng barangay mo',
+  "Your barangay's server has a problem": 'May problema ang server ng barangay mo',
+  'Check that you are on the same Wi-Fi as your barangay hall, then try again.':
+    'I-check kung pareho kayo ng Wi-Fi ng barangay hall, tapos subukan ulit.',
+  'This is not your fault. Try again in a moment.': 'Hindi mo ito kasalanan. Subukan ulit maya-maya.',
+  Retry: 'Subukan ulit',
+  Offline: 'Offline',
+  'Offline · last updated {time}': 'Offline · huling update {time}',
+  'Continue your report?': 'Ituloy ang ulat mo?',
+  Continue: 'Ituloy',
+  'Start over': 'Magsimula ulit',
+  'Saved on this device': 'Naka-save sa device na ito',
+  'Your unsent report, with its photo, stays on this device until you send it, sign out, or 24 hours pass.':
+    'Nasa device na ito ang ulat mo at ang photo nito hanggang ma-send, mag-sign out ka, o lumipas ang 24 oras.',
+  'Location not set': 'Wala pang lokasyon',
+  'Set the location to continue: tap Use GPS, or open the map and tap the spot.':
+    'Lagyan muna ng lokasyon: pindutin ang Use GPS, o buksan ang mapa at i-tap ang lugar.',
+  'Location permission is off for this app. Allow it in your phone settings, or set the pin on the map.':
+    'Naka-off ang location permission ng app. I-allow ito sa settings ng phone, o ilagay ang pin sa mapa.',
+  'GPS is off on this phone. Turn on Location and try again, or set the pin on the map.':
+    'Naka-off ang GPS ng phone. I-on ang Location at subukan ulit, o ilagay ang pin sa mapa.',
+  "GPS couldn't find you. Try again in an open spot, or set the pin on the map.":
+    'Hindi ka mahanap ng GPS. Subukan ulit sa bukas na lugar, o ilagay ang pin sa mapa.',
+  'Tap the map to set the pin.': 'I-tap ang mapa para ilagay ang pin.',
+  "Map can't load. Use GPS or enter the coordinates instead.":
+    'Hindi ma-load ang mapa. Gamitin ang GPS o ilagay ang coordinates.',
+  'From your earlier report': 'Mula sa dati mong ulat',
+  'Your report so far': 'Ang ulat mo sa ngayon',
+  'Latest note from staff': 'Huling note ng staff',
+  'What happens next': 'Ano ang susunod',
+  'Barangay staff will look at your report next. You will see updates here.':
+    'Titingnan ito ng barangay staff. Dito mo makikita ang updates.',
+  'Staff are checking your report. Next they accept it or tell you why not.':
+    'Chine-check ng staff ang ulat mo. Tatanggapin nila ito o sasabihin kung bakit hindi.',
+  'Staff accepted this report. It moves to In Progress when work starts.':
+    'Tinanggap ng staff ang ulat. Magiging In Progress ito kapag sinimulan na ang trabaho.',
+  'Work has started. Staff mark it Resolved when it is done.':
+    'Sinimulan na ang trabaho. Mamarkahan ito ng staff na Resolved kapag tapos na.',
+  'Staff marked this as fixed. Thank you for reporting.': 'Minarkahan ito ng staff na ayos na. Salamat sa pag-report.',
+  'Staff did not accept this report. If the problem is still there, you can make a new report.':
+    'Hindi tinanggap ng staff ang ulat na ito. Kung nandoon pa ang problema, puwede kang gumawa ng bago.',
+  'Reason from staff': 'Dahilan ng staff',
+  'Make a new report': 'Gumawa ng bagong ulat',
+  'Still not fixed? Report it again': 'Hindi pa ayos? I-report ulit',
+  'Still not fixed. Follow-up to report': 'Hindi pa rin ayos. Follow-up sa ulat',
+  'Photo of the reported problem': 'Photo ng inireport na problema',
+  'Forgot your password? Ask your barangay hall.': 'Nakalimutan ang password? Magtanong sa barangay hall.',
+  "Administrators read this with your account number. Leave out other people's names and details.":
+    'Babasahin ito ng mga admin kasama ang account number mo. Huwag isama ang pangalan at detalye ng iba.',
+  'For other help, ask your barangay hall.': 'Para sa ibang tulong, magtanong sa barangay hall.',
+  'For other help, contact:': 'Para sa ibang tulong, kontakin:',
+  'Delete this note for good?': 'Burahin na ang note na ito?',
+  'Yes, delete': 'Oo, burahin',
+  Keep: 'Huwag',
+  'Feedback not found': 'Wala na ang feedback na ito.',
+  'No deletion request to decide': 'Walang hiling na burahin na dapat pagpasyahan.',
+  'Role cannot be selected': 'Hindi puwedeng piliin ang role.',
+  'Unsupported preference': 'Hindi suportado ang setting na ito.',
+  'Street names unavailable': 'Walang pangalan ng kalye sa ngayon.',
+  'Google sign-in is unavailable': 'Hindi magamit ang Google sign-in ngayon.',
+  'Please try signing in again shortly': 'Subukan ulit mag-sign in maya-maya.',
+  'Reward not found': 'Wala ang reward na ito.',
+  'Choose a barangay for this reward': 'Pumili ng barangay para sa reward na ito.',
+  'Name the reward': 'Lagyan ng pangalan ang reward.',
+  'Description is too long': 'Masyadong mahaba ang description.',
+  'Rejection reason required': 'Kailangan ng dahilan ng pag-reject.',
+  'This report is grouped with others, so rejecting it as already reported would reject them all':
+    'Kasama ang ulat na ito sa grupo, kaya kapag ni-reject bilang naiulat na, lahat sila ay mare-reject.',
+  'Rejection reason only allowed on rejection': 'Para lang sa pag-reject ang dahilan.',
+  'Status change not found': 'Wala ang pagbabago ng status na ito.',
+  'This status change has no description from staff': 'Walang description mula sa staff ang pagbabagong ito.',
+  'Filipino interface': 'Filipino ang wika',
+  'English interface': 'English ang wika',
+  'Kap, the BarangAI mascot': 'Si Kap, ang mascot ng BarangAI',
+  Close: 'Isara',
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -945,11 +1023,12 @@ export function Txt({ children }: { children: string }) {
 }
 export function LanguageSwitch({ className = '' }: { className?: string }) {
   const { language, setLanguage } = useLanguage()
+  const t = useText()
   return (
     <button
       className={`inline-flex min-h-11 items-center rounded-full px-3 text-[15px] font-medium transition-colors ${className}`}
       type="button"
-      aria-label={language === 'en' ? 'Filipino interface' : 'English interface'}
+      aria-label={t(language === 'en' ? 'Filipino interface' : 'English interface')}
       onClick={() => setLanguage(language === 'en' ? 'fil' : 'en')}
     >
       {language === 'en' ? 'Filipino' : 'English'}

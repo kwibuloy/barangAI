@@ -16,8 +16,10 @@ import { ReportForm } from '../features/reports/ReportForm'
 import { ReportsPage } from '../features/reports/ReportsPage'
 import { ThemeProvider } from '../lib/theme'
 import { PageSpinner } from '@/components/page'
+import { ServerProblem } from '@/components/ServerProblem'
 import { useRouteTitle } from '@/hooks/use-route-title'
 import { ResidentShell } from './ResidentShell'
+import { removeExpiredDrafts } from '../features/reports/draft'
 import 'leaflet/dist/leaflet.css'
 import '../styles.css'
 
@@ -85,7 +87,9 @@ function ScrollToTop() {
 function AppRoutes() {
   const me = useMe()
   const { pathname } = useLocation()
-  useRouteTitle(pathname, me.isPending || Boolean(me.data), Boolean(me.data?.must_change_password))
+  // No answer about the session isn't the same as signed out: it gets a retry, never the sign-in page.
+  const unknown = Boolean(me.error) && me.data === undefined
+  useRouteTitle(pathname, me.isPending || unknown || Boolean(me.data), Boolean(me.data?.must_change_password))
   // Readable before signing up, and the same page for every role.
   if (pathname === '/terms' || pathname === '/privacy')
     return (
@@ -102,6 +106,7 @@ function AppRoutes() {
         </span>
       </div>
     )
+  if (unknown) return <ServerProblem error={me.error} retrying={me.isFetching} onRetry={() => void me.refetch()} />
   if (!me.data) return <AuthPage />
   // Before everything else, so nothing that writes starts and fails: the API refuses other writes until this is done.
   if (me.data.must_change_password) return <ForcedPasswordChange />
@@ -148,6 +153,9 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    void removeExpiredDrafts()
+  }, [])
   const [client] = useState(() => {
     const created: QueryClient = new QueryClient({
       // Live checks would otherwise stop on an expired session and leave a frozen, signed-in screen.
@@ -156,7 +164,12 @@ export default function App() {
           if (error instanceof ApiError && error.status === 401) sessionExpired(created)
         },
       }),
-      defaultOptions: { queries: { retry }, mutations: { retry: false } },
+      // Always ask the laptop: the browser's own idea of being online says nothing about a local server, and a
+      // write it paused would look like a spinner that never ends.
+      defaultOptions: {
+        queries: { retry, networkMode: 'always' },
+        mutations: { retry: false, networkMode: 'always' },
+      },
     })
     return created
   })

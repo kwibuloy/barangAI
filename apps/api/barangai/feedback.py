@@ -1,5 +1,6 @@
 """Notes about the app from anyone signed in, read by administrators. No email service and no ticket system: this is a
-list someone reads. Kept to the account id and the words, and erased with the account."""
+list someone reads. Kept to the account id and the words, and erased with the account. Free text can name a resident,
+so an administrator can delete a note."""
 
 from datetime import UTC, timedelta
 
@@ -51,3 +52,13 @@ def read_feedback(
         {"id": item.id, "user_id": item.user_id, "message": item.message, "created_at": utc_iso(item.created_at)}
         for item in items
     ]
+
+
+@router.delete("/admin/feedback/{feedback_id}", status_code=204)
+def delete_feedback(feedback_id: str, db: Session = Depends(get_db), user: User = Depends(require_csrf)):
+    require_role(user, {"administrator"})
+    item = db.get(Feedback, feedback_id)
+    if not item:
+        raise HTTPException(404, "Feedback not found")
+    db.delete(item)
+    db.commit()

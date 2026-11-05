@@ -86,16 +86,12 @@ export const useRewardsLog = (code: string) =>
 export const useFeedbackNotes = (enabled: boolean) =>
   useQuery({ queryKey: ['admin', 'feedback'], queryFn: () => api<FeedbackNote[]>('/admin/feedback'), enabled })
 
-export function useSendFeedback() {
+export function useDeleteFeedback() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (message: string) => post('/feedback', { message }),
+    mutationFn: (id: string) => api<void>(`/admin/feedback/${id}`, { method: 'DELETE' }),
     onSuccess: () => client.invalidateQueries({ queryKey: ['admin', 'feedback'] }),
   })
 }
 
-export const useOperator = () =>
-  useQuery({
-    queryKey: ['legal-operator'],
-    queryFn: () => api<{ name: string | null; contact: string | null }>('/legal/operator'),
-  })
+export { useOperator } from '../legal/operator'

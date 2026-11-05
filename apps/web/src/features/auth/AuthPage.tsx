@@ -354,6 +354,11 @@ export function AuthPage() {
               >
                 <Txt>{mode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in'}</Txt>
               </button>
+              {mode === 'login' && (
+                <p className="text-center text-[13px] text-muted-foreground">
+                  <Txt>Forgot your password? Ask your barangay hall.</Txt>
+                </p>
+              )}
               {/* Signing up already links the terms and privacy notice beside its tick box; phones keep the
                   form on one screen by not repeating them, or the emergency line, there. */}
               <p

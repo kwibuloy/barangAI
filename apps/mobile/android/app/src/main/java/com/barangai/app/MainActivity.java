@@ -20,17 +20,22 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 import com.getcapacitor.CapConfig;
 
-/** Loads BarangAI from the laptop running it, and asks for the laptop's address when it isn't known or can't be reached. */
+/**
+ * Loads BarangAI from the laptop running it. When the laptop can't be reached it shows the bundled page in www, translated
+ * and with Retry, and asks for the address only there, behind Advanced, or on first launch when none is known.
+ */
 public class MainActivity extends BridgeActivity {
 
     private static final String SERVER_URL = "server_url";
     private static final int DEFAULT_PORT = 8000;
     /** A laptop that has left the network gives no error for a long while, and the app would just look black. */
-    private static final long LOAD_TIMEOUT_MS = 8000;
+    private static final long LOAD_TIMEOUT_MS = 15000;
+    private static final String FALLBACK_PAGE = "file:///android_asset/public/index.html";
+    /** How that page asks for something. Honoured only from that page, never from whatever the server address serves. */
+    private static final String PAGE_ACTIONS = "barangai-app";
 
     private final Handler timer = new Handler(Looper.getMainLooper());
     private AlertDialog dialog;
-    private boolean loadFailed;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -39,43 +44,58 @@ public class MainActivity extends BridgeActivity {
         if (saved != null) config = new CapConfig.Builder(this).setServerUrl(saved).create();
         registerPlugin(RokidGlassesPlugin.class);
         super.onCreate(savedInstanceState);
-        if (saved == null) {
-            askForServer(null);
-            return;
-        }
         bridge.setWebViewClient(
             new BridgeWebViewClient(bridge) {
                 @Override
+                public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                    Uri target = request.getUrl();
+                    if (!PAGE_ACTIONS.equals(target.getScheme())) return super.shouldOverrideUrlLoading(view, request);
+                    // On first launch the page is the app's own start page; after that only the bundled copy counts.
+                    String from = view.getUrl();
+                    if (saved == null || (from != null && from.startsWith(FALLBACK_PAGE))) pageAsked(target.getHost(), saved);
+                    return true;
+                }
+
+                @Override
                 public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                     super.onReceivedError(view, request, error);
-                    if (request.isForMainFrame()) {
-                        loadFailed = true;
-                        timer.removeCallbacksAndMessages(null);
-                        askForServer(saved);
-                    }
+                    if (request.isForMainFrame()) showFallback(saved);
                 }
 
                 @Override
                 public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                     super.onReceivedHttpError(view, request, response);
                     // Something answered at that address, but it isn't BarangAI.
-                    if (request.isForMainFrame()) {
-                        loadFailed = true;
-                        timer.removeCallbacksAndMessages(null);
-                        askForServer(saved);
-                    }
+                    if (request.isForMainFrame()) showFallback(saved);
                 }
 
                 @Override
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);
                     timer.removeCallbacksAndMessages(null);
-                    // It loaded after all, so the question no longer applies.
-                    if (!loadFailed && dialog != null) dialog.dismiss();
                 }
             }
         );
-        timer.postDelayed(() -> askForServer(saved), LOAD_TIMEOUT_MS);
+        if (saved == null) {
+            askForServer(null);
+            return;
+        }
+        timer.postDelayed(() -> showFallback(saved), LOAD_TIMEOUT_MS);
+    }
+
+    private void showFallback(@Nullable String saved) {
+        timer.removeCallbacksAndMessages(null);
+        if (saved == null) return;
+        WebView view = bridge.getWebView();
+        String shown = view.getUrl();
+        if (shown != null && shown.startsWith(FALLBACK_PAGE)) return;
+        view.stopLoading();
+        view.loadUrl(FALLBACK_PAGE + "?failed=1");
+    }
+
+    private void pageAsked(@Nullable String action, @Nullable String saved) {
+        if ("retry".equals(action) && saved != null) recreate();
+        else if ("address".equals(action)) askForServer(saved);
     }
 
     /** The Rokid AI App answers its consent screen here. */
@@ -101,7 +121,7 @@ public class MainActivity extends BridgeActivity {
         if (dialog != null && dialog.isShowing()) return;
         EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        input.setHint("192.168.1.20");
+        input.setHint(R.string.server_address_hint);
         if (current != null) input.setText(current);
         FrameLayout frame = new FrameLayout(this);
         int margin = Math.round(20 * getResources().getDisplayMetrics().density);
@@ -109,11 +129,12 @@ public class MainActivity extends BridgeActivity {
         frame.addView(input);
         dialog = new AlertDialog.Builder(this)
             .setIcon(R.mipmap.ic_launcher_round)
-            .setTitle(current == null ? "Hi! Let's connect to BarangAI" : "Kap can't reach BarangAI")
-            .setMessage("Type the phone address shown on the laptop running BarangAI. Both need the same Wi-Fi, or type localhost when connected by USB. The connection isn't encrypted, so use a network you trust.")
+            .setTitle(current == null ? R.string.server_title_first : R.string.server_title_address)
+            .setMessage(R.string.server_message)
             .setView(frame)
-            .setCancelable(false)
-            .setPositiveButton(current == null ? "Connect" : "Try again", null)
+            // On first launch there is nothing behind this dialog to go back to.
+            .setCancelable(current != null)
+            .setPositiveButton(R.string.server_connect, null)
             .create();
         dialog.setOnShowListener(shown ->
             dialog
@@ -121,7 +142,7 @@ public class MainActivity extends BridgeActivity {
                 .setOnClickListener(click -> {
                     String url = serverUrl(input.getText().toString());
                     if (url == null) {
-                        input.setError("Enter an address such as 192.168.1.20");
+                        input.setError(getString(R.string.server_invalid));
                         return;
                     }
                     preferences().edit().putString(SERVER_URL, url).commit();

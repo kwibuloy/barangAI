@@ -75,6 +75,9 @@ export type Report = {
     created_at: string
   } | null
 }
+/** What "Still not fixed" carries from a resolved report to a new one: linked in the description's text only. */
+export type FollowUp = { reportId: string; category: Category; latitude: number; longitude: number }
+
 export type TrustFlag =
   | { code: 'pin_far_from_photo'; detail: number }
   | { code: 'old_photo'; detail: number }

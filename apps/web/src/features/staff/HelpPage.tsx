@@ -1,15 +1,13 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { DateText } from '@/components/DateText'
 import { Alert } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Textarea } from '@/components/ui/textarea'
-import { Txt, useText } from '../../lib/i18n'
+import { Txt } from '../../lib/i18n'
 import { useMe } from '../auth/queries'
-import { useFeedbackNotes, useOperator, useSendFeedback } from './queries'
-
-const MAX_FEEDBACK = 1000
+import { FeedbackForm } from '../account/FeedbackForm'
+import { useDeleteFeedback, useFeedbackNotes, useOperator } from './queries'
 
 function Topic({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -24,44 +22,35 @@ function Topic({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function FeedbackForm() {
-  const t = useText()
-  const send = useSendFeedback()
-  const [message, setMessage] = useState('')
-  function submit(event: FormEvent) {
-    event.preventDefault()
-    send.mutate(message.trim(), { onSuccess: () => setMessage('') })
-  }
-  return (
-    <form onSubmit={submit} className="space-y-2.5">
-      <label className="block space-y-1.5 text-[14px] font-medium">
-        <span>
-          <Txt>What should work better?</Txt>
-        </span>
-        <Textarea
-          rows={3}
-          required
-          maxLength={MAX_FEEDBACK}
-          value={message}
-          onChange={event => setMessage(event.target.value)}
-        />
-      </label>
-      <p className="text-[13px] text-muted-foreground">
-        <Txt>Your administrator reads this with your account number. Leave out residents' names and details.</Txt>{' '}
-        {message.length}/{MAX_FEEDBACK}
-      </p>
-      <Button type="submit" className="w-full" disabled={send.isPending || !message.trim()}>
-        <Txt>Send feedback</Txt>
+/** A note is free text and can name a resident, so an administrator can remove it, after one more press. */
+function DeleteNote({ id }: { id: string }) {
+  const [asking, setAsking] = useState(false)
+  const remove = useDeleteFeedback()
+  if (!asking)
+    return (
+      <Button size="xs" variant="secondary" onClick={() => setAsking(true)}>
+        <Txt>Delete</Txt>
       </Button>
-      {send.error && (
+    )
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[13px]">
+        <Txt>Delete this note for good?</Txt>
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        <Button size="xs" variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate(id)}>
+          <Txt>Yes, delete</Txt>
+        </Button>
+        <Button size="xs" variant="secondary" disabled={remove.isPending} onClick={() => setAsking(false)}>
+          <Txt>Keep</Txt>
+        </Button>
+      </div>
+      {remove.error && (
         <Alert>
-          <Txt>{send.error.message}</Txt>
+          <Txt>{remove.error.message}</Txt>
         </Alert>
       )}
-      <p role="status" className="text-[14px] font-medium text-[var(--status-resolved)]">
-        {send.isSuccess && t('Thank you. Your feedback was sent.')}
-      </p>
-    </form>
+    </div>
   )
 }
 
@@ -92,6 +81,11 @@ function FeedbackList() {
               <TableHead>
                 <Txt>Message</Txt>
               </TableHead>
+              <TableHead>
+                <span className="sr-only">
+                  <Txt>Delete</Txt>
+                </span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -102,6 +96,9 @@ function FeedbackList() {
                 </TableCell>
                 <TableCell className="font-mono">#{note.user_id.slice(0, 8).toUpperCase()}</TableCell>
                 <TableCell className="min-w-48 whitespace-normal break-words">{note.message}</TableCell>
+                <TableCell className="whitespace-normal">
+                  <DeleteNote id={note.id} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -171,7 +168,7 @@ export function HelpPage() {
         </p>
       </Topic>
       <Topic title="Send feedback">
-        <FeedbackForm />
+        <FeedbackForm note="Your administrator reads this with your account number. Leave out residents' names and details." />
       </Topic>
       {administrator && <FeedbackList />}
     </div>

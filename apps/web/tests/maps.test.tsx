@@ -20,7 +20,7 @@ vi.mock('leaflet', () => ({
     maps.instances.push(instance)
     return instance
   }),
-  tileLayer: () => ({ addTo: vi.fn() }),
+  tileLayer: () => ({ addTo: vi.fn(), on: vi.fn() }),
   circleMarker: () => {
     const marker = { addTo: () => marker, setLatLng: vi.fn(), bindTooltip: vi.fn(), on: vi.fn() }
     return marker

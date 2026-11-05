@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="server_title_first">Hi! Ikonekta natin sa BarangAI</string>
+    <string name="server_title_address">Address ng server ng barangay mo</string>
+    <string name="server_message">I-type ang phone address na nasa laptop na nagpapatakbo ng BarangAI. Dapat pareho kayo ng Wi-Fi, o i-type ang localhost kung naka-USB. Hindi encrypted ang koneksyon, kaya gumamit ng Wi-Fi na kilala mo.</string>
+    <string name="server_connect">Ikonekta</string>
+    <string name="server_invalid">Maglagay ng address gaya ng 192.168.1.20</string>
+</resources>

@@ -2,11 +2,13 @@
 
     python -m barangai.backup create <folder on another drive>
     python -m barangai.backup restore <backup folder> [--replace]     (stop the server first)
+    python -m barangai.backup consolidate-photos [--apply]            (a dry run unless --apply; deletes nothing)
 
 A backup holds private photos and account data unencrypted, so keep it on an encrypted drive.
 """
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -200,6 +202,62 @@ def restore_backup(folder, replace=False) -> dict:
     }
 
 
+def same_bytes(first: Path, second: Path) -> bool:
+    return hashlib.sha256(first.read_bytes()).digest() == hashlib.sha256(second.read_bytes()).digest()
+
+
+def consolidate_photos(apply=False) -> dict:
+    """Copies photos the database points to outside the configured folder into it, and checks each copy byte for byte.
+    Changes nothing unless told to, and never deletes or rewrites anything: the originals stay until an owner removes
+    them, and the database keeps its paths, because a stored path is looked up by file name in the folder (media.py).
+    A different photo already holding the name is reported, never replaced."""
+    source = database_file()
+    if not source.is_file():
+        raise ValueError(f"No database at {source}")
+    connection = sqlite3.connect(f"{source.as_uri()}?mode=ro", uri=True)
+    try:
+        locations = photo_locations(connection)
+    finally:
+        connection.close()
+    folder = media_dir().resolve()
+    result = {
+        "folder": str(folder),
+        "applied": apply,
+        "in_place": 0,
+        "to_copy": [],
+        "copied": [],
+        "conflicts": [],
+        "missing": [],
+    }
+    for location in locations:
+        if str(location).startswith("supabase:"):
+            continue
+        original = Path(location)
+        original = original if original.is_absolute() else source.parent / original
+        here = folder / re.split(r"[\\/]", str(location))[-1]
+        if original.is_file() and original.resolve() == here:
+            result["in_place"] += 1
+        elif here.is_file():
+            # Already moved, or found by name in the folder. Only a matching original counts as done.
+            if original.is_file() and not same_bytes(original, here):
+                result["conflicts"].append(str(location))
+            else:
+                result["in_place"] += 1
+        elif not original.is_file():
+            result["missing"].append(str(location))
+        elif apply:
+            temporary = here.with_name(here.name + ".copying")
+            shutil.copy2(original, temporary)
+            if not same_bytes(original, temporary):
+                temporary.unlink()
+                raise ValueError(f"The copy of {original} did not match it. Nothing was replaced.")
+            temporary.rename(here)
+            result["copied"].append(str(location))
+        else:
+            result["to_copy"].append(str(location))
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -207,6 +265,7 @@ def main(argv=None):
     restore = commands.add_parser("restore")
     restore.add_argument("folder")
     restore.add_argument("--replace", action="store_true")
+    commands.add_parser("consolidate-photos").add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.command == "create":
@@ -217,6 +276,10 @@ def main(argv=None):
                 f"{manifest['photos']} photos, {len(manifest['photos_missing'])} missing."
             )
             print("It holds private photos and account data unencrypted. Keep it on an encrypted drive.")
+        elif args.command == "consolidate-photos":
+            print(json.dumps(consolidate_photos(args.apply), indent=2))
+            if not args.apply:
+                print("Dry run: nothing was copied. Pass --apply to copy. Nothing is ever deleted.")
         else:
             print(json.dumps(restore_backup(args.folder, args.replace)))
     except (ValueError, OSError) as error:

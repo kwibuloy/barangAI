@@ -42,7 +42,8 @@ def assign_barangay(email: str, barangay: str):
 
 
 def reset_password(email: str, password: str):
-    """For someone who forgot their password: the site sends no email, so an administrator runs this."""
+    """For someone who forgot their password: the site sends no email, so an administrator runs this. Whoever types it
+    has seen it, so staff and administrators, who hold residents' data, must choose their own at next sign-in."""
     if len(password) < 12:
         raise ValueError("A password of at least 12 characters required")
     if problem := password_problem(password, email):
@@ -52,6 +53,8 @@ def reset_password(email: str, password: str):
         if not user:
             raise ValueError("No account with that email")
         user.password_hash = hasher.hash(password)
+        if user.role != "resident":
+            user.must_change_password = True
         db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
         clear_login_failures(db, user.email)
         db.commit()

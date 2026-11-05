@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties } from 'react'
+import { Suspense, useEffect, type CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { ArrowLeft, Bell, FileText, Gift, Inbox, LayoutGrid, LifeBuoy, Map as MapIcon, Users } from 'lucide-react'
 import {
@@ -20,6 +20,8 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { BrandMark, Wordmark } from '@/components/BrandMark'
 import { PageSpinner } from '@/components/page'
+import { OfflineStrip } from '@/components/OfflineStrip'
+import { keepOnlyDraftsOf } from '../reports/draft'
 import { navIconStyle, navItemClass } from '@/components/nav'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
@@ -114,6 +116,10 @@ export function StaffShell({ user }: { user: User }) {
   const phone = useIsMobile()
   useKeyboardMark()
   useLiveRefresh()
+  // Staff never draft reports, so a resident's left on a shared browser goes.
+  useEffect(() => {
+    void keepOnlyDraftsOf(user.id)
+  }, [user.id])
   const reports = useReports()
   // Counted as the queue lists them, so a number always equals the list it opens: a grouped case is one row.
   const rows = groupCases(reports.data ?? []).rows
@@ -134,7 +140,11 @@ export function StaffShell({ user }: { user: User }) {
   }
   return (
     <TooltipProvider delayDuration={300}>
-      <SidebarProvider style={{ '--sidebar-width': '17rem', '--sidebar-width-icon': '5rem' } as CSSProperties}>
+      <OfflineStrip />
+      <SidebarProvider
+        className="pt-[var(--offline-h)]"
+        style={{ '--sidebar-width': '17rem', '--sidebar-width-icon': '5rem' } as CSSProperties}
+      >
         <Sidebar collapsible="icon" className="group-data-[side=left]:border-r-2">
           <SidebarHeader className="px-5 pt-7 pb-3 group-data-[collapsible=icon]:px-3">
             <Link to="/desk" aria-label={t('BarangAI overview')} className="rounded-xl">
@@ -261,8 +271,9 @@ export function StaffShell({ user }: { user: User }) {
         <SidebarInset className="min-w-0">
           <header
             className={cn(
-              'sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b-2 bg-background px-5',
-              phone && 'top-[env(safe-area-inset-top)] mt-[env(safe-area-inset-top)] h-14 gap-2 px-2',
+              'sticky top-[var(--offline-h)] z-20 flex h-16 shrink-0 items-center gap-3 border-b-2 bg-background px-5',
+              phone &&
+                'top-[calc(env(safe-area-inset-top)+var(--offline-h))] mt-[env(safe-area-inset-top)] h-14 gap-2 px-2',
             )}
           >
             {phone ? (

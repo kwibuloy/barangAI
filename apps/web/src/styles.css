@@ -22,16 +22,16 @@
   --secondary: #ffffff;
   --secondary-foreground: #4b4b4b;
   --muted: #f7f7f7;
-  --muted-foreground: #6f6f6f;
+  --muted-foreground: #666666;
   --accent: #f7f7f7;
   --accent-foreground: #3c3c3c;
-  --destructive: #ea2b2b;
-  --destructive-edge: #c71f1f;
+  --destructive: #c0262d;
+  --destructive-edge: #9c1c22;
   --border: #e5e5e5;
   --edge: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #1cb0f6;
-  --link: #0f7ac0;
+  --input: #8c8c8c;
+  --ring: #0f7ac0;
+  --link: #0b6aa8;
   --sky: #1cb0f6;
   --sky-edge: #1899d6;
   --sky-soft: #ddf4ff;
@@ -45,12 +45,12 @@
   --straw-soft: #f6ead4;
   --tint: var(--sky-soft);
 
-  --status-pending: #9a5b00;
+  --status-pending: #915500;
   --status-verifying: #7d3fd6;
-  --status-accepted: #0b7a8f;
-  --status-progress: #c2410c;
-  --status-resolved: #2f7d00;
-  --status-rejected: #c0262d;
+  --status-accepted: #096a7c;
+  --status-progress: #b23b0a;
+  --status-resolved: #2a7000;
+  --status-rejected: #b8232a;
 
   --chart-1: #58cc02;
   --chart-2: #1cb0f6;
@@ -65,7 +65,7 @@
   --sidebar-accent: #f7f7f7;
   --sidebar-accent-foreground: #3c3c3c;
   --sidebar-border: #e5e5e5;
-  --sidebar-ring: #1cb0f6;
+  --sidebar-ring: #0f7ac0;
 
   --radius: 1rem;
   --tabbar: 70px;
@@ -95,7 +95,7 @@
   --destructive-edge: #d33131;
   --border: #37464f;
   --edge: #37464f;
-  --input: #37464f;
+  --input: #6f828c;
   --ring: #49c0f8;
   --link: #49c0f8;
   --sky: #49c0f8;
@@ -116,7 +116,7 @@
   --status-accepted: #4cc6d9;
   --status-progress: #ff8a4c;
   --status-resolved: #93d333;
-  --status-rejected: #ff6b6b;
+  --status-rejected: #ff8a8a;
 
   --chart-1: #93d333;
   --chart-2: #49c0f8;
@@ -311,6 +311,15 @@
 /* Tab bar height plus the home indicator; content and sticky footers sit above it. */
 .resident-shell {
   --tab-offset: calc(var(--tabbar) + env(safe-area-inset-bottom));
+  padding-top: var(--offline-h);
+}
+
+/* Room for the offline strip (OfflineStrip.tsx): only there while it shows. */
+:root {
+  --offline-h: 0px;
+}
+:root[data-offline] {
+  --offline-h: calc(env(safe-area-inset-top) + 28px);
 }
 
 /* What the staff top bar and phone tabs take from a full-height page. */

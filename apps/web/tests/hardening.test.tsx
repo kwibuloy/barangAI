@@ -7,7 +7,7 @@ vi.mock('leaflet', () => ({
     const map = { setView: () => map, fitBounds: vi.fn(), on: vi.fn(), stop: vi.fn(), remove: vi.fn() }
     return map
   },
-  tileLayer: () => ({ addTo: vi.fn() }),
+  tileLayer: () => ({ addTo: vi.fn(), on: vi.fn() }),
   circleMarker: () => {
     const marker = { addTo: () => marker, setLatLng: vi.fn(), bindTooltip: vi.fn(), on: vi.fn() }
     return marker

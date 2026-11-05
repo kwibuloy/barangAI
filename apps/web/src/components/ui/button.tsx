@@ -9,7 +9,7 @@ const PRESS =
   'shadow-[0_var(--lip)_0_var(--lip-color)] active:not-aria-[haspopup]:translate-y-[var(--lip)] active:not-aria-[haspopup]:shadow-none'
 
 const buttonVariants = cva(
-  "group/button relative inline-flex shrink-0 items-center justify-center rounded-2xl border-2 border-transparent bg-clip-padding text-[15px] font-extrabold max-w-full text-center leading-tight tracking-[0.04em] uppercase transition-[translate,box-shadow,background-color,filter] duration-100 outline-none select-none [--lip:4px] focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[18px] [&_svg]:stroke-[2.5]",
+  "group/button relative inline-flex shrink-0 items-center justify-center rounded-2xl border-2 border-transparent bg-clip-padding text-[15px] font-extrabold max-w-full text-center leading-tight tracking-[0.04em] uppercase transition-[translate,box-shadow,background-color,filter] duration-100 outline-none select-none [--lip:4px] focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[18px] [&_svg]:stroke-[2.5]",
   {
     variants: {
       variant: {

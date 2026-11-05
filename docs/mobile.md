@@ -52,7 +52,7 @@ The APK is at `apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`. W
 & "D:\Android\Sdk\platform-tools\adb.exe" install -r apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-On first launch, enter the Phone address. The app remembers it and asks again whenever it can't reach the laptop, for example after the laptop's address changes. `apps/mobile/android/.../MainActivity.java` holds this.
+On first launch, enter the Phone address. The app remembers it. When it can't reach the laptop, it opens a screen in the phone's language (English or Filipino) with Retry; the address can be changed behind Advanced, for example after the laptop's address changes. That screen is `apps/mobile/www/index.html`, so run `npx cap sync android` after changing it. `apps/mobile/android/.../MainActivity.java` holds this.
 
 Website changes reach the phone after a website build and an app reload. Only changes under `apps/mobile` need a new APK.
 
@@ -89,7 +89,7 @@ No email service exists, so a resident who forgets their password has to ask a p
 1. **Who may ask.** The account holder, in person at the barangay hall. Not by phone or chat, and not a relative, unless the barangay decides otherwise. A minor's request needs the rule counsel gives (B2).
 2. **How identity is checked.** The app holds only an email address, so an ID can't be matched to the account. Ask for a valid ID, then ask the person to describe something only the account holder knows: the email address itself and one of their reports (place and rough date). Staff read those from the desk and don't reveal them first.
 3. **Who runs it.** An administrator, at the laptop, from a terminal: `python -m barangai.bootstrap_staff <email> --reset-password`. Neither the website nor the API resets residents' passwords. An administrator resets a staff member's through `/admin/staff`.
-4. **What it does.** The administrator types a password the resident chooses or a temporary one; it signs out every device and clears the day's failed sign-ins. The resident changes a temporary one at once.
+4. **What it does.** The administrator types a password the resident chooses or a temporary one; it signs out every device and clears the day's failed sign-ins. The resident changes a temporary one at once. On a staff or administrator account the same command also makes them choose their own password at next sign-in, before anything else opens.
 5. **Record.** Write the date, the account email and who checked in the hall's logbook. Keep no copy of the ID. The app keeps no log of this reset.
 6. **If in doubt, refuse.** The resident can still make a new account. Points don't move between accounts.
 

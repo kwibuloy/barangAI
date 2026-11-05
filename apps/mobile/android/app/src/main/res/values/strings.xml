@@ -4,4 +4,10 @@
     <string name="title_activity_main">BarangAI</string>
     <string name="package_name">com.barangai.app</string>
     <string name="custom_url_scheme">com.barangai.app</string>
+    <string name="server_title_first">Hi! Let\'s connect to BarangAI</string>
+    <string name="server_title_address">Your barangay\'s server address</string>
+    <string name="server_message">Type the phone address shown on the laptop running BarangAI. Both need the same Wi-Fi, or type localhost when connected by USB. The connection isn\'t encrypted, so use a network you trust.</string>
+    <string name="server_connect">Connect</string>
+    <string name="server_invalid">Enter an address such as 192.168.1.20</string>
+    <string name="server_address_hint" translatable="false">192.168.1.20</string>
 </resources>

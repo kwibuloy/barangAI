@@ -151,6 +151,64 @@ def test_backup_finds_photos_saved_in_an_older_folder(client, photo, tmp_path):
     assert (folder / "photos" / moved.name).is_file()
 
 
+def test_consolidating_photos_copies_strays_with_a_dry_run_first_and_deletes_nothing(client, photo, tmp_path, capsys):
+    from barangai import backup
+    from barangai.db import session_for_url
+    from barangai.models import Report
+
+    home = Path(os.environ["PRIVATE_MEDIA_DIR"])
+    stray, settled, clashing, lost = (resident_report(client, photo, f"{name}@example.test")
+                                      for name in ("ana", "ben", "cara", "dan"))
+    older = tmp_path / "older"
+    older.mkdir()
+    moved = {}
+    for report in (stray, clashing, lost):
+        moved[report] = older / f"{report}.jpg"
+        (home / moved[report].name).rename(moved[report])
+    (home / f"{clashing}.jpg").write_bytes(b"a different photo with the same name")
+    moved[lost].unlink()
+    with session_for_url() as db:
+        for report, path in moved.items():
+            db.get(Report, report).image_path = str(path)
+        db.commit()
+
+    plan = backup.consolidate_photos()
+    assert plan["applied"] is False and plan["to_copy"] == [str(moved[stray])] and plan["copied"] == []
+    assert plan["in_place"] == 1 and plan["conflicts"] == [str(moved[clashing])] and plan["missing"] == [str(moved[lost])]
+    assert not (home / f"{stray}.jpg").exists()  # The dry run touched nothing.
+
+    assert backup.main(["consolidate-photos"]) == 0
+    assert "Dry run" in capsys.readouterr().out and not (home / f"{stray}.jpg").exists()
+
+    assert backup.main(["consolidate-photos", "--apply"]) == 0
+    assert (home / f"{stray}.jpg").read_bytes() == moved[stray].read_bytes()
+    assert moved[stray].exists() and moved[clashing].exists()  # Originals stay.
+    assert (home / f"{clashing}.jpg").read_bytes() == b"a different photo with the same name"
+    assert not list(home.glob("*.copying"))
+    with session_for_url() as db:
+        assert db.get(Report, stray).image_path == str(moved[stray])  # The database is not rewritten.
+    again = backup.consolidate_photos(apply=True)
+    assert again["copied"] == [] and again["in_place"] == 2
+
+
+def test_consolidating_photos_stops_on_a_bad_copy(client, photo, tmp_path, monkeypatch):
+    from barangai import backup
+    from barangai.db import session_for_url
+    from barangai.models import Report
+
+    report = resident_report(client, photo, "ana@example.test")
+    home = Path(os.environ["PRIVATE_MEDIA_DIR"])
+    moved = tmp_path / f"{report}.jpg"
+    (home / moved.name).rename(moved)
+    with session_for_url() as db:
+        db.get(Report, report).image_path = str(moved)
+        db.commit()
+    monkeypatch.setattr(backup, "same_bytes", lambda first, second: False)
+    with pytest.raises(ValueError, match="did not match"):
+        backup.consolidate_photos(apply=True)
+    assert not (home / moved.name).exists() and moved.exists() and not list(home.glob("*.copying"))
+
+
 def test_case_deleted_during_upload_leaves_a_standalone_report(client, photo, monkeypatch):
     from barangai import ai
     from barangai.db import session_for_url

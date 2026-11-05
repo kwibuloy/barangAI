@@ -142,7 +142,7 @@ export function Select({
               setActive(current)
               items()[current]?.focus()
             }}
-            className="z-[1000] w-[var(--radix-popover-trigger-width)] min-w-44 rounded-2xl border-2 border-input bg-card p-1.5 text-card-foreground shadow-[0_12px_32px_-12px_rgb(0_0_0/0.35)]"
+            className="z-[1000] w-[var(--radix-popover-trigger-width)] min-w-44 rounded-2xl border-2 border-border bg-card p-1.5 text-card-foreground shadow-[0_12px_32px_-12px_rgb(0_0_0/0.35)]"
           >
             <ul
               ref={list}

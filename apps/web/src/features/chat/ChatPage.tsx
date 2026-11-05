@@ -12,6 +12,7 @@ import { ResidentAccount } from '../../app/ResidentShell'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { label } from '../reports/categories'
 import { useReports } from '../reports/queries'
+import { useOperator } from '../legal/operator'
 
 type ChatLanguage = 'en' | 'fil' | 'taglish'
 type Message = { from: 'you' | 'assistant'; text: string }
@@ -21,6 +22,7 @@ const SUGGESTIONS = ['How do I report flooding?', 'What happens after I submit?'
 export function ChatPage() {
   const t = useText()
   const reports = useReports()
+  const operator = useOperator().data
   const { language: interfaceLanguage } = useLanguage()
   const [message, setMessage] = useState('')
   const [reportId, setReportId] = useState('')
@@ -61,11 +63,14 @@ export function ChatPage() {
       const reply = answer.reply ?? answer.response ?? answer.message ?? t('I could not answer that request.')
       setMessages(current => [...current, { from: 'assistant', text: reply }])
     } catch {
+      // Kap can't answer, so say who can: the operator's published contact, or the hall.
+      const contact = [operator?.name, operator?.contact].filter(Boolean).join(' · ')
+      const who = contact ? `${t('For other help, contact:')} ${contact}` : t('For other help, ask your barangay hall.')
       setMessages(current => [
         ...current,
         {
           from: 'assistant',
-          text: t('Chat guidance is unavailable right now. You can still submit and track reports here.'),
+          text: `${t('Chat guidance is unavailable right now. You can still submit and track reports here.')} ${who}`,
         },
       ])
     } finally {
@@ -80,7 +85,7 @@ export function ChatPage() {
   const composer = (
     <form
       onSubmit={send}
-      className="flex items-end gap-2 rounded-2xl border-2 bg-card p-1.5 pl-4 focus-within:border-[#84d8ff] lg:mt-3 lg:bg-background dark:focus-within:border-[#3f8db5]"
+      className="flex items-end gap-2 rounded-2xl border-2 border-input bg-card p-1.5 pl-4 focus-within:border-[#84d8ff] lg:mt-3 lg:bg-background dark:focus-within:border-[#3f8db5]"
     >
       <label className="sr-only" htmlFor="chat-message">
         <Txt>Message</Txt>
@@ -235,7 +240,7 @@ export function ChatPage() {
   // Phones and tablets: a messaging-app screen pinned between the top and the tabs (or the keyboard), so the
   // transcript scrolls on its own and the composer never covers it.
   return (
-    <div className="fixed inset-x-0 top-0 bottom-[var(--tab-offset)] z-10 flex flex-col bg-background md:bottom-24">
+    <div className="fixed inset-x-0 top-[var(--offline-h)] bottom-[var(--tab-offset)] z-10 flex flex-col bg-background md:bottom-24">
       <header className="pt-safe shrink-0 border-b-2 bg-background">
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4 sm:px-6">
           <h1 className="truncate text-[17px] font-extrabold">

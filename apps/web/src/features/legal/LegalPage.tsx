@@ -1,13 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
-import { api } from '../../lib/api'
+import { useOperator } from './operator'
 import { LanguageSwitch, Txt, useLanguage } from '../../lib/i18n'
 
 type Section = { title: string; body: string[] }
 type Copy = { title: string; intro: string; sections: Section[] }
 
-const UPDATED = { en: 'Last updated 4 November 2026', fil: 'Huling binago noong 4 Nobyembre 2026' }
+const UPDATED = { en: 'Last updated 5 November 2026', fil: 'Huling binago noong 5 Nobyembre 2026' }
 
 const TERMS: Record<'en' | 'fil', Copy> = {
   en: {
@@ -143,6 +142,8 @@ const PRIVACY: Record<'en' | 'fil', Copy> = {
           "Checks read from the original photo (the date, whether it has camera details, and how far its GPS is from your pin). We store the result of the checks, not the photo's details.",
           'What the AI worked out from your photo: its suggested category, hazard flags and a numeric summary used to find similar photos. Also the street name for your pin.',
           'Your language and appearance settings, and the time you agreed to these terms.',
+          "Notes you send through Send feedback, with your account number. Administrators read them and can delete them, and they are erased with your account. Leave out other people's names.",
+          'An unsent report stays on your device, with its photo, pin, category and description, so you can finish it later. It is not sent to anyone. It is removed when you send it, sign out or delete your account, or after 24 hours.',
         ],
       },
       {
@@ -200,6 +201,8 @@ const PRIVACY: Record<'en' | 'fil', Copy> = {
           'Mga pagsusuring binasa mula sa orihinal na larawan (petsa, kung may detalye ng camera, at layo ng GPS nito sa iyong pin). Ang resulta ng pagsusuri ang itinatago namin, hindi ang mga detalye ng larawan.',
           'Ang nakuha ng AI mula sa iyong larawan: iminungkahing kategorya, mga babala sa panganib at buod na numero na ginagamit para makahanap ng magkakahawig na larawan. Pati ang pangalan ng kalye ng iyong pin.',
           'Ang iyong setting sa wika at hitsura, at ang oras ng pagsang-ayon mo sa mga tuntuning ito.',
+          'Ang mga note na ipinapadala mo sa Send feedback, kasama ang account number mo. Binabasa ito ng mga admin at puwede nilang burahin, at nabubura ito kasama ng account mo. Huwag isama ang pangalan ng ibang tao.',
+          'Nananatili sa device mo ang ulat na hindi pa nai-send, kasama ang photo, pin, kategorya at description, para matapos mo ito mamaya. Walang pinapadalhan nito. Nabubura ito kapag na-send mo, nag-sign out ka, binura mo ang account mo, o pagkalipas ng 24 oras.',
         ],
       },
       {
@@ -248,11 +251,7 @@ const PRIVACY: Record<'en' | 'fil', Copy> = {
 }
 
 function Operator() {
-  const operator = useQuery({
-    queryKey: ['legal-operator'],
-    queryFn: () => api<{ name: string | null; contact: string | null }>('/legal/operator'),
-    staleTime: Infinity,
-  })
+  const operator = useOperator()
   if (!operator.isSuccess) return null
   return (
     <section>

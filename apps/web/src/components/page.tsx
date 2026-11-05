@@ -31,7 +31,7 @@ export function LargeTitle({
     <>
       <div
         className={cn(
-          'pt-safe sticky top-0 z-30 -mx-4 transition-[background-color,box-shadow] duration-200 sm:-mx-6 lg:hidden',
+          'pt-safe sticky top-[var(--offline-h)] z-30 -mx-4 transition-[background-color,box-shadow] duration-200 sm:-mx-6 lg:hidden',
           compact || bar ? 'border-b-2 bg-background' : 'border-b-2 border-transparent bg-background',
         )}
       >

@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { DateText } from '@/components/DateText'
 import { Alert } from '@/components/page'
+import { Journey } from './Journey'
 import { cn } from '@/lib/utils'
 import { ApiError } from '../../lib/api'
 import { shownError } from '../../lib/live'
@@ -41,7 +42,7 @@ import {
   useReport,
   useReportCase,
 } from './queries'
-import type { Category, Duplicate, Report, ReportSummary, StaffAction, Status } from './types'
+import type { Category, Duplicate, FollowUp, Report, ReportSummary, StaffAction, Status } from './types'
 
 /** What staff are told when a change goes through, and the way to the next report, from the queue around this view. */
 export type StaffFlow = {
@@ -115,6 +116,7 @@ export function ReportView({ id, staff, flow }: { id: string; staff: boolean; fl
   const [imageError, setImageError] = useState(false)
   const facts = (
     <>
+      {detail && !staff && <WhereItStands detail={detail} />}
       {imageError ? (
         <div className="hairline flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl bg-muted p-6 text-center text-[15px] text-muted-foreground">
           <ImageOff className="size-7" aria-hidden="true" />
@@ -126,7 +128,7 @@ export function ReportView({ id, staff, flow }: { id: string; staff: boolean; fl
         <img
           className="hairline aspect-[4/3] w-full rounded-2xl bg-muted object-cover lg:aspect-[16/10]"
           src={`/api/reports/${id}/image`}
-          alt={t('Submitted incident')}
+          alt={t(staff ? 'Submitted incident' : 'Photo of the reported problem')}
           onError={() => setImageError(true)}
         />
       )}
@@ -162,6 +164,92 @@ export function ReportView({ id, staff, flow }: { id: string; staff: boolean; fl
         </Alert>
       )}
     </div>
+  )
+}
+
+/** One line per status on what comes next. Never a date: nothing here promises when. */
+const WHAT_NEXT: Record<Status, string> = {
+  Pending: 'Barangay staff will look at your report next. You will see updates here.',
+  'Under Verification': 'Staff are checking your report. Next they accept it or tell you why not.',
+  Accepted: 'Staff accepted this report. It moves to In Progress when work starts.',
+  'In Progress': 'Work has started. Staff mark it Resolved when it is done.',
+  Resolved: 'Staff marked this as fixed. Thank you for reporting.',
+  Rejected: 'Staff did not accept this report. If the problem is still there, you can make a new report.',
+}
+
+// cases.py's GROUPED_NOTE: written by the app when a report joins a case, so history shows it but it isn't staff's.
+const GROUPED_NOTE = 'Your report was grouped with others about the same concern, so it now shares their status.'
+
+/** The newest note a resident may read: a status description or a staff action. The API sends them no others. */
+function latestStaffNote(detail: Report) {
+  const notes = [
+    ...(detail.events ?? []).map(event => ({ note: event.note, at: event.created_at })),
+    ...(detail.actions ?? []).filter(action => action.kind === 'action').map(a => ({ note: a.note, at: a.created_at })),
+  ].filter(item => item.note && item.note !== GROUPED_NOTE && item.at)
+  notes.sort((first, second) => String(first.at).localeCompare(String(second.at)))
+  return notes.at(-1)?.note ?? null
+}
+
+/** Top of a resident's report: where it is on the path, what staff last said and what happens next. */
+function WhereItStands({ detail }: { detail: Report }) {
+  const t = useText()
+  const note = latestStaffNote(detail)
+  const reason = [...(detail.events ?? [])].reverse().find(event => event.rejection_reason)?.rejection_reason
+  const moving = detail.status !== 'Resolved' && detail.status !== 'Rejected'
+  const followUp: FollowUp | null =
+    detail.latitude != null && detail.longitude != null
+      ? {
+          reportId: detail.id,
+          category: detail.verified_category ?? detail.resident_category,
+          latitude: detail.latitude,
+          longitude: detail.longitude,
+        }
+      : null
+  return (
+    <section className="hairline space-y-3 rounded-2xl bg-card p-4">
+      <Journey status={detail.status} compact className={moving ? 'mt-9' : undefined} />
+      {detail.status === 'Rejected' && reason && (
+        <div className="border-t-2 pt-3">
+          <h3 className="text-[13px] text-muted-foreground">
+            <Txt>Reason from staff</Txt>
+          </h3>
+          <p className="text-[15px] font-bold">
+            <Txt>{rejectionReasons.find(item => item.value === reason)?.label ?? 'Other reason'}</Txt>
+          </p>
+        </div>
+      )}
+      {note && (
+        <div className="border-t-2 pt-3">
+          <h3 className="text-[13px] text-muted-foreground">
+            <Txt>Latest note from staff</Txt>
+          </h3>
+          <p className="text-[15px] break-words">{t(note)}</p>
+        </div>
+      )}
+      <div className="border-t-2 pt-3">
+        <h3 className="text-[13px] text-muted-foreground">
+          <Txt>What happens next</Txt>
+        </h3>
+        <p className="text-[15px]">
+          <Txt>{WHAT_NEXT[detail.status]}</Txt>
+        </p>
+      </div>
+      {detail.status === 'Rejected' && (
+        <Button asChild variant="tinted" className="w-full">
+          <Link to="/report">
+            <Txt>Make a new report</Txt>
+          </Link>
+        </Button>
+      )}
+      {/* A new report that names this one in its text. Nothing reopens, and the status path stays as it is. */}
+      {detail.status === 'Resolved' && (
+        <Button asChild variant="tinted" className="w-full">
+          <Link to="/report" state={followUp ? { followUp } : undefined}>
+            <Txt>Still not fixed? Report it again</Txt>
+          </Link>
+        </Button>
+      )}
+    </section>
   )
 }
 
@@ -393,11 +481,14 @@ function StatusControls({ detail, flow }: { detail: Report; flow?: StaffFlow }) 
           <Txt>Reason, if rejecting</Txt>
           <Select value={reason} onChange={event => setReason(event.target.value)}>
             <option value="">{t('Choose a reason')}</option>
-            {rejectionReasons.map(item => (
-              <option key={item.value} value={item.value}>
-                {t(item.label)}
-              </option>
-            ))}
+            {/* Rejecting moves a whole case, so "Already reported" would reject everyone's report in it. */}
+            {rejectionReasons
+              .filter(item => !(detail.case_id && item.value === 'already_reported'))
+              .map(item => (
+                <option key={item.value} value={item.value}>
+                  {t(item.label)}
+                </option>
+              ))}
           </Select>
         </label>
       )}

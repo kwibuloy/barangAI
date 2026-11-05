@@ -11,7 +11,7 @@ Local development: Vite proxies `/api` to FastAPI on port 8000. The local launch
 | GET | `/legal/operator` | Public | `{name,contact}` for the legal pages; `null` until `OPERATOR_NAME` and `PRIVACY_CONTACT` are set. |
 | POST | `/auth/login` | Public | Log in with `{email,password}`. 429 until the next Manila day after `MAX_LOGIN_FAILURES_PER_DAY` wrong passwords for that email from one address, or `MAX_LOGIN_FAILURES_PER_EMAIL_PER_DAY` from any, known email or not; a password reset clears both. |
 | POST | `/auth/logout` | Signed in | Revoke session. |
-| GET | `/auth/me` | Signed in | Current `{id,email,role,preferences,barangay,google,must_change_password}`; while `must_change_password` is true every other write answers 403 `Change your temporary password first` (reads still answer; the website shows only the change screen); `barangay` is the staff member's barangay name or `null`; `preferences` holds only known keys (`theme`: `system`/`light`/`dark`, `language`: `en`/`fil`). |
+| GET | `/auth/me` | Signed in | Current `{id,email,role,preferences,barangay,google,must_change_password}`; while `must_change_password` is true every other read and write answers 403 `Change your temporary password first` (the website shows only the change screen); `barangay` is the staff member's barangay name or `null`; `preferences` holds only known keys (`theme`: `system`/`light`/`dark`, `language`: `en`/`fil`). |
 | PUT | `/auth/preferences` | Signed in | `{theme?,language?}`; saves appearance and language on the account; 422 for unknown values. Requires CSRF. |
 | GET | `/auth/google/config` | Public | `{enabled}`; no credentials exposed. |
 | GET | `/auth/google/start` | Public | Start configured resident Google authorization with PKCE/state. |
@@ -65,6 +65,7 @@ Local development: Vite proxies `/api` to FastAPI on port 8000. The local launch
 | GET | `/admin/rewards/log?code=&limit=` | Administrator | `{reward_changes:[{id,reward_id,reward,barangay,actor_id,action:"created"|"changed",changes,created_at}],vouchers:[{id,code,status,reward_id,reward,barangay,points_cost,redeemed_by,redeemed_at,expires_at,honoured_by,honoured_at}]}`, newest first, up to `limit` (500, at most 2,000) of each. `redeemed_by` and `honoured_by` are account ids. `changes` is the starting values, or `{field:[old,new]}`. `code` finds one code, typed any way. |
 | POST | `/feedback` | Signed in | `{message}`, up to 1,000 characters (422 if blank or longer). 201 `{id,created_at}`. One note per account per 5 minutes (429). Stores the account id and the message only, and goes with the account when it is erased. Requires CSRF. |
 | GET | `/admin/feedback?limit=` | Administrator | `[{id,user_id,message,created_at}]`, newest first, up to `limit` (200, at most 1,000). |
+| DELETE | `/admin/feedback/{id}` | Administrator | 204. Free text can name a resident, so an administrator can remove a note. 404 `Feedback not found`. Requires CSRF. |
 | POST | `/chat` | Resident | `{message,language:"en"|"fil"|"taglish",report_id?}`. Generic guidance may use Workers AI; report status stays deterministic and owner-scoped. The message goes to the model after a best-effort removal of emails, phone numbers and report IDs; the model answers as Kap, or judges it unrelated to the app, which gives a fixed `source: "out_of_scope"` reply. |
 
 ## Staff jurisdiction

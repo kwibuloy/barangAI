@@ -1,7 +1,7 @@
 // Screenshot routes in headless Chrome/Edge, signed in as a seeded demo account, and report console errors.
 //   API on :8000 and `npm run dev` on :5173 (see the visual-check skill), seeded with SEED_DEMO_PASSWORD set, plus
 //   SEED_DEMO_STAFF_PASSWORD and SEED_DEMO_ADMIN_PASSWORD to shoot those roles (older one-password databases need only the first)
-//   node scripts/shoot.mjs [--as resident|staff|admin|none] [--theme light|dark] [--widths 390,768,1024,1440] [--out <dir>] home reports/<id> report-flow ...
+//   node scripts/shoot.mjs [--as resident|staff|admin|none] [--theme light|dark] [--lang en|fil] [--widths 390,768,1024,1440] [--out <dir>] home reports/<id> report-flow ...
 // Routes are written without the leading "/" (Git Bash mangles it); "home" is the bare URL. Set BASE_URL or CHROME_PATH.
 import { existsSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +14,19 @@ const opt = (name, fallback) => {
 }
 const role = opt('--as', 'resident')
 const theme = opt('--theme', 'light')
-const suffix = theme === 'dark' ? '-dark' : ''
+const lang = opt('--lang', 'en')
+const suffix = `${theme === 'dark' ? '-dark' : ''}${lang === 'fil' ? '-fil' : ''}`
+// The flows find controls by their words.
+const FIL = {
+  Next: 'Susunod',
+  'Enter coordinates manually': 'I-type ang coordinates',
+  'Adjust pin on map': 'Ilipat ang pin',
+  Flooding: 'Baha',
+  'Submit report': 'I-submit ang ulat',
+  'different problem': 'Ibang problema',
+  Continue: 'Ituloy',
+}
+const words = text => (lang === 'fil' ? FIL[text] : null) ?? text
 const out = opt('--out', fileURLToPath(new URL('../../../.shots', import.meta.url)))
 const widths = opt('--widths', '390,768,1024,1440').split(',').map(Number)
 const routes = args.length ? args : ['home']
@@ -46,6 +58,11 @@ const browser = await puppeteer.launch({
   args: process.env.CHROME_NO_SANDBOX ? ['--no-sandbox'] : [],
 })
 const context = await browser.createBrowserContext()
+const setLanguage = page =>
+  page.evaluateOnNewDocument(value => {
+    localStorage.setItem('barangai-language', value)
+    Object.defineProperty(navigator, 'language', { get: () => (value === 'fil' ? 'fil-PH' : 'en-US') })
+  }, lang)
 if (role !== 'none') {
   const page = await context.newPage()
   await page.goto(base, { waitUntil: 'networkidle0' })
@@ -60,11 +77,24 @@ if (role !== 'none') {
     password,
   )
   if (status !== 200) throw new Error(`Login as ${role} returned ${status}; run the seed-demo skill first.`)
+  // The account's saved language wins over this device's on sign-in, so an earlier run's choice would stick.
+  await page.evaluate(
+    language =>
+      fetch('/api/auth/preferences', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': decodeURIComponent(document.cookie.match(/csrf_token=([^;]+)/)?.[1] ?? ''),
+        },
+        body: JSON.stringify({ language }),
+      }),
+    lang,
+  )
   await page.close()
 }
 
 // Multi-step flows: each step is shot as <role>-<flow>-<n>-<step>-<width>.png. A submit writes to the local DB.
-const click = (page, text) => page.locator(`::-p-text(${text})`).click()
+const click = (page, text) => page.locator(`::-p-text(${words(text)})`).click()
 // Full-page capture resizes the viewport, which replays chart draw-ins and can catch entrance animations mid-way.
 // So grow the viewport to the page's height first, give charts time to redraw, then end every one-shot animation
 // (looping ones, like Kap breathing, keep running) and capture the settled layout.
@@ -115,6 +145,8 @@ const FLOWS = {
     await new Promise(r => setTimeout(r, 900))
     await shot('2-photo')
     await click(page, 'Next')
+    await new Promise(r => setTimeout(r, 400))
+    await shot('3-location-empty')
     // Headless GPS is unreliable, so type the synthetic point; the map still shows the pin.
     await click(page, 'Enter coordinates manually')
     await page.type('input[placeholder="14.326900"]', '14.3294')
@@ -122,6 +154,13 @@ const FLOWS = {
     await click(page, 'Adjust pin on map')
     await new Promise(r => setTimeout(r, 1500))
     await shot('3-location')
+    // Leaving and coming back offers the unsent report.
+    await new Promise(r => setTimeout(r, 500))
+    await page.reload({ waitUntil: 'networkidle0' })
+    await new Promise(r => setTimeout(r, 400))
+    await shot('3-continue-draft')
+    await page.locator(`button::-p-text(${words('Continue')})`).click()
+    await new Promise(r => setTimeout(r, 900))
     await click(page, 'Next')
     await click(page, 'Flooding')
     await new Promise(r => setTimeout(r, 400))
@@ -134,12 +173,68 @@ const FLOWS = {
     await click(page, 'Submit report')
     await new Promise(r => setTimeout(r, 1200))
     // The seeded resident already has an open flood report nearby, so the "already reported" sheet opens.
-    if (await page.$('::-p-text(different problem)')) {
+    if (await page.$(`::-p-text(${words('different problem')})`)) {
       await shot('6-already-reported')
       await click(page, 'different problem')
       await new Promise(r => setTimeout(r, 1200))
     }
     await shot('7-sent')
+  },
+  // Each status's report page, for the first report the account has in each.
+  'report-statuses': async (page, shot) => {
+    await page.goto(base, { waitUntil: 'networkidle0' })
+    const reports = await page.evaluate(() => fetch('/api/reports').then(r => r.json()))
+    for (const status of ['Pending', 'Under Verification', 'Accepted', 'In Progress', 'Resolved', 'Rejected']) {
+      const report = reports.find(item => item.status === status)
+      if (!report) continue
+      await page.goto(new URL(`reports/${report.id}`, base).href, { waitUntil: 'networkidle0' })
+      await new Promise(r => setTimeout(r, 500))
+      await shot(status.toLowerCase().replace(' ', '-'))
+    }
+  },
+  // The server stops answering while the app is open.
+  'offline-strip': async (page, shot) => {
+    await page.goto(new URL('report', base).href, { waitUntil: 'networkidle0' })
+    await page.setOfflineMode(true)
+    await new Promise(r => setTimeout(r, 17_000))
+    await shot('report')
+    await page.setOfflineMode(false)
+  },
+  // The session check gets no answer, then a server error.
+  'server-problem': async (page, shot) => {
+    await page.setRequestInterception(true)
+    let failure = 'abort'
+    page.on('request', request => {
+      if (!request.url().endsWith('/api/auth/me')) return request.continue()
+      if (failure === 'abort') return request.abort()
+      return request.respond({ status: 500, contentType: 'application/json', body: '{"detail":"boom"}' })
+    })
+    await page.goto(base, { waitUntil: 'networkidle0' })
+    await new Promise(r => setTimeout(r, 4500))
+    await shot('unreachable')
+    failure = '500'
+    await page.reload({ waitUntil: 'networkidle0' })
+    await new Promise(r => setTimeout(r, 4500))
+    await shot('server-error')
+  },
+  // The Android app's own page, as its web view loads it.
+  'mobile-fallback': async (page, shot) => {
+    const file = new URL('../../mobile/www/index.html', import.meta.url).href
+    await page.goto(`${file}?failed=1`)
+    await new Promise(r => setTimeout(r, 300))
+    await shot('failed')
+    await page.goto(file)
+    await new Promise(r => setTimeout(r, 300))
+    await shot('first-launch')
+  },
+  // The account sheet with feedback open.
+  'account-feedback': async (page, shot) => {
+    await page.goto(new URL('help', base).href, { waitUntil: 'networkidle0' })
+    await page.locator('[aria-label="Account and settings"], [aria-label="Account at settings"]').click()
+    await new Promise(r => setTimeout(r, 600))
+    await page.locator('summary ::-p-text(feedback)').click()
+    await new Promise(r => setTimeout(r, 400))
+    await shot('open')
   },
   // The warning for a pin outside every barangay (a synthetic point). No submit.
   'report-outside': async (page, shot) => {
@@ -181,13 +276,20 @@ for (const route of routes.filter(route => FLOWS[route])) {
     const page = await context.newPage()
     await page.setViewport({ width: w, height: HEIGHT[w] ?? 900, isMobile: w <= TOUCH_MAX, hasTouch: w <= TOUCH_MAX })
     await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: theme }])
+    await setLanguage(page)
     const errors = []
     page.on('pageerror', e => errors.push(e.message))
-    page.on('console', m => m.type() === 'error' && errors.push(m.text()))
+    // These flows cut the connection on purpose, and a signed-out page's session check is expected to answer 401.
+    const expected = text =>
+      ((route === 'offline-strip' || route === 'server-problem') && /ERR_|status of 500|Failed to fetch/.test(text)) ||
+      /tile\.openstreetmap|ERR_NAME_NOT_RESOLVED/.test(text)
+    page.on('console', m => m.type() === 'error' && !expected(m.text()) && errors.push(m.text()))
     await FLOWS[route](page, async step => {
       const path = `${out}/${role}-${route}-${step}-${w}${suffix}.png`
+      // Task screens must fit one phone screen: measured before the capture grows the viewport.
+      const scrolls = await page.evaluate(() => [document.documentElement.scrollHeight, innerHeight])
       await capture(page, path)
-      console.log(path)
+      console.log(`${path}${scrolls[0] > scrolls[1] ? `  TALLER THAN THE SCREEN (${scrolls[0]} > ${scrolls[1]})` : ''}`)
     })
     if (errors.length) {
       failures++
@@ -208,10 +310,11 @@ for (const route of routes.filter(route => !FLOWS[route])) {
       deviceScaleFactor: 1,
     })
     await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: theme }])
+    await setLanguage(page)
     const errors = []
     page.on('pageerror', e => errors.push(e.message))
     // Signed out, the app's session probe (/auth/me) is expected to return 401.
-    const expected = text => role === 'none' && text.includes('status of 401')
+    const expected = text => (role === 'none' && text.includes('status of 401')) || /ERR_NAME_NOT_RESOLVED/.test(text)
     page.on('console', m => m.type() === 'error' && !expected(m.text()) && errors.push(m.text()))
     await page.goto(route === 'home' ? base : new URL(route, base).href, { waitUntil: 'networkidle0', timeout: 60_000 })
     await new Promise(r => setTimeout(r, 2000)) // map tiles, photos and chart animations settle
