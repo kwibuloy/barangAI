@@ -67,6 +67,26 @@ describe('faces on screen', () => {
   }
   const shown = () => screen.findAllByAltText('Preview of incident photo')
 
+  const preview = (faces: number, plates: number) =>
+    Response.json({ preview_image: 'data:image/jpeg;base64,AAAA', faces_blurred: faces, plates_blurred: plates })
+
+  it('says what Kap blurred, without promising it caught everything', async () => {
+    servePreview(() => Promise.resolve(preview(1, 2)))
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText(/incident photo/i), { target: { files: [photo()] } })
+    const line = 'Kap blurred 1 face and 2 plates. Check that nothing else private shows.'
+    expect((await screen.findAllByText(line)).length).toBeGreaterThan(0)
+  })
+
+  it('says nothing about blurring when nothing was found', async () => {
+    servePreview(() => Promise.resolve(preview(0, 0)))
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText(/incident photo/i), { target: { files: [photo()] } })
+    await shown()
+    await waitFor(async () => expect((await shown())[0]).not.toHaveClass('blur-2xl'))
+    expect(screen.queryByText(/Kap blurred/)).toBeNull()
+  })
+
   it('keeps the original blurred until the blurred copy replaces it, then asks the AI', async () => {
     let finish = (_response: Response) => {}
     const requests = servePreview(() => new Promise(resolve => (finish = resolve)))

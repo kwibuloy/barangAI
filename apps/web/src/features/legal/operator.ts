@@ -5,6 +5,6 @@ import { api } from '../../lib/api'
 export const useOperator = () =>
   useQuery({
     queryKey: ['legal-operator'],
-    queryFn: () => api<{ name: string | null; contact: string | null }>('/legal/operator'),
+    queryFn: () => api<{ name: string | null; contact: string | null; demo_mode?: boolean }>('/legal/operator'),
     staleTime: Infinity,
   })

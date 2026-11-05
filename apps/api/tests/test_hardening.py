@@ -806,3 +806,10 @@ def test_plate_failure_refuses_the_photo_and_plate_blur_can_be_turned_off(client
 def test_real_plate_detector_handles_tiny_and_narrow_photos(real_plate_detector, size):
     assert real_plate_detector.find_plates(Image.new("RGB", size, (120, 130, 140))) == []
 
+
+def test_real_detector_counts_what_it_blurred(real_detector):
+    from barangai import media
+
+    media.clear_sanitized_cache()
+    assert media.sanitize_photo(jpeg(scene_with_face(160))).faces == 1
+    assert media.sanitize_photo(jpeg(wiring_scene())).faces == 0

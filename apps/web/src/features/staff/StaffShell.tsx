@@ -21,6 +21,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { BrandMark, Wordmark } from '@/components/BrandMark'
 import { PageSpinner } from '@/components/page'
 import { OfflineStrip } from '@/components/OfflineStrip'
+import { DemoChip } from '@/components/DemoChip'
 import { keepOnlyDraftsOf } from '../reports/draft'
 import { navIconStyle, navItemClass } from '@/components/nav'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -299,6 +300,7 @@ export function StaffShell({ user }: { user: User }) {
             <span className="label-caps min-w-0 truncate text-[14px] text-muted-foreground">
               <Txt>{current.label}</Txt>
             </span>
+            <DemoChip />
             {user.role === 'administrator' && !phone && (
               <span className="ml-auto rounded-lg border-2 border-[#ce82ff]/50 bg-[#ce82ff]/12 px-2.5 py-1 label-caps text-[11px] text-[#8a3fd1] dark:text-[#dcb1ff]">
                 <Txt>Administrator</Txt>

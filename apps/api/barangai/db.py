@@ -20,6 +20,11 @@ def project_root():
     return parents[min(3, len(parents) - 1)]
 
 
+def demo_mode() -> bool:
+    """DEMO_MODE=true: this server holds synthetic data, and every screen and printed report says so. Off by default."""
+    return os.environ.get("DEMO_MODE", "").strip().lower() == "true"
+
+
 def _sqlite_settings(connection, _record):
     """Per connection: readers never block a commit, foreign keys hold, and deleted rows leave no bytes behind."""
     cursor = connection.cursor()

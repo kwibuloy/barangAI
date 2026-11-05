@@ -31,6 +31,8 @@ artifacts/
 .playwright-mcp/
 deploy/private_model/
 .shots/
+# deploy/demo.ps1: throwaway database, photos and passwords
+/demo/
 
 # Secrets and data-provider credentials: never commit
 .env.*

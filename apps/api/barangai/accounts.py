@@ -25,7 +25,7 @@ from .auth import (
     require_role,
     user_data,
 )
-from .db import get_db, scrub_deleted
+from .db import demo_mode, get_db, scrub_deleted
 from .media import delete_image
 from .models import DeletionRequest, Feedback, LoginSession, Notification, Report, User, now, utc_iso
 from .reports import authorized_report, deletion_request_data, serialize_report
@@ -41,6 +41,8 @@ def operator():
     return {
         "name": os.environ.get("OPERATOR_NAME", "").strip() or None,
         "contact": os.environ.get("PRIVACY_CONTACT", "").strip() or None,
+        # A public fact, so the app can label synthetic data on every screen.
+        "demo_mode": demo_mode(),
     }
 
 

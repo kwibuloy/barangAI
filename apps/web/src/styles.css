@@ -711,6 +711,17 @@ html::after {
   [data-slot='sidebar-inset'] {
     margin: 0 !important;
   }
+  /* Tighter rows, so the report stays one sheet to hand across a table. */
+  [data-slot='card'] {
+    padding-block: 8px !important;
+    gap: 4px !important;
+  }
+  [data-slot='table-cell'],
+  [data-slot='table-head'] {
+    padding-block: 2px !important;
+    height: auto !important;
+    font-size: 12px;
+  }
   :root,
   :root.dark,
   :root[data-theme='dark'] {

@@ -74,10 +74,12 @@ def test_registration_needs_the_terms_and_records_them(client):
 def test_operator_details_come_from_settings_and_are_never_guessed(client, monkeypatch):
     monkeypatch.delenv("OPERATOR_NAME", raising=False)
     monkeypatch.delenv("PRIVACY_CONTACT", raising=False)
-    assert client.get("/legal/operator").json() == {"name": None, "contact": None}
+    assert client.get("/legal/operator").json() == {"name": None, "contact": None, "demo_mode": False}
     monkeypatch.setenv("OPERATOR_NAME", "Synthetic Barangay")
     monkeypatch.setenv("PRIVACY_CONTACT", "privacy@example.test")
-    assert client.get("/legal/operator").json() == {"name": "Synthetic Barangay", "contact": "privacy@example.test"}
+    assert client.get("/legal/operator").json() == {
+        "name": "Synthetic Barangay", "contact": "privacy@example.test", "demo_mode": False,
+    }
 
 
 # Password

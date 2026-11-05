@@ -1,7 +1,7 @@
 // Screenshot routes in headless Chrome/Edge, signed in as a seeded demo account, and report console errors.
 //   API on :8000 and `npm run dev` on :5173 (see the visual-check skill), seeded with SEED_DEMO_PASSWORD set, plus
 //   SEED_DEMO_STAFF_PASSWORD and SEED_DEMO_ADMIN_PASSWORD to shoot those roles (older one-password databases need only the first)
-//   node scripts/shoot.mjs [--as resident|staff|admin|none] [--theme light|dark] [--lang en|fil] [--widths 390,768,1024,1440] [--out <dir>] home reports/<id> report-flow ...
+//   node scripts/shoot.mjs [--as resident|staff|admin|none] [--theme light|dark] [--lang en|fil] [--media print] [--widths 390,768,1024,1440] [--out <dir>] home reports/<id> report-flow ...
 // Routes are written without the leading "/" (Git Bash mangles it); "home" is the bare URL. Set BASE_URL or CHROME_PATH.
 import { existsSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -15,7 +15,8 @@ const opt = (name, fallback) => {
 const role = opt('--as', 'resident')
 const theme = opt('--theme', 'light')
 const lang = opt('--lang', 'en')
-const suffix = `${theme === 'dark' ? '-dark' : ''}${lang === 'fil' ? '-fil' : ''}`
+const media = opt('--media', '')
+const suffix = `${theme === 'dark' ? '-dark' : ''}${lang === 'fil' ? '-fil' : ''}${media ? `-${media}` : ''}`
 // The flows find controls by their words.
 const FIL = {
   Next: 'Susunod',
@@ -25,6 +26,7 @@ const FIL = {
   'Submit report': 'I-submit ang ulat',
   'different problem': 'Ibang problema',
   Continue: 'Ituloy',
+  'Start over': 'Magsimula ulit',
 }
 const words = text => (lang === 'fil' ? FIL[text] : null) ?? text
 const out = opt('--out', fileURLToPath(new URL('../../../.shots', import.meta.url)))
@@ -103,7 +105,7 @@ const settle = async page => {
   const height = await page.evaluate(() => document.documentElement.scrollHeight)
   if (height > viewport.height) {
     await page.setViewport({ ...viewport, height })
-    await new Promise(r => setTimeout(r, 900))
+    await new Promise(r => setTimeout(r, 2000))
   }
   await page.evaluate(() =>
     document.getAnimations().forEach(animation => {
@@ -137,7 +139,79 @@ const addPhoto = page =>
     input.files = files.files
     input.dispatchEvent(new Event('change', { bubbles: true }))
   })
+// A drawn head (nobody's face) on a drawn street, to show what the app says after blurring one.
+const addFacePhoto = page =>
+  page.evaluate(async () => {
+    const canvas = Object.assign(document.createElement('canvas'), { width: 1000, height: 800 })
+    const g = canvas.getContext('2d')
+    g.fillStyle = '#96aabe'
+    g.fillRect(0, 0, 1000, 800)
+    g.fillStyle = '#6f7076'
+    g.fillRect(0, 560, 1000, 240)
+    const size = 240
+    const s = size / 400
+    const left = 380
+    const top = 200
+    const oval = (x0, y0, x1, y1, color) => {
+      g.fillStyle = color
+      g.beginPath()
+      g.ellipse(
+        left + ((x0 + x1) / 2) * s,
+        top + ((y0 + y1) / 2) * s,
+        ((x1 - x0) / 2) * s,
+        ((y1 - y0) / 2) * s,
+        0,
+        0,
+        7,
+      )
+      g.fill()
+    }
+    g.filter = 'blur(1.5px)'
+    oval(80, 30, 320, 300, '#281c16')
+    g.fillStyle = '#be8c6e'
+    g.fillRect(left + 170 * s, top + 300 * s, 60 * s, 80 * s)
+    oval(100, 70, 300, 340, '#d6aa8c')
+    for (const x of [155, 245]) {
+      g.strokeStyle = '#281c16'
+      g.lineWidth = 7 * s
+      g.beginPath()
+      g.ellipse(left + x * s, top + 155 * s, 32 * s, 20 * s, 0, Math.PI * 1.1, Math.PI * 1.9)
+      g.stroke()
+      oval(x - 26, 165, x + 26, 193, '#f5f0eb')
+      oval(x - 12, 166, x + 12, 192, '#372319')
+    }
+    g.fillStyle = '#c49478'
+    g.beginPath()
+    g.moveTo(left + 200 * s, top + 190 * s)
+    g.lineTo(left + 182 * s, top + 250 * s)
+    g.lineTo(left + 218 * s, top + 250 * s)
+    g.fill()
+    oval(180, 244, 196, 256, '#785041')
+    oval(204, 244, 220, 256, '#785041')
+    oval(155, 275, 245, 300, '#963c3c')
+    g.filter = 'none'
+    const blob = await new Promise(done => canvas.toBlob(done, 'image/jpeg', 0.9))
+    const input = document.querySelector('input[capture]')
+    const files = new DataTransfer()
+    files.items.add(new File([blob], 'drawn-face.jpg', { type: 'image/jpeg' }))
+    input.files = files.files
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  })
 const FLOWS = {
+  // The Photo step after the server blurred a drawn face. No submit.
+  'report-face': async (page, shot) => {
+    await page.goto(new URL('report', base).href, { waitUntil: 'networkidle0' })
+    // A draft from an earlier run would offer itself first.
+    if (await page.$(`button::-p-text(${words('Start over')})`))
+      await page.locator(`button::-p-text(${words('Start over')})`).click()
+    await addFacePhoto(page)
+    await page.waitForFunction(
+      () => document.querySelector('img[src^="data:image"]') && !document.querySelector('.photo-scan'),
+      { timeout: 60_000 },
+    )
+    await new Promise(r => setTimeout(r, 1500))
+    await shot('photo')
+  },
   'report-flow': async (page, shot) => {
     await page.goto(new URL('report', base).href, { waitUntil: 'networkidle0' })
     await shot('1-empty')
@@ -310,6 +384,7 @@ for (const route of routes.filter(route => !FLOWS[route])) {
       deviceScaleFactor: 1,
     })
     await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: theme }])
+    if (media) await page.emulateMediaType(media)
     await setLanguage(page)
     const errors = []
     page.on('pageerror', e => errors.push(e.message))

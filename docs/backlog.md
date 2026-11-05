@@ -19,6 +19,7 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 | D9 | Staff report view: the three category fields no longer overlap; a staff account with no barangay is told why its desk is empty | Screenshots awaiting approval |
 | D10 | Security and backend batch, API side (B5, B6, P1 API, M1, M3 to M10, M12 to M14; P7 without unlink): see docs/api.md and docs/architecture.md | `test_admin.py`, `test_limits.py`, `test_points_ledger.py`, `test_links_and_polls.py`, `test_export_erasure_ops.py` |
 | D12 | Resident batch: P2, P3, P4, P5, P12, P13 resident side, P14 strings and scan (Filipino review by a person still open), P10 except the primary button, P11 resident side (TalkBack and NVDA not run). Reads refused on a temporary password; a terminal reset makes staff and administrators choose their own; administrators can delete feedback; `backup consolidate-photos` prepared for M11 and not run on real data; M2 | `resident-help.test.tsx`, `contrast.test.ts`, `api-errors-i18n.test.ts`, `mobile-fallback.test.ts`, `test_staff_desk.py`, `test_data_safety.py`, `scripts/journey.mjs`. The Android screens compile but were not run on a device; screenshots await approval |
+| D13 | Demo batch: `seed_demo --story`, `DEMO_MODE` label, `deploy/demo.ps1`, blur counts on the Photo step, "What your barangay fixed", comparison with last month, rollup by barangay (admin only, CSV) | `test_demo_story.py`, `records.test.tsx`, `community.test.tsx`, `ai-form.test.tsx`; screenshots in `.shots/batch6` await approval |
 | D11 | Staff desk batch: P1 (accounts page, first-run checklist, forced password change, phone address as text), P6, P8 (thumbnails, open-only default, saved phrases, save and next, bulk "Start verification"), P9, P11 for staff screens, P13 staff side, M8 screen, P7's confirm prompt (a safety net so far: screens only link pairs staff already confirmed, which skip the check) | `test_staff_desk.py`, `staff-desk.test.tsx`, screenshots awaiting approval |
 
 ## Open: 1. Blockers and current risks
@@ -78,7 +79,7 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 
 - Capture now, send later: photo and GPS kept on the phone until the server is back. Large, but softens the same-Wi-Fi limit.
 - Bulk status changes past "Start verification". No-pin reports (landmark or barangay only), which change jurisdiction logic.
-- Per-barangay settings, city rollup report and SMS notices (about ₱0.56 a text, E).
+- Per-barangay settings and SMS notices (about ₱0.56 a text, E).
 
 ## Open: 6. Deployment and launch (deliberately last)
 

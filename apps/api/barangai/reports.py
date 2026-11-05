@@ -11,7 +11,7 @@ from . import ai, barangays, geo, priority, trust
 from .auth import get_current_user, rate_limit, require_csrf, require_role, within_address_cap
 from .conditional import conditional_json
 from .db import get_db
-from .media import delete_image, image_response, sanitize_image, save_image
+from .media import delete_image, image_response, sanitize_image, sanitize_photo, save_image
 from .models import (
     CATEGORIES,
     Case,
@@ -137,7 +137,12 @@ def photo_preview(
     require_role(user, {"resident"})
     rate_limit(request, "photo-preview", 30, key=user.id)
     db.commit()  # The face check is slow, and a few uploads must not use up the small connection pool.
-    return {"preview_image": f"data:image/jpeg;base64,{base64.b64encode(sanitized_upload(image)).decode()}"}
+    photo = sanitize_photo(read_upload(image))
+    return {
+        "preview_image": f"data:image/jpeg;base64,{base64.b64encode(photo.image).decode()}",
+        "faces_blurred": photo.faces,
+        "plates_blurred": photo.plates,
+    }
 
 
 @router.post("/predict")

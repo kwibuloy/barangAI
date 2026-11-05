@@ -6,6 +6,7 @@ import re
 import threading
 import time
 from collections import OrderedDict
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -149,15 +150,30 @@ def image_response(location):
 # readable. The browser shrinks to the same size first; this is the guarantee for any client that did not.
 PHOTO_LONGEST_SIDE = int(os.environ.get("MAX_IMAGE_EDGE", 1600))
 PHOTO_QUALITY = 80
-_sanitized: "OrderedDict[str, bytes]" = OrderedDict()
+
+
+@dataclass(frozen=True)
+class Sanitized:
+    """The photo to store, and what the detectors found and blurred. A best effort: they can miss things."""
+
+    image: bytes
+    faces: int
+    plates: int
+
+
+_sanitized: "OrderedDict[str, Sanitized]" = OrderedDict()
 _sanitized_lock = threading.Lock()
 
 
 def sanitize_image(data: bytes) -> bytes:
+    return sanitize_photo(data).image
+
+
+def sanitize_photo(data: bytes) -> Sanitized:
     """Rotated upright, at most MAX_IMAGE_EDGE pixels on the long side, faces and plates blurred, every metadata field dropped.
 
-    The AI preview and the submission upload the same photo, so the result is kept briefly by the upload's hash and
-    the second call skips the face check.
+    The AI preview and the submission upload the same photo, so the result and its counts are kept briefly by the
+    upload's hash, and the second call skips the face check and reports the same counts.
     """
     if len(data) > int(os.environ.get("MAX_IMAGE_BYTES", 5_000_000)):
         raise HTTPException(413, "Image too large")
@@ -188,13 +204,13 @@ def sanitize_image(data: bytes) -> bytes:
         raise HTTPException(422, "Invalid image") from None
     try:
         privacy.check_ready()
-        picture, _ = privacy.blur_faces(picture)
-        picture, _ = privacy.blur_plates(picture)
+        picture, faces = privacy.blur_faces(picture)
+        picture, plates = privacy.blur_plates(picture)
     except privacy.BlurUnavailable:
         raise HTTPException(503, "Photos can't be accepted right now. Please try again later.") from None
     output = io.BytesIO()
     picture.save(output, format="JPEG", quality=PHOTO_QUALITY, optimize=True, progressive=True)
-    result = output.getvalue()
+    result = Sanitized(output.getvalue(), faces, plates)
     with _sanitized_lock:
         _sanitized[key] = result
         while len(_sanitized) > 16:

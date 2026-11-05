@@ -1,33 +1,55 @@
-# BarangAI presentation runbook
+# Demo video and pitch
 
-Use synthetic resident identities and staged, non-identifying incident photos. This runbook is a demo script; it is not evidence that the steps have passed on a public deployment.
+The story to tell: **every concern logged, answered, countable.** The audience is C-level leaders, public sector officials and other high-ranking officials, so lead with the monthly report, the comparison with last month and the rollup by barangay. AI and points are supporting detail (why: [business-model.md](business-model.md)).
 
-The reviewed v3 model is experimental: both held-out fallen-tree photos were misclassified as flooding. The local 0.8 confidence cutoff is a demo guard, not a calibrated reliability claim. Manual choice and staff verification remain required.
+The full video script is in [VIDEO_DEMO_HANDOFF.md](VIDEO_DEMO_HANDOFF.md) and the pitch in [PITCH_CONTENTS.md](PITCH_CONTENTS.md). This page holds the setup, a brief shot list and the claims we must not make.
 
-## Before the presentation
+## Set up the recording
 
-- Start the local AI presentation with `deploy/start-local.ps1` after following the README setup. Use `-Port 8001` if port 8000 is occupied. The launcher serves both the built website and API. Log in as the synthetic resident and separately as staff or administrator. Provision personnel through the existing operator command; do not put credentials in slides or source control.
-- Prepare a JPG/PNG/WebP photo up to 25 MB (the app shrinks it before upload), with no identifiable people, plate numbers, or private address details. Test it through **Choose photo** and verify filename and preview.
-- On the actual phone, test **Take photo**, camera permission, and **Choose photo** from the gallery. Camera capture is a browser/device hint; desktop browsers may open a file chooser instead. HEIC is unsupported and displays conversion/format guidance.
-- For a phone demonstration use a reachable trusted HTTPS origin. A phone's localhost refers to the phone. Plain HTTP over the computer's LAN address does not provide a secure GPS context and production secure cookies will not work there. Retain manual coordinates/map pin as the location fallback. Do not disable production cookie security for a public demonstration.
-- Confirm map tiles/network, login, private photo access, and responsive layout on the actual presentation device. Keep a local desktop demonstration available if the network fails.
-- When no reviewed model is configured, explicitly explain the **AI classification unavailable** message and use manual category selection. Do not claim classification accuracy or label an untrained model as working AI. Duplicate suggestions likewise require validated embeddings.
-- Google sign-in appears only when configured. Use email/password if provider credentials are unavailable. Chat remains available through its deterministic guidance/status path when its LLM provider is unavailable.
+```powershell
+cd apps/web; npm run build; cd ../..
+.\deploy\demo.ps1 -Fresh        # add -Lan for the Android app on the same Wi-Fi
+```
 
-## Five-minute demonstration
+- It creates a throwaway database and photo folder under `demo/` (git-ignored), loads the Dasmariñas boundaries, seeds the synthetic story, sets `DEMO_MODE=true` and serves on http://127.0.0.1:8001. The real `barangai-dev.db` and `private_media` aren't touched. `-Fresh` starts again.
+- Passwords are in `demo/passwords.txt`; the script gives the path and doesn't print them. Keep that file out of the shot.
+- Accounts: `resident1@demo.test` (reports in Salitran II; `resident2` to `resident80` also exist), `staff@demo.test` (Salitran II), `staff-sampaloc-i@`, `staff-burol-i@`, `staff-paliparan-ii@` and `admin@demo.test`.
+- Cloudflare descriptions and Kap's brief run only if `.env` has the keys, as with `start-local.ps1`. Without them the checker or a manual choice stands in; film whichever is real on the day and don't describe the other.
+- Open the monthly report at the last full month (`/desk/records?month=YYYY-MM`). The month in progress compares only with the same days of last month, and early in a month it looks thin.
+- For the photo step, use a staged or drawn picture with a synthetic face. Never a real person's.
 
-| Step | Presenter action | What the audience should observe |
+**The data is written, not measured.** The improving trend comes from the numbers at the top of `apps/api/barangai/seed_story.py`. Barangay names and boundaries are real; the reports, residents, streets (all "Demo ...") and timings are not. Flooding and fallen trees use CC0 photos by Judgefloro and JFVelasquez Floro from Wikimedia Commons (licences in `showreel/build/commons/credits.json`, git-ignored, so other machines get drawn scenes): those show other places, in Bulacan, so credit them on the end card and don't imply they show Dasmariñas. Every other category is a drawn scene.
+
+## Shot list
+
+The "Demo data" chip stays in frame on every app shot; the printed report carries its own line.
+
+| # | Screen, role | Action | What may honestly be said |
+| --- | --- | --- | --- |
+| 1 | Report, Photo; resident, phone | Choose a staged photo with a drawn face; Kap says what it blurred | "It blurs what it finds and asks the resident to check. It can miss some." |
+| 2 | Review and sent; resident, phone | Check the details, tick, submit | "The AI suggests; the resident decides. The report is logged and in the barangay's queue." |
+| 3 | Reports, report detail; staff, desktop | Open it, accept with a verified category and a note; reject another with a reason | "Staff verify every report, and each status change needs a description the resident can read." |
+| 4 | Updates; resident, phone | Open the update | "The resident sees the status and what staff wrote, within seconds while the app is open, on the same Wi-Fi." |
+| 5 | Community map; resident, phone | Show "What your barangay fixed" | "Counts only, from staff-verified reports, nothing below 3 incidents. This is demo data." |
+| 6 | Monthly report; staff, desktop | Open last month | "Counted from stored records, here synthetic. Each figure says how it changed from last month." Not "response times improved". |
+| 7 | Monthly report, printed | Print preview | "Ready for a council meeting, with no resident names or photos." (Staff: one A4 sheet. Administrators: two, with the rollup.) |
+| 8 | Rollup by barangay; administrator, desktop | Show it in name order, download | "An administrator's view across barangays; staff can't open it." Name no best or worst barangay: real names, invented numbers. |
+| 9 | End card | | "Demo data on a test server", plus the photo and boundary credits above. |
+
+For market facts, use [business-model.md](business-model.md) with its [V], [P] and [A] tags and its sources list, and check them again before a pitch. No customers, revenue or interviews exist yet; the prices are test prices.
+
+## Claims we must not make
+
+| Don't say | Because | Say instead |
 | --- | --- | --- |
-| 1. Resident | Sign in; switch between English and Filipino. | Resident controls and labels use the selected interface language. |
-| 2. Photo | Choose a prepared photo, then demonstrate Take photo on a supported phone. | Selected filename and preview; clear errors for unsupported/oversized files. |
-| 3. Location/category | Use GPS or select a map pin; review AI suggestion if configured, or choose category manually. Add a short description and submit. | Pending report with separate model, resident, and verified categories. |
-| 4. Staff | Sign in separately; filter the overview/map and open the new report. Start verification, choose verified category, accept, record an action or coordination note. | Actor/time history; no automatic forwarding to outside offices. |
-| 5. Progress | Mark In Progress, then Resolved. | Only permitted transitions; action history remains. |
-| 6. Resident tracking | Refresh/focus the resident window, open notification and mark read; view history; select the report in chat. | Status matches the API, notification read state persists, Filipino status is localized. |
-| 7. Roles/privacy | Explain that administrator accounts use the barangay desk. Try accessing another synthetic resident's report in a second resident session. | Resident access is denied; staff/administrator can manage reports. |
-
-If validated embeddings exist, also generate duplicate suggestions and confirm/reject one; show that originals remain. Otherwise show the explicit unavailable state and describe the remaining dataset/model evaluation requirement.
-
-## Record actual evidence
-
-Use the dated evidence row in [evaluation.md](evaluation.md). Record device/browser, build, origin, outcome and screenshot path. Distinguish automated browser emulation from a physical-phone test. A successful local demo does not prove deployed HTTPS, live Google OAuth, a trained model, or target-host model performance. Report these separately when unavailable.
+| Any customer, pilot, user or barangay "uses BarangAI" | None does; nobody has been interviewed | "We're looking for a first barangay" |
+| A barangay's figures, trend or speed as results | The story is synthetic and the trend was written in | "Here's what the report looks like, on demo data" |
+| An accuracy figure, or "AI detects hazards" | No field evaluation; only synthetic and tune/test sets exist. The cutoff isn't field calibrated | "The AI suggests and a person verifies" |
+| "Faces and plates are removed", "fully private" | Blur is best effort. It misses side-on, hidden or small faces, and the plate model was trained on Chinese plates and tuned on drawn ones | "It blurs what it finds and asks the resident to check" |
+| "Real time", "instant" | Polling: notices about every 5 seconds, reports about every 15 | "Within seconds while the app is open" |
+| Reporting "from the street", "anywhere" | Same Wi-Fi as the laptop today (backlog F1) | "On the same Wi-Fi for now; hosting comes before a real pilot" |
+| "Ready for real residents' data" | Plain HTTP on the Wi-Fi, an unencrypted laptop, counsel review not done (B2, B4), and the only copy on one laptop | "Before real data we need hosting, TLS and legal review" |
+| "Commercially ready AI" | MobileCLIP2's licence says research purposes only; the owner's review is open (B1) | "The category checker's licence is research-only and under review; it will be replaced or licensed before any sale" |
+| "Forwards reports to the city, the utility or the police" | Reports are never auto-forwarded to outside offices | "Staff decide what to do next" |
+| Rewards are legal, funded or redeemable for money | Public-funding limits are unresolved (B3, Q2); the app moves no money; the shop holds samples | "A possible feature, under legal review" |
+| Hiding the demo label, cropping out the chip, or editing out "Demo data" on the print | It's what keeps this honest | Keep it in frame |

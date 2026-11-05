@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router'
 import { SquarePen } from 'lucide-react'
 import { Wordmark } from '@/components/BrandMark'
+import { DemoChip } from '@/components/DemoChip'
 import { Button } from '@/components/ui/button'
 import { navIconStyle, navItemClass } from '@/components/nav'
 import { Txt, useText } from '../lib/i18n'
@@ -21,6 +22,7 @@ export function SideBar({ user }: { user: User }) {
       <Link to="/home" className="rounded-xl px-2" aria-label={t('BarangAI home')}>
         <Wordmark />
       </Link>
+      <DemoChip className="-mt-4 mx-2 self-start" />
       <Button asChild size="lg" className="w-full">
         <Link to="/report">
           <SquarePen />

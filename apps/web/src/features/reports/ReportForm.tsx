@@ -61,6 +61,17 @@ const COACH: { pose: KapPose; line: string }[] = [
 ]
 const EASE = [0.22, 1, 0.36, 1] as const
 
+type Blurred = { faces: number; plates: number }
+
+/** Only what the detectors found, as a best effort: never a promise that everything private is gone. */
+function useBlurLine(blurred: Blurred | null) {
+  const t = useText()
+  if (!blurred || blurred.faces + blurred.plates === 0) return ''
+  const part = (count: number, one: string, many: string) => (count ? [`${count} ${t(count === 1 ? one : many)}`] : [])
+  const parts = [...part(blurred.faces, 'face', 'faces'), ...part(blurred.plates, 'plate', 'plates')]
+  return `${t('Kap blurred')} ${parts.join(` ${t('and')} `)}. ${t('Check that nothing else private shows.')}`
+}
+
 /** Client-side checks so residents learn about unusable photos before uploading them. */
 function photoProblem(file: File) {
   if (/\.hei[cf]$/i.test(file.name) || ['image/heic', 'image/heif'].includes(file.type))
@@ -93,6 +104,8 @@ export function ReportForm() {
   const [preview, setPreview] = useState('')
   // The original stays heavily blurred on screen until the server's face-blurred copy replaces it.
   const [previewState, setPreviewState] = useState<PreviewState>('checking')
+  const [blurred, setBlurred] = useState<Blurred | null>(null)
+  const blurLine = useBlurLine(blurred)
   const [prediction, setPrediction] = useState<Prediction | null>(null)
   const [dismissedHazards, setDismissedHazards] = useState<Hazard[]>([])
   const [category, setCategory] = useState<Category | ''>('')
@@ -163,6 +176,7 @@ export function ReportForm() {
     const url = URL.createObjectURL(photo)
     setPreview(url)
     setPreviewState('checking')
+    setBlurred(null)
     return () => URL.revokeObjectURL(url)
   }, [photo])
   useEffect(() => {
@@ -191,11 +205,16 @@ export function ReportForm() {
           if (!controller.signal.aborted) setPrediction(UNAVAILABLE)
         })
     // Faces first: it takes about a second, and the AI's answer then reuses the blurred copy.
-    void post<{ preview_image: string }>('/reports/photo-preview', form, { signal: controller.signal })
+    void post<{ preview_image: string; faces_blurred?: number; plates_blurred?: number }>(
+      '/reports/photo-preview',
+      form,
+      { signal: controller.signal },
+    )
       .then(result => {
         if (controller.signal.aborted) return
         setPreview(result.preview_image)
         setPreviewState('ready')
+        setBlurred({ faces: result.faces_blurred ?? 0, plates: result.plates_blurred ?? 0 })
       })
       .catch(() => {
         if (!controller.signal.aborted) setPreviewState('failed')
@@ -368,6 +387,7 @@ export function ReportForm() {
   function pickPhoto(file: File) {
     setPhoto(null)
     setPreview('')
+    setBlurred(null)
     // "I see this too" keeps the case's category; otherwise the new photo's AI answer fills it.
     setCategory(joining?.category ?? carriedCategory.current ?? '')
     setRestoredAi(NO_AI)
@@ -530,6 +550,7 @@ export function ReportForm() {
     setSubmitted(null)
     setPhoto(null)
     setPreview('')
+    setBlurred(null)
     setPrediction(null)
     setDismissedHazards([])
     setCategory('')
@@ -602,6 +623,7 @@ export function ReportForm() {
             {/* Said aloud: the green line below appears without moving focus. */}
             <span className="sr-only" aria-live="polite">
               {step === 1 && located ? `${t('Location set')}: ${streetName ?? coordinates}` : ''}
+              {step === 0 ? blurLine : ''}
             </span>
             {/* Duolingo's lesson bar: one thick track, a springy green fill with a highlight along its top. */}
             <div className="h-4 overflow-hidden rounded-full bg-muted" aria-hidden="true">
@@ -624,14 +646,14 @@ export function ReportForm() {
               <Kap key={step} pose={COACH[step].pose} motion="pop" interactive className="h-14 shrink-0" />
               <AnimatePresence mode="wait" initial={false}>
                 <m.p
-                  key={step}
+                  key={step === 0 && blurLine ? 'blurred' : step}
                   className="kap-bubble kap-bubble-left relative mb-2 rounded-2xl border-2 bg-card px-3 py-1.5 text-[13.5px] leading-snug font-bold"
                   initial={{ opacity: 0, scale: 0.92, x: -6 }}
                   animate={{ opacity: 1, scale: 1, x: 0 }}
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 28 }}
                 >
-                  <Txt>{COACH[step].line}</Txt>
+                  {step === 0 && blurLine ? blurLine : <Txt>{COACH[step].line}</Txt>}
                 </m.p>
               </AnimatePresence>
             </div>
@@ -658,6 +680,7 @@ export function ReportForm() {
                   preview={preview}
                   previewState={photoState}
                   prediction={prediction}
+                  blurLine={blurLine}
                   onSelect={selectPhoto}
                   onDrop={pickPhoto}
                 />
@@ -1287,6 +1310,7 @@ function PhotoStep({
   preview,
   previewState,
   prediction,
+  blurLine,
   onSelect,
   onDrop,
 }: {
@@ -1295,6 +1319,7 @@ function PhotoStep({
   preview: string
   previewState: PreviewState
   prediction: Prediction | null
+  blurLine: string
   onSelect: (event: ChangeEvent<HTMLInputElement>) => void
   onDrop: (file: File) => void
 }) {
@@ -1311,6 +1336,15 @@ function PhotoStep({
         <m.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }}>
           <ProtectedPhoto src={preview} state={previewState} className="hairline aspect-[3/1] rounded-2xl xl:hidden" />
         </m.div>
+      )}
+      {/* Desktops have no coach above the steps, so Kap says it here; phones say it in the coach's bubble. */}
+      {blurLine && (
+        <div className="flex items-end gap-2 max-lg:hidden">
+          <Kap pose="thumbs" className="h-12 shrink-0" />
+          <p className="kap-bubble kap-bubble-left relative mb-2 rounded-2xl border-2 bg-card px-3 py-1.5 text-[13.5px] leading-snug font-bold">
+            {blurLine}
+          </p>
+        </div>
       )}
       {preparing && (
         <p className="flex items-center gap-2 px-1 text-[14px] text-muted-foreground" role="status">

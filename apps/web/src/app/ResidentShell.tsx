@@ -10,6 +10,7 @@ import { AccountButton } from '../features/account/AccountSettings'
 import { useLiveRefresh, useNotifications } from '../features/notifications/NotificationsPage'
 import { PageSpinner } from '@/components/page'
 import { OfflineStrip } from '@/components/OfflineStrip'
+import { DemoChip } from '@/components/DemoChip'
 import { keepOnlyDraftsOf } from '../features/reports/draft'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { useKeyboardMark } from '@/hooks/use-keyboard-mark'
@@ -52,7 +53,12 @@ export const useResident = () => useContext(UserContext)!
 /** Avatar for the right of each resident large title (phones and tablets; desktops use the sidebar). */
 export function ResidentAccount() {
   const user = useResident()
-  return useMediaQuery(DESKTOP) ? null : <AccountButton user={user} />
+  return useMediaQuery(DESKTOP) ? null : (
+    <span className="flex items-center gap-2">
+      <DemoChip />
+      <AccountButton user={user} />
+    </span>
+  )
 }
 
 function TabBar() {

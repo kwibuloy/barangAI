@@ -1,4 +1,5 @@
-param([int]$Port = 8000, [switch]$Lan, [switch]$Demo)
+# -DataFolder, -DatabasePath and -PhotoFolder are for deploy/demo.ps1: a throwaway copy of the app, labelled as a demo.
+param([int]$Port = 8000, [switch]$Lan, [switch]$Demo, [string]$DataFolder = '', [string]$DatabasePath = '', [string]$PhotoFolder = '')
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -13,8 +14,9 @@ if (!(Test-Path -LiteralPath (Join-Path $website 'index.html'))) { throw 'Build 
 # so the file can never point this local server at a remote database or storage. Values already set in
 # the shell win over the file.
 $allowed = 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_WORKERS_AI_TOKEN', 'CLOUDFLARE_VISION_MODEL', 'GEOCODER_CONTACT', 'OPERATOR_NAME', 'PRIVACY_CONTACT'
-# Google accepts neither a private network address as a callback nor sign-in from an app's web view.
-if (!$Lan) { $allowed += 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI' }
+# Google accepts neither a private network address as a callback nor sign-in from an app's web view, and a demo
+# signs in with its own synthetic accounts.
+if (!$Lan -and !$DataFolder) { $allowed += 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI' }
 else { 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI' | ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'Process') } }
 $keysFile = Join-Path $projectRoot '.env'
 if (Test-Path -LiteralPath $keysFile) {
@@ -38,9 +40,10 @@ $env:STATIC_SITE_DIR = $website
 $env:API_ROOT_PATH = ''
 $env:DIRECT_CONNECTIONS = 'true'
 $env:COOKIE_SECURE = 'false'
-$env:DATABASE_URL = 'sqlite:///' + (Join-Path $projectRoot 'barangai-dev.db').Replace('\', '/')
+$env:DATABASE_URL = 'sqlite:///' + $(if ($DatabasePath) { $DatabasePath } else { Join-Path $projectRoot 'barangai-dev.db' }).Replace('\', '/')
 $env:MEDIA_STORAGE = 'local'
-$env:PRIVATE_MEDIA_DIR = Join-Path $projectRoot 'private_media'
+$env:DEMO_MODE = if ($DataFolder) { 'true' } else { $null }
+$env:PRIVATE_MEDIA_DIR = if ($PhotoFolder) { $PhotoFolder } else { Join-Path $projectRoot 'private_media' }
 
 # Anyone on the Wi-Fi can reach the desk in phone mode, so demo staff accounts need saying out loud.
 if ($Lan) {
@@ -67,7 +70,8 @@ if ($Lan) {
 }
 Write-Host "Cloudflare photo descriptions: $cloudflare"
 $lastBackup = Join-Path $projectRoot 'barangai-dev.last-backup.txt'
-if (Test-Path -LiteralPath $lastBackup) { Write-Host "Last backup: $(Get-Content -LiteralPath $lastBackup -TotalCount 1)" }
+if ($DataFolder) { Write-Host 'Demo mode: synthetic data in a throwaway folder. Nothing here needs a backup.' }
+elseif (Test-Path -LiteralPath $lastBackup) { Write-Host "Last backup: $(Get-Content -LiteralPath $lastBackup -TotalCount 1)" }
 else { Write-Host 'No backup yet. This laptop holds the only copy: run .\deploy\backup.ps1 -To <another drive>' -ForegroundColor Yellow }
 Write-Host 'AI suggestions are experimental and not field validated. Residents review them; staff verify every report.'
 Push-Location (Join-Path $projectRoot 'apps/api')

@@ -51,17 +51,22 @@ def camera_photo(seed, latitude, longitude, days_ago):
     return photo(seed, exif)
 
 
-def seed(password: str, count: int, staff_password: str | None = None, admin_password: str | None = None):
-    """Each role has its own password, so handing out a resident login never hands out the desk. Residents share
-    `password`; staff and administrator passwords are generated and printed once when none is given. Existing accounts
-    keep theirs."""
+def role_passwords(password: str, staff_password: str | None, admin_password: str | None) -> dict[str, str]:
+    """Each role has its own password, so handing out a resident login never hands out the desk. Staff and
+    administrator passwords are generated when none is given."""
     staff_password = staff_password or secrets.token_urlsafe(18)
     admin_password = admin_password or secrets.token_urlsafe(18)
     if min(len(password), len(staff_password), len(admin_password)) < 12:
         raise ValueError("Password must be at least 12 characters")
     if len({password, staff_password, admin_password}) != 3:
         raise ValueError("Each role needs its own password")
-    passwords = {"resident": password, "staff": staff_password, "administrator": admin_password}
+    return {"resident": password, "staff": staff_password, "administrator": admin_password}
+
+
+def seed(password: str, count: int, staff_password: str | None = None, admin_password: str | None = None):
+    """Residents share `password`; staff and administrator passwords are printed once when generated here. Existing
+    accounts keep theirs."""
+    passwords = role_passwords(password, staff_password, admin_password)
     rng = random.Random(42)
     with session_for_url() as db:
         users, created = {}, []
@@ -192,11 +197,12 @@ SAMPLE_REWARDS = (
 )
 
 
-def seed_rewards() -> int:
-    """Gives every barangay with an empty shop the sample rewards. Safe to run again."""
+def seed_rewards(names: list[str] | None = None) -> int:
+    """Gives every barangay with an empty shop (or just these) the sample rewards. Safe to run again."""
     added = 0
     with session_for_url() as db:
-        for barangay in db.scalars(select(Barangay)).all():
+        query = select(Barangay).where(Barangay.name.in_(names)) if names else select(Barangay)
+        for barangay in db.scalars(query).all():
             if db.scalar(select(Reward.id).where(Reward.barangay_id == barangay.id).limit(1)):
                 continue
             for name, cost, stock, partner in SAMPLE_REWARDS:
@@ -220,7 +226,21 @@ if __name__ == "__main__":
     parser.add_argument("--count", type=int, default=12)
     parser.add_argument("--rewards-only", action="store_true", help="Only fill empty barangay shops with sample rewards")
     parser.add_argument("--allow-remote", action="store_true", help="Permit PostgreSQL or Supabase storage")
+    parser.add_argument("--story", action="store_true",
+                        help="An empty local database only: about three months of synthetic reports across four barangays")
     args = parser.parse_args()
+    if args.story:
+        # Never remote, whatever else was passed. Imported here: the story builds on this module.
+        from .seed_story import seed_story
+
+        if not is_local() or os.environ.get("MEDIA_STORAGE", "local") != "local":
+            raise SystemExit("The story seeds a local database and local photos only")
+        print(seed_story(
+            os.environ.get("SEED_DEMO_PASSWORD") or getpass("Demo resident password: "),
+            os.environ.get("SEED_DEMO_STAFF_PASSWORD"),
+            os.environ.get("SEED_DEMO_ADMIN_PASSWORD"),
+        ))
+        raise SystemExit(0)
     if not args.allow_remote and (not is_local() or os.environ.get("MEDIA_STORAGE", "local") != "local"):
         raise SystemExit("Refusing to seed a remote database or storage without --allow-remote")
     if not args.rewards_only:

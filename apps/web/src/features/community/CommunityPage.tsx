@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { CheckCircle2, MapPin, ShieldCheck, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import { DateText } from '@/components/DateText'
 import { Alert, EmptyState, LargeTitle, Segmented } from '@/components/page'
 import { cn } from '@/lib/utils'
+import { api } from '../../lib/api'
 import { Txt, useText } from '../../lib/i18n'
 import { ResidentAccount } from '../../app/ResidentShell'
+import { useBoundaries } from '../reports/boundaries'
 import { label } from '../reports/categories'
 import { CategoryTile } from '../reports/CategoryIcon'
 import { useCommunityCases } from '../reports/queries'
@@ -15,6 +19,97 @@ import type { CommunityCase } from '../reports/types'
 import { StaffMap } from '../staff/StaffMap'
 
 type Filter = 'open' | 'resolved'
+type Fixed = {
+  barangay: string | null
+  enough: boolean
+  resolved_incidents: number | null
+  typical_days: number | null
+  categories: { category: CommunityCase['category']; incidents: number }[]
+}
+
+/**
+ * What a barangay fixed this month: for the barangay chosen here, or else of the selected pin, or of an issue the
+ * resident reported, or of the first one on the map. Only counts come back, and none below three incidents.
+ */
+function FixedThisMonth({ pin }: { pin?: CommunityCase }) {
+  const t = useText()
+  const [chosen, setChosen] = useState('')
+  const features = useBoundaries().data?.features as { properties?: { name?: string } }[] | undefined
+  const names = useMemo(
+    () => [...new Set((features ?? []).flatMap(item => item.properties?.name ?? []))].sort(),
+    [features],
+  )
+  const search = chosen
+    ? new URLSearchParams({ barangay: chosen })
+    : pin
+      ? new URLSearchParams({ lat: String(pin.latitude), lng: String(pin.longitude) })
+      : null
+  const fixed = useQuery({
+    queryKey: ['barangay-fixed', search?.toString()],
+    queryFn: () => api<Fixed>(`/barangays/fixed?${search}`),
+    enabled: Boolean(search),
+  })
+  // No boundaries loaded means no barangays to speak of.
+  if (!names.length) return null
+  const data = search ? fixed.data : undefined
+  return (
+    <section aria-labelledby="fixed-heading" className="hairline mb-4 space-y-3 rounded-2xl bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <h2 id="fixed-heading" className="text-[17px] leading-tight font-extrabold">
+          <Txt>What your barangay fixed</Txt>
+        </h2>
+        <label className="w-full sm:w-52">
+          <span className="sr-only">{t('Choose a barangay')}</span>
+          <Select
+            aria-label={t('Choose a barangay')}
+            value={chosen || data?.barangay || ''}
+            onChange={event => setChosen(event.target.value)}
+          >
+            <option value="">{t('Choose a barangay')}</option>
+            {names.map(name => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        </label>
+      </div>
+      {data?.enough ? (
+        <>
+          <dl className="grid grid-cols-2 gap-3">
+            <div>
+              <dd className="text-[28px] leading-none font-extrabold tabular-nums">{data.resolved_incidents}</dd>
+              <dt className="mt-1 text-[13px] font-bold text-muted-foreground">
+                <Txt>Issues fixed this month</Txt>
+              </dt>
+            </div>
+            <div>
+              <dd className="text-[28px] leading-none font-extrabold tabular-nums">
+                {data.typical_days} <span className="text-[15px] font-bold">{t('days')}</span>
+              </dd>
+              <dt className="mt-1 text-[13px] font-bold text-muted-foreground">
+                <Txt>Typical time to fix</Txt>
+              </dt>
+            </div>
+          </dl>
+          {data.categories.length > 0 && (
+            <p className="text-[13px] text-muted-foreground">
+              <Txt>Mostly</Txt>: {data.categories.map(item => t(label(item.category))).join(', ')}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-[14px] text-muted-foreground">
+          <Txt>
+            {data
+              ? 'Not enough yet this month. We show this once 3 or more issues are fixed.'
+              : 'Choose a barangay to see what it fixed this month.'}
+          </Txt>
+        </p>
+      )}
+    </section>
+  )
+}
 
 /** Issues the barangay has accepted, on one shared map. No photos, descriptions or names are ever shown. */
 export function CommunityPage() {
@@ -29,6 +124,7 @@ export function CommunityPage() {
   // Map pins share the staff map; it reads a pin's category from resident_category.
   const pins = useMemo(() => shown.map(item => ({ ...item, resident_category: item.category })), [shown])
   const selected = shown.find(item => item.id === selectedId)
+  const pinInView = selected ?? cases.data?.find(item => item.contributed) ?? shown[0] ?? cases.data?.[0]
   return (
     <div className="lg:mx-auto lg:max-w-6xl">
       <LargeTitle
@@ -44,6 +140,7 @@ export function CommunityPage() {
           <Txt>{cases.error.message}</Txt>
         </Alert>
       )}
+      <FixedThisMonth pin={pinInView} />
       <Segmented<Filter>
         id="community-filter"
         label={t('Show issues')}
