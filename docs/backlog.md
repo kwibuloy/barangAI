@@ -4,6 +4,19 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 
 **Evidence:** R = reproduced or measured here. C = read in the code. E = outside source (see business-model.md). H = hypothesis, not yet tested.
 
+## Current state (5 November)
+
+States: Verified complete, Blocked, Deferred, Ready. The tables below keep each item's evidence and acceptance criteria.
+
+| State | Items |
+| --- | --- |
+| **Verified complete** (branch `improvement/product-audit-implementation`) | B5, B6, P1 (except QR), P2 to P6, P8 to P14, M1 to M10, M12 to M14 (M11: the command only), P7 confirm prompt, plus the demo batch: synthetic story, demo server and label, blur cue, what your barangay fixed, comparison with last month, city rollup. Android-only and screen-reader parts of P2, P4, P11 and P12 need a device: see Blocked. |
+| **Verified complete: deliverables** | Business model, pitch contents, video handoff and Q&A. These are documents: none of them shows demand or validation. |
+| **Blocked: owner decision** | Q1 MobileCLIP2 (B1); Q2 rewards (B3); Q3 pilot buyer; Q4 same-Wi-Fi limit (F1); Q5 white or dark text on the primary button (P10: comparison in `.shots/batch5`); P7 unlink, which needs a status-path exception; M11 running the photo move and deleting the stray copies; approval of `visual-check` screenshots; hall reset procedure in `docs/mobile.md`. |
+| **Blocked: outside this work** | B2 counsel; V1 to V4 and V6 conversations with officials and legal opinions; human Filipino review; test on an Android device, real Rokid Glasses, TalkBack and NVDA; CI jobs first run on GitHub (needs a push). |
+| **Ready, small** | P15 draft edge cases; V5 re-measure AI cost; P1 QR code (needs a library, so an approval); dev-only `npm audit` findings; 2,000-report list cap behind Overview counts. |
+| **Deferred** | Section 5 and section 6 below, including B4 (TLS), F1 to F5. |
+
 ## Done in the first batches (4 November)
 
 | ID | What changed | Evidence it works |
@@ -109,4 +122,5 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 - **Q2. Rewards:** keep points in the first paid offer, or sell without public-funded rewards until counsel answers (recommended)?
 - **Q3. Pilot buyer:** Dasmariñas barangays first (recommended), HOAs, or the city?
 - **Q5. Primary button label:** keep white on green (2.09:1, Duolingo's look) or switch to the dark label `#131f24` (recommended on readability, since residents use it outdoors)? Comparison: `.shots/batch5/primary-label-current.png` and `primary-label-dark.png`.
+- **Q5. Primary button text:** white (2.09:1) or dark `#131f24` (recommended)? Comparison in `.shots/batch5/`.
 - **Q4. Same-Wi-Fi limit:** accept that real resident pilots wait on F1 (recommended), or build capture-and-send-later first?
