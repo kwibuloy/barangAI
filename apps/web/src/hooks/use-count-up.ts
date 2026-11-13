@@ -12,12 +12,16 @@ export function useCountUp(value: number, duration = 600) {
     }
     const start = performance.now()
     const origin = from.current
-    let frame = requestAnimationFrame(function step(now) {
-      const progress = Math.min(1, (now - start) / duration)
+    let frame = requestAnimationFrame(function step() {
+      // performance.now(), not the frame's own time stamp, which can come from another clock (jsdom, some browsers)
+      // and once gave counts in the billions.
+      const progress = Math.min(1, Math.max(0, (performance.now() - start) / duration))
       const eased = 1 - (1 - progress) ** 3
-      setShown(Math.round(origin + (value - origin) * eased))
+      const current = Math.round(origin + (value - origin) * eased)
+      // A new value mid-count starts from what is on screen, not from where the last count began.
+      from.current = current
+      setShown(current)
       if (progress < 1) frame = requestAnimationFrame(step)
-      else from.current = value
     })
     return () => cancelAnimationFrame(frame)
   }, [value, duration])

@@ -29,6 +29,8 @@ if not files or (STAMP.exists() and STAMP.read_text() == digest.hexdigest()):
 
 checks = []
 if any(name.startswith("apps/api/") for name in files):
+    # Parallel when pytest-xdist is installed (the dev extra); serial otherwise.
+    XDIST = subprocess.run([PYTHON, "-c", "import xdist"], capture_output=True).returncode == 0
     checks.append(
         (
             [
@@ -40,6 +42,7 @@ if any(name.startswith("apps/api/") for name in files):
                 "-q",
                 "-p",
                 "no:cacheprovider",
+                *(["-n", "auto"] if XDIST else []),
                 "--basetemp",
                 tempfile.mkdtemp(prefix="barangai-check-"),
             ],

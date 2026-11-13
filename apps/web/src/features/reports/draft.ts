@@ -4,12 +4,16 @@ import type { Category, Hazard } from './types'
 
 /**
  * An unsent report, kept on this device per account so a tab switch, a reload or a dropped session doesn't lose it.
- * The photo is the copy prepared for upload, normally redrawn without its metadata (compressPhoto keeps the original
- * when a browser can't redraw it); it shows blurred again when restored, until the server's blurred copy replaces it. Wiped on sign-out, after sending and after 24 hours. Storage can be missing or
- * refuse (private mode, a full disk): every call here then does nothing and the form works without drafts.
+ * The photo is kept only when this browser redrew it, which drops its metadata: an original (a browser that can't
+ * redraw, or a small JPEG that would grow if re-encoded) is never stored, and that draft starts again at Photo. A
+ * restored photo shows blurred again until the server's blurred copy replaces it. Wiped on sign-out, after sending,
+ * when the form is emptied and after 24 hours. Storage can be missing or refuse (private mode, a full disk): every call
+ * here then does nothing and the form works without drafts.
  */
 export type ReportDraft = {
   photo: File | null
+  /** True only for a photo this browser redrew. Drafts saved before this field have none, so theirs isn't kept again. */
+  photoRedrawn?: boolean
   category: Category | ''
   description: string
   latitude: string

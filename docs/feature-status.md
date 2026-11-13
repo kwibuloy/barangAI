@@ -1,6 +1,6 @@
 # Feature status
 
-Updated 5 November 2026 (Asia/Manila). BarangAI is a startup-stage product that runs locally; deployment comes last ([backlog](backlog.md)). Local verification does not imply cloud or physical-device validation.
+Updated 13 November 2026 (Asia/Manila). BarangAI is a startup-stage product that runs locally on one laptop over the barangay's Wi-Fi; deployment comes last ([backlog](backlog.md)). Render and Supabase are parked (AGENTS.md, 3 November): rows below that mention them describe October checks of a setup that is no longer in use. Local verification does not imply cloud or physical-device validation.
 
 | Priority | Capability | State |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Updated 5 November 2026 (Asia/Manila). BarangAI is a startup-stage product that 
 | P0 | Backups and data safety | Built 4 November: backup and restore commands, a copy before schema upgrades, write-ahead log, foreign keys, secure delete, blur that refuses photos if it can't run. Restore drill passes in tests on synthetic data. Not yet run by a person on a real second drive. Backups aren't encrypted. |
 | P1 | Staff desk for a new barangay | Built 5 November: administrators add staff, assign barangays, disable and reset passwords on a page; temporary passwords are shown once and must be changed before anything else (API refuses other reads and writes); a first-run checklist on Overview; the phone address as text (QR deferred). API, jsdom and screenshot checked on synthetic data; not yet walked through by a non-developer. |
 | P1 | When the server can't be reached | Built 5 November: the Android app opens a translated screen with Retry and the address behind Advanced (the page is tested in jsdom and the app compiles; not run on a device); friendly errors, request timeouts, an offline strip in both shells, and a retry screen rather than sign-in when the session check gets no answer. |
-| P1 | Report drafts and follow-through | Built 5 November: drafts per account in IndexedDB, wiped on sign-out, after sending and after 24 hours; the top of a resident's report shows the path, the latest note and what happens next, with a new report offered after Rejected and one linked in its text after Resolved. |
+| P1 | Report drafts and follow-through | Built 5 November: drafts per account in IndexedDB, wiped on sign-out, after sending, after 24 hours and when the form is emptied (13 November); a photo the browser couldn't redraw is never kept in a draft, and a "Still not fixed" follow-up wins over an old draft; the top of a resident's report shows the path, the latest note and what happens next, with a new report offered after Rejected and one linked in its text after Resolved. |
 | P1 | Monthly report | Built 4 November: a month's counts, typical times, open reports by age and rejection reasons, with CSV and print, limited to the caller's barangay. Since 5 November: change from last month in words and an arrow, and for administrators a rollup by barangay with its own CSV. API and jsdom tested on synthetic data. Not yet shown to barangay staff. |
 | P1 | Demo for recording | Built 5 November: `deploy/demo.ps1` runs a throwaway copy with the synthetic story (`seed_demo --story`), and `DEMO_MODE=true` labels every shell, printed report and spreadsheet "Demo data". The story's improving trend is written in, not measured. |
 | P1 | What residents see back | Built 5 November: "What your barangay fixed" on the community map (counts per incident, nothing below 3) and Kap's blur line on the Photo step. Not tried with residents. |
@@ -36,10 +36,10 @@ Updated 5 November 2026 (Asia/Manila). BarangAI is a startup-stage product that 
 | P1 | Password change and data requests | In-app password change, command-line reset, resident deletion requests decided by barangay staff or administrators, and self-service account deletion. API tested. |
 | P1 | Resident Google sign-in | Implemented/tested; OAuth client and hosted callback check pending. |
 | P1 | English/Filipino UI | Implemented; human language review pending. |
-| P1 | Dashboard, filters, map and trend | Implemented and locally tested. |
+| P1 | Dashboard, filters, map and trend | Implemented and locally tested. Since 13 November the Overview figures and categories are counted by the server over every report the caller may see; the lists, map and 14-day trend still use the newest 2,000. |
 | P1 | Notifications/read state and live updates | Implemented and tested. While the app is on screen it checks for new notices every 5 seconds and refreshes the reports and points on screen when one arrives; report lists and details are also checked every 15 seconds. This is polling, not push: nothing arrives while the app is closed or hidden, and it catches up when it comes back. |
 | P2 | Responsive presentation UI | Implemented; physical-device acceptance pending. |
-| Delivery | Render/Supabase configuration and guides | Deployed; on 3 November the live website files and routes matched `e5fcb04`. `render.yaml` has automatic deploys off. Signed-in hosted checks pending. |
+| Delivery | Local laptop hosting (`deploy/start-local.ps1 -Lan`) | In use. Render and Supabase files and guides are parked, not in use; the last public check of the Render site was on 3 November (`e5fcb04`), and `render.yaml` has automatic deploys off. Nothing hosted is maintained or checked now. |
 | Evaluation | Reproducible commands and blank evaluation materials | Pilot/v3/v4 evidence saved privately; four v4 runs audited, 21 focused tests passed, selected preprocessing replay matched 44 predictions. Reserved 12-photo diagnostic completed; independent field evaluation and user study pending. |
 
 Hosted end-to-end privacy checks, physical-phone smoke tests and independent model evaluation remain unfinished. Live Supabase API integration passed separately. Do not present manual categorization as measured AI performance or provider integration as public website deployment evidence.
@@ -49,6 +49,8 @@ Old EfficientNet classifier evidence (frozen and unused since option C): [tree c
 ## Evidence
 
 Synthetic data only. Raw evidence files live under the ignored `artifacts/` folder; superseded logs are in Git history before this file's 26 October update.
+
+- **Local, 13 November (backlog batch D14):** 501 API tests passed and 1 skipped in 39 s with `-n auto` (about 145 s serial); 239 web tests (three full runs in a row), the typecheck, ruff, Prettier and the production build passed. Pure refactors (report form and detail split, Filipino strings file) changed no test. A flaky Overview test turned out to be a real bug in the figures' count-up (a frame time from another clock), now fixed and tested. Not run: the real-browser journey, a phone, TalkBack or NVDA.
 
 - **Local, 4 November (data safety and monthly report):** 373 API and 115 web tests, the typecheck, lint and production build passed. Restore drill on a copy of the local database: 31 reports and 32 photos backed up and restored into another folder, none missing. On 2,000 synthetic reports, `/notifications` with 200 clients at once gave no errors and a p95 of about 2.1 s, where it had collapsed to about 3 requests a second with errors. Print layout and CSV checked in headless Chrome. Not tried with barangay staff, on a phone, on PostgreSQL, or on a real second drive.
 

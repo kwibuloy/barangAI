@@ -24,7 +24,7 @@ jobs:
       - run: pipx run pip-audit --disable-pip --no-deps -r deploy/constraints-render.txt
       - run: pipx run pip-audit --disable-pip --no-deps -r deploy/requirements-render-vision.txt
       - run: ruff check apps/api
-      - run: pytest apps/api/tests -q -p no:cacheprovider
+      - run: pytest apps/api/tests -q -p no:cacheprovider -n auto
 
   # With the AI extra, so the face and plate blur tests run instead of skipping, and one whole journey in a real browser
   # with blur on: register, report, staff to Resolved, points, reward, deletion, server stopped.
@@ -47,7 +47,7 @@ jobs:
       - run: pip install -c deploy/constraints-render.txt -c deploy/requirements-render-vision.txt -e "./apps/api[dev,ai]"
       # A missing library would skip the blur tests silently, so this fails first.
       - run: python -c "import cv2, numpy, onnxruntime"
-      - run: pytest apps/api/tests -q -p no:cacheprovider -rs
+      - run: pytest apps/api/tests -q -p no:cacheprovider -rs -n auto
       - run: npm ci
         working-directory: apps/web
       - run: node scripts/journey.mjs

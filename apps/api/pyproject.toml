@@ -5,8 +5,9 @@ requires-python = ">=3.12"
 dependencies = ["fastapi", "uvicorn", "sqlalchemy>=2,<2.1", "alembic", "argon2-cffi", "python-multipart", "Pillow", "httpx", "google-auth[requests]==2.58.0"]
 
 [project.optional-dependencies]
-test = ["pytest"]
-dev = ["pytest", "ruff"]
+# pytest-xdist runs the suite in parallel (`-n auto`); the tests also pass without it.
+test = ["pytest", "pytest-xdist"]
+dev = ["pytest", "pytest-xdist", "ruff"]
 ai = ["onnxruntime", "numpy", "opencv-python-headless"]
 # The parked PostgreSQL route (deploy/). The local SQLite install needs no driver.
 postgres = ["psycopg2-binary"]

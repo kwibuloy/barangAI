@@ -40,7 +40,7 @@ Open `http://127.0.0.1:5173`. Vite proxies `/api` to local FastAPI. Create a res
 ## Verification commands
 
 ```powershell
-python -m pytest apps/api/tests -q --basetemp apps/api/.pytest_tmp
+python -m pytest apps/api/tests -q -n auto --basetemp apps/api/.pytest_tmp
 cd ml; python -m pytest tests -q --basetemp=.pytest_tmp
 cd ../apps/web; npm test; npm run build
 ```

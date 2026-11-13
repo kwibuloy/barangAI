@@ -26,6 +26,15 @@ import {
   saveDraft,
 } from '../src/features/reports/draft'
 import type { ReportDraft } from '../src/features/reports/draft'
+import { compressPhoto } from '../src/features/reports/photo'
+
+// jsdom can't redraw a photo, so compressPhoto hands back the original; tests that need a redrawn copy say so.
+vi.mock('../src/features/reports/photo', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/features/reports/photo')>()
+  return { ...actual, compressPhoto: vi.fn(actual.compressPhoto) }
+})
+const redrawn = () =>
+  vi.mocked(compressPhoto).mockImplementation(async file => new File([file], file.name, { type: 'image/jpeg' }))
 
 const leaflet = vi.hoisted(() => ({ pins: 0, tileEvents: {} as Record<string, () => void>, map: null as any }))
 vi.mock('leaflet', () => {
@@ -158,6 +167,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   cleanup()
+  vi.mocked(compressPhoto).mockReset() // back to the real one
   window.history.replaceState(null, '', '/')
   vi.useRealTimers()
   vi.unstubAllGlobals()
@@ -441,6 +451,7 @@ describe('report drafts', () => {
       if (url.includes('/nearby')) return { own: [], cases: [] }
       return []
     })
+    redrawn()
     at('/report')
     render(<App />)
     fireEvent.change(await screen.findByLabelText(/incident photo/i), {
@@ -465,6 +476,75 @@ describe('report drafts', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Account and settings' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
     await waitFor(() => expect(rows.size).toBe(0))
+  })
+})
+
+describe('report draft edge cases (P15)', () => {
+  async function pickAndPin() {
+    at('/report')
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText(/incident photo/i), {
+      target: { files: [new File(['test'], 'road.jpg', { type: 'image/jpeg' })] },
+    })
+    await waitFor(() => expect(screen.getByRole('button', { name: /^next/i })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: /^next/i }))
+    fireEvent.click(await screen.findByText('Enter coordinates manually'))
+    fireEvent.change(screen.getByLabelText('Latitude'), { target: { value: '14.3294' } })
+    fireEvent.change(screen.getByLabelText('Longitude'), { target: { value: '120.9367' } })
+  }
+
+  it("never keeps a photo the browser couldn't redraw, metadata and all, and starts that draft at Photo", async () => {
+    const rows = fakeIndexedDB()
+    serve(RESIDENT)
+    await pickAndPin()
+    await waitFor(() => expect(rows.get('r1')).toBeTruthy())
+    const saved = rows.get('r1') as ReportDraft
+    expect(saved.photo).toBeNull()
+    expect(saved.step).toBe(0)
+    expect(saved.latitude).toBe('14.3294')
+  })
+
+  it("doesn't keep again the photo of a draft saved before redrawing was recorded", async () => {
+    const rows = fakeIndexedDB()
+    const old = new File(['original'], 'road.jpg', { type: 'image/jpeg' })
+    await saveDraft('r1', draft({ photo: old, step: 2, description: 'Older build.' }))
+    serve(RESIDENT)
+    at('/report')
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect((rows.get('r1') as ReportDraft).photo).toBeNull())
+    expect((rows.get('r1') as ReportDraft).description).toBe('Older build.')
+  })
+
+  it('takes the draft off the device when the form is emptied', async () => {
+    const rows = fakeIndexedDB()
+    serve(RESIDENT)
+    await pickAndPin()
+    await waitFor(() => expect(rows.size).toBe(1))
+    fireEvent.change(screen.getByLabelText('Latitude'), { target: { value: '' } })
+    await waitFor(() => expect(rows.size).toBe(0))
+  })
+
+  it('lets a "Still not fixed" follow-up win over an old draft instead of dropping it', async () => {
+    const rows = fakeIndexedDB()
+    await saveDraft('r1', draft({ description: 'An older, unrelated draft.' }))
+    serve(RESIDENT)
+    at('/report', {
+      followUp: {
+        reportId: 'abcd1234-0000-0000-0000-000000000000',
+        category: 'potholes',
+        latitude: 14.3,
+        longitude: 120.9,
+      },
+    })
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Photo' })).toBeInTheDocument()
+    expect(screen.queryByText('Continue your report?')).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect((rows.get('r1') as ReportDraft | undefined)?.description).toMatch(/^Still not fixed.*#ABCD1234/),
+    )
+    const saved = rows.get('r1') as ReportDraft
+    expect(saved).toMatchObject({ locationSource: 'previous', carriedCategory: 'potholes', latitude: '14.3' })
   })
 })
 

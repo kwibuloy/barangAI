@@ -7,6 +7,7 @@ const SOURCE: Record<NonNullable<Report['location_source']>, string> = {
   photo: "Pin from the photo's GPS",
   device: "Pin from the phone's GPS",
   manual: 'Pin placed by hand',
+  previous: 'Pin from the earlier report',
 }
 
 export function useFlagText() {

@@ -1,39 +1,17 @@
-import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, m } from 'motion/react'
-import {
-  Camera,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ImagePlus,
-  Info,
-  LoaderCircle,
-  LocateFixed,
-  Map as MapIcon,
-  Sparkles,
-  TriangleAlert,
-  Users,
-  X,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, LoaderCircle, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Kap, kapAvailable, type KapPose } from '@/components/Kap'
-import { Journey } from './Journey'
-import { DateText } from '@/components/DateText'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Kap, type KapPose } from '@/components/Kap'
 import { Alert, LargeTitle } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { DESKTOP, useMediaQuery } from '@/hooks/use-media-query'
 import { post, reportErrorMessage } from '../../lib/api'
 import { Txt, useLanguage, useText } from '../../lib/i18n'
 import { ResidentAccount, useResident } from '../../app/ResidentShell'
-import { categories, hazardLabels, label } from './categories'
-import { CategoryTile } from './CategoryIcon'
-import { MapPicker } from './MapPicker'
+import { label } from './categories'
 import {
   devicePosition,
   locationProblem,
@@ -47,6 +25,15 @@ import { compressPhoto, MAX_PICK_BYTES, MAX_UPLOAD_BYTES, photoDetails, type Pho
 import { findNearby, reportKeys, useCommunityCases, useSubmitReport } from './queries'
 import type { Category, FollowUp, Hazard, Nearby, Prediction, Report } from './types'
 import { takeHandedOffPhoto } from '../glasses/connection'
+import { ContinueDraft } from './form/ContinueDraft'
+import { DetailsStep } from './form/DetailsStep'
+import { LocationStep } from './form/LocationStep'
+import { NearbySheet } from './form/NearbySheet'
+import { PhotoStep } from './form/PhotoStep'
+import { ReviewStep } from './form/ReviewStep'
+import { EASE, validCoordinates, type PreviewState } from './form/shared'
+import { SuccessView } from './form/SuccessView'
+import { Summary } from './form/Summary'
 
 const UNAVAILABLE: Prediction = { prediction_available: false, model_category: null, confidence: null }
 const NOT_FILLED = { category: false, description: false }
@@ -59,7 +46,6 @@ const COACH: { pose: KapPose; line: string }[] = [
   { pose: 'clipboard', line: 'Check what I filled in and change anything that looks wrong.' },
   { pose: 'thumbs', line: 'Looking good! One last check, then send it to your barangay.' },
 ]
-const EASE = [0.22, 1, 0.36, 1] as const
 
 type Blurred = { faces: number; plates: number }
 
@@ -82,16 +68,6 @@ function photoProblem(file: File) {
   if (!supported) return 'Choose a JPG, PNG, or WebP photo.'
   if (file.size > MAX_PICK_BYTES) return 'Photo is too large. Choose a photo of 25 MB or less.'
   return ''
-}
-
-function validCoordinates(latitude: string, longitude: string) {
-  const lat = Number(latitude)
-  const lng = Number(longitude)
-  return latitude !== '' && longitude !== '' && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
-}
-
-function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('hairline rounded-2xl bg-card p-4', className)}>{children}</div>
 }
 
 export function ReportForm() {
@@ -125,6 +101,9 @@ export function ReportForm() {
   const pickId = useRef(0)
   const [pickKey, setPickKey] = useState(0)
   const [preparing, setPreparing] = useState(false)
+  // Whether the photo held is a redrawn copy. A browser that can't redraw hands back the original, metadata and all,
+  // which may go to the server (it strips it there) but is never kept on the device in a draft.
+  const [photoRedrawn, setPhotoRedrawn] = useState(false)
   // Read from the original photo before shrinking drops them; staff use them to check the pin and date.
   const [details, setDetails] = useState<PhotoDetails | null>(null)
   const [photoGps, setPhotoGps] = useState<[number, number] | null>(null)
@@ -249,8 +228,9 @@ export function ReportForm() {
     let alive = true
     void loadDraft(accountId).then(found => {
       if (!alive) return
-      // Arriving to add to a case or finish a photo from the glasses: that is what the resident came to do.
-      if (found && !caseId && !fromGlasses) setOffer(found)
+      // Arriving to add to a case, finish a photo from the glasses or follow up a report ("Still not fixed"): that is
+      // what the resident came to do, so the old draft isn't offered, and the new one replaces it.
+      if (found && !caseId && !fromGlasses && !followUp) setOffer(found)
       else {
         applyFollowUp()
         setDraftChecked(true)
@@ -266,6 +246,7 @@ export function ReportForm() {
     pickId.current += 1
     setPickKey(pickId.current)
     setPhoto(draft.photo)
+    setPhotoRedrawn(Boolean(draft.photo && draft.photoRedrawn))
     setCategory(draft.category)
     setDescription(draft.description)
     setLatitude(draft.latitude)
@@ -281,7 +262,6 @@ export function ReportForm() {
     setStep(Math.min(draft.step, STEPS.length - 1))
     setOffer(null)
     setDraftChecked(true)
-    if (followUp) navigate('/report', { replace: true, state: null })
   }
   function discardDraft() {
     void clearDraft(accountId)
@@ -289,12 +269,16 @@ export function ReportForm() {
     applyFollowUp()
     setDraftChecked(true)
   }
+  // Whether this form has put a draft on the device, so emptying the form can take it away again.
+  const savedHere = useRef(false)
   useEffect(() => {
     if (!draftChecked || submitted) return
-    const worthKeeping = photo || description.trim() || validCoordinates(latitude, longitude)
+    const keptPhoto = photoRedrawn ? photo : null
+    const worthKeeping = keptPhoto || description.trim() || validCoordinates(latitude, longitude)
     unsaved.current = worthKeeping
       ? {
-          photo,
+          photo: keptPhoto,
+          photoRedrawn: Boolean(keptPhoto),
           category,
           description,
           latitude,
@@ -307,13 +291,22 @@ export function ReportForm() {
           aiDescription: aiDescription ? description : null,
           carriedCategory: carriedCategory.current,
           caseId,
-          step,
+          // Without its photo the draft starts again at the Photo step.
+          step: photo && !keptPhoto ? 0 : step,
           savedAt: Date.now(),
         }
       : null
-    if (!unsaved.current) return
+    if (!unsaved.current) {
+      if (savedHere.current) {
+        savedHere.current = false
+        void clearDraft(accountId)
+      }
+      return
+    }
     const timer = setTimeout(() => {
-      if (unsaved.current) void saveDraft(accountId, unsaved.current)
+      if (!unsaved.current) return
+      savedHere.current = true
+      void saveDraft(accountId, unsaved.current)
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the values above
@@ -321,6 +314,7 @@ export function ReportForm() {
     draftChecked,
     submitted,
     photo,
+    photoRedrawn,
     category,
     description,
     latitude,
@@ -415,6 +409,7 @@ export function ReportForm() {
         setError('This device could not shrink the photo. Choose a photo of 5 MB or less.')
         return
       }
+      setPhotoRedrawn(small !== file)
       setPhoto(small)
     })
     // Location without typing: the photo's own GPS first, then the phone's, quietly (the pin can still move).
@@ -549,6 +544,7 @@ export function ReportForm() {
     setPhotoGps(null)
     setSubmitted(null)
     setPhoto(null)
+    setPhotoRedrawn(false)
     setPreview('')
     setBlurred(null)
     setPrediction(null)
@@ -686,325 +682,62 @@ export function ReportForm() {
                 />
               )}
               {step === 1 && (
-                <>
-                  <p className="text-[15px] text-muted-foreground max-lg:hidden">
-                    <Txt>Use GPS, move a map pin, or enter coordinates.</Txt>
-                  </p>
-                  <Card className="space-y-3">
-                    {/* Side by side while both labels fit on a line; otherwise each takes the full width. */}
-                    <div className="flex flex-wrap gap-2.5 *:grow *:basis-auto">
-                      <Button className="lg:h-[52px]" type="button" onClick={() => locate()} disabled={locating}>
-                        {locating ? <LoaderCircle className="animate-spin" /> : <LocateFixed />}
-                        <Txt>{locating ? 'Finding your location…' : 'Use GPS'}</Txt>
-                      </Button>
-                      <Button
-                        variant="tinted"
-                        className="lg:h-[52px]"
-                        type="button"
-                        onClick={() => setShowMap(!showMap)}
-                      >
-                        <MapIcon />
-                        <Txt>{showMap ? 'Hide map' : 'Adjust pin on map'}</Txt>
-                      </Button>
-                    </div>
-                    {located && (
-                      <m.p
-                        className="flex items-center gap-2 rounded-xl bg-[color-mix(in_oklab,var(--status-resolved)_12%,transparent)] px-3 py-2.5 text-[15px] font-medium text-[var(--status-resolved)]"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-                        <CheckCircle2 className="size-5 shrink-0" />
-                        <span className="min-w-0">
-                          <Txt>Location set</Txt> · {streetName ?? coordinates}
-                          {locationSource && locationSource !== 'manual' && (
-                            <span className="block text-[13px] font-normal opacity-80">
-                              <Txt>
-                                {locationSource === 'photo'
-                                  ? 'From your photo'
-                                  : locationSource === 'previous'
-                                    ? 'From your earlier report'
-                                    : 'From your phone'}
-                              </Txt>
-                              {streetName && ` · ${coordinates}`}
-                            </span>
-                          )}
-                          {place?.barangay && (
-                            <span className="block text-[13px] font-normal opacity-80">
-                              <Txt>Barangay</Txt> {place.barangay}
-                            </span>
-                          )}
-                        </span>
-                      </m.p>
-                    )}
-                    {!located && gpsProblem && (
-                      <p
-                        role="alert"
-                        className="flex items-start gap-2 rounded-xl bg-[color-mix(in_oklab,var(--status-pending)_14%,transparent)] px-3 py-2.5 text-[14px] text-[var(--status-pending)]"
-                      >
-                        <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                        <Txt>{gpsProblem}</Txt>
-                      </p>
-                    )}
-                    {located && place?.active && !place.barangay && (
-                      <p
-                        role="status"
-                        className="flex items-start gap-2 rounded-xl bg-[color-mix(in_oklab,var(--status-pending)_14%,transparent)] px-3 py-2.5 text-[14px] text-[var(--status-pending)]"
-                      >
-                        <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                        <Txt>
-                          This pin is outside the area we cover. You can still send it, and an administrator will review
-                          it.
-                        </Txt>
-                      </p>
-                    )}
-                  </Card>
-                  {showMap && (
-                    <div className="hairline overflow-hidden rounded-2xl">
-                      <MapPicker
-                        latitude={latitude ? Number(latitude) : null}
-                        longitude={longitude ? Number(longitude) : null}
-                        onPick={(lat, lng) => placePin(String(lat), String(lng))}
-                      />
-                    </div>
-                  )}
-                  <details className="group hairline rounded-2xl bg-card">
-                    <summary className="flex min-h-12 items-center justify-between px-4 text-[16px] font-medium [&::-webkit-details-marker]:hidden">
-                      <Txt>Enter coordinates manually</Txt>
-                      <ChevronRight className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                    </summary>
-                    <div className="grid grid-cols-2 gap-3 px-4 pb-4">
-                      <label className="space-y-1.5 text-[14px] font-medium text-muted-foreground">
-                        <Txt>Latitude</Txt>
-                        <Input
-                          type="number"
-                          inputMode="decimal"
-                          step="any"
-                          min="-90"
-                          max="90"
-                          value={latitude}
-                          onChange={event => placePin(event.target.value, longitude)}
-                          placeholder="14.326900"
-                          className="text-foreground"
-                        />
-                      </label>
-                      <label className="space-y-1.5 text-[14px] font-medium text-muted-foreground">
-                        <Txt>Longitude</Txt>
-                        <Input
-                          type="number"
-                          inputMode="decimal"
-                          step="any"
-                          min="-180"
-                          max="180"
-                          value={longitude}
-                          onChange={event => placePin(latitude, event.target.value)}
-                          placeholder="120.936400"
-                          className="text-foreground"
-                        />
-                      </label>
-                    </div>
-                  </details>
-                </>
+                <LocationStep
+                  locating={locating}
+                  onLocate={() => locate()}
+                  showMap={showMap}
+                  onToggleMap={() => setShowMap(!showMap)}
+                  located={located}
+                  streetName={streetName}
+                  coordinates={coordinates}
+                  locationSource={locationSource}
+                  place={place}
+                  gpsProblem={gpsProblem}
+                  latitude={latitude}
+                  longitude={longitude}
+                  onPlacePin={placePin}
+                />
               )}
               {step === 2 && (
-                <>
-                  <fieldset>
-                    <legend className="mb-2 flex w-full items-center justify-between gap-2 px-1 text-[15px] font-semibold">
-                      <Txt>Incident category</Txt>
-                      {aiCategory && <AiTag check={prediction?.needs_check} />}
-                    </legend>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {categories.map(item => (
-                        <label
-                          key={item.value}
-                          className="hairline relative flex min-h-11 items-center gap-2.5 rounded-2xl bg-card px-2.5 py-2 pr-8 text-[14.5px] leading-tight font-medium lg:min-h-13 lg:gap-3 lg:p-3 lg:pr-9 lg:text-[15px] transition-[box-shadow,background-color] has-checked:bg-tint has-checked:shadow-[0_0_0_2px_var(--primary)] has-focus-visible:ring-2 has-focus-visible:ring-ring"
-                        >
-                          <input
-                            className="sr-only"
-                            type="radio"
-                            name="category"
-                            value={item.value}
-                            required
-                            checked={category === item.value}
-                            onChange={() => {
-                              setCategory(item.value)
-                              setAiFilled(current => ({ ...current, category: false }))
-                            }}
-                          />
-                          <CategoryTile category={item.value} size={desktop ? 'md' : 'sm'} />
-                          <Txt>{item.label}</Txt>
-                          {category === item.value && (
-                            <m.span
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{ type: 'spring', stiffness: 600, damping: 26 }}
-                              className="absolute top-1/2 right-2.5 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-primary text-primary-foreground"
-                            >
-                              <Check className="size-4" strokeWidth={3} aria-hidden="true" />
-                            </m.span>
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                  {category === 'broken_streetlights' && (
-                    <p className="flex items-start gap-1.5 px-1 text-[13px] text-muted-foreground">
-                      <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                      <Txt>
-                        A photo cannot show whether a light works. Choose this only if it stays off at night or is
-                        visibly damaged.
-                      </Txt>
-                    </p>
-                  )}
-                  {hazards.length > 0 && (
-                    <div className="space-y-1 px-1 text-[13px] text-muted-foreground">
-                      <p className="flex flex-wrap items-center gap-1.5">
-                        <Sparkles className="size-3.5" aria-hidden="true" />
-                        <Txt>The AI noticed:</Txt>
-                        {hazards.map(hazard => {
-                          const kept = !dismissedHazards.includes(hazard)
-                          return (
-                            <button
-                              key={hazard}
-                              type="button"
-                              aria-pressed={kept}
-                              onClick={() =>
-                                setDismissedHazards(current =>
-                                  kept ? [...current, hazard] : current.filter(item => item !== hazard),
-                                )
-                              }
-                              className={cn(
-                                'inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 font-medium',
-                                kept
-                                  ? 'bg-[color-mix(in_oklab,var(--status-progress)_13%,transparent)] text-[var(--status-progress)]'
-                                  : 'border border-dashed line-through',
-                              )}
-                            >
-                              <Txt>{hazardLabels[hazard] ?? hazard}</Txt>
-                              {kept && <X className="size-3" aria-hidden="true" />}
-                            </button>
-                          )
-                        })}
-                      </p>
-                      <p>
-                        <Txt>Tap any that are wrong to remove them.</Txt>
-                      </p>
-                    </div>
-                  )}
-                  <AnimatePresence>
-                    {showSafety && (
-                      <m.div
-                        role="note"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex gap-2.5 rounded-2xl bg-[color-mix(in_oklab,var(--status-progress)_13%,transparent)] p-3 text-[14px] leading-snug">
-                          <TriangleAlert className="size-5 shrink-0 text-[var(--status-progress)]" aria-hidden="true" />
-                          <span>
-                            <Txt>
-                              Stay well away and do not touch the wire or anything it touches. If it is sparking or on
-                              the ground, warn people nearby and call your barangay or electric company right away.
-                            </Txt>
-                          </span>
-                        </div>
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-                  <label className="block space-y-2">
-                    <span className="flex items-center justify-between gap-2 px-1 text-[15px] font-semibold">
-                      <Txt>Description (optional)</Txt>
-                      {aiDescription && <AiTag check={prediction?.problem_seen === false} />}
-                    </span>
-                    <Textarea
-                      rows={2}
-                      className="min-h-14 lg:min-h-16"
-                      maxLength={1000}
-                      placeholder={t('What happened? Add details the photo may not show.')}
-                      value={description}
-                      onChange={event => {
-                        setDescription(event.target.value)
-                        setAiFilled(current => ({ ...current, description: false }))
-                      }}
-                    />
-                    {!aiDescription && (
-                      <span className="hidden items-center gap-1.5 px-1 text-[13px] font-normal text-muted-foreground sm:flex">
-                        <Sparkles className="size-3.5" aria-hidden="true" />
-                        <Txt>The AI writes this from your photo when it can. Add a short note if it did not.</Txt>
-                      </span>
-                    )}
-                  </label>
-                </>
+                <DetailsStep
+                  category={category}
+                  onCategory={value => {
+                    setCategory(value)
+                    setAiFilled(current => ({ ...current, category: false }))
+                  }}
+                  aiCategory={aiCategory}
+                  prediction={prediction}
+                  desktop={desktop}
+                  hazards={hazards}
+                  dismissedHazards={dismissedHazards}
+                  onDismissedHazards={setDismissedHazards}
+                  showSafety={showSafety}
+                  description={description}
+                  onDescription={value => {
+                    setDescription(value)
+                    setAiFilled(current => ({ ...current, description: false }))
+                  }}
+                  aiDescription={aiDescription}
+                />
               )}
               {step === 3 && (
-                <>
-                  <div className="hairline overflow-hidden rounded-2xl bg-card">
-                    {preview && (
-                      <ProtectedPhoto src={preview} state={photoState} className="aspect-[3/1] max-lg:hidden" />
-                    )}
-                    <dl>
-                      {[
-                        { term: 'Photo', value: photo?.name, edit: 0, auto: false },
-                        {
-                          term: 'Location',
-                          value: streetName ? `${streetName} (${coordinates})` : coordinates,
-                          edit: 1,
-                          auto: autoLocation,
-                        },
-                        {
-                          term: 'Incident category',
-                          value: t(label(category || null)),
-                          edit: 2,
-                          auto: aiCategory || carried,
-                        },
-                        {
-                          term: 'Description (optional)',
-                          value: description.trim() || t('No description added'),
-                          edit: 2,
-                          auto: aiDescription,
-                        },
-                      ].map(item => (
-                        <div
-                          key={item.term}
-                          className="flex items-center gap-3 border-t px-3.5 py-1.5 first:border-t-0 lg:items-start lg:px-4 lg:py-3"
-                        >
-                          {item.edit === 0 && preview && (
-                            <ProtectedPhoto
-                              thumb
-                              src={preview}
-                              state={photoState}
-                              className="h-11 w-16 shrink-0 rounded-lg lg:hidden"
-                            />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <dt className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-                              <Txt>{item.term}</Txt>
-                              {item.auto && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_oklab,var(--status-pending)_14%,transparent)] px-2 py-0.5 text-[12px] font-semibold text-[var(--status-pending)]">
-                                  <Sparkles className="size-3" aria-hidden="true" />
-                                  <Txt>Auto-filled · check</Txt>
-                                </span>
-                              )}
-                            </dt>
-                            <dd className="mt-0.5 line-clamp-2 text-[15px] leading-snug break-words lg:line-clamp-none lg:text-[16px]">
-                              {item.value}
-                            </dd>
-                          </div>
-                          <button
-                            className="-my-1 min-h-11 shrink-0 px-1 text-[15px] font-medium text-link"
-                            type="button"
-                            onClick={() => go(item.edit)}
-                          >
-                            <Txt>Edit</Txt>
-                          </button>
-                        </div>
-                      ))}
-                    </dl>
-                  </div>
-                  {autoFilled && (
-                    <AutoFillCheck confirmed={confirmed} onConfirm={value => setConfirmedFor(value ? shown : null)} />
-                  )}
-                </>
+                <ReviewStep
+                  preview={preview}
+                  photoState={photoState}
+                  photoName={photo?.name}
+                  streetName={streetName}
+                  coordinates={coordinates}
+                  autoLocation={autoLocation}
+                  category={category}
+                  aiCategory={aiCategory}
+                  carried={carried}
+                  description={description}
+                  aiDescription={aiDescription}
+                  autoFilled={autoFilled}
+                  confirmed={confirmed}
+                  onConfirm={value => setConfirmedFor(value ? shown : null)}
+                  onEdit={go}
+                />
               )}
             </m.div>
           </AnimatePresence>
@@ -1075,570 +808,5 @@ export function ReportForm() {
         />
       </div>
     </div>
-  )
-}
-
-/** Back on the Report tab with a report still unsent. The photo isn't shown here: it stays blurred until checked. */
-function ContinueDraft({
-  draft,
-  onContinue,
-  onDiscard,
-}: {
-  draft: ReportDraft
-  onContinue: () => void
-  onDiscard: () => void
-}) {
-  const t = useText()
-  const facts = [
-    draft.category ? t(label(draft.category)) : '',
-    draft.photo ? `${t('Photo')}: ${t('Added')}` : '',
-    t(validCoordinates(draft.latitude, draft.longitude) ? 'Location set' : 'Location not set'),
-  ].filter(Boolean)
-  return (
-    <div data-fit className="pt-3 lg:mx-auto lg:max-w-md lg:pt-0">
-      <LargeTitle bar title={t('Make a report')} trailing={<ResidentAccount />} />
-      <div className="flex flex-col items-center pt-4 text-center">
-        <Kap pose="clipboard" motion="pop" className="h-28 w-auto sm:h-36" />
-        <h2 className="display mt-3 text-[26px]">
-          <Txt>Continue your report?</Txt>
-        </h2>
-        <p className="mt-2 text-[15px] font-bold">{facts.join(' · ')}</p>
-        <p className="mt-1 text-[14px] text-muted-foreground">
-          <Txt>Saved on this device</Txt> · <DateText value={new Date(draft.savedAt).toISOString()} compact />
-        </p>
-        <div className="mt-5 grid w-full gap-2.5">
-          <Button size="lg" onClick={onContinue}>
-            <Txt>Continue</Txt>
-          </Button>
-          <Button size="lg" variant="secondary" onClick={onDiscard}>
-            <Txt>Start over</Txt>
-          </Button>
-        </div>
-        <p className="mt-4 text-[13px] text-muted-foreground">
-          <Txt>
-            Your unsent report, with its photo, stays on this device until you send it, sign out, or 24 hours pass.
-          </Txt>
-        </p>
-      </div>
-    </div>
-  )
-}
-
-/** Desktop only: what the resident has filled in so far, with a jump back to any finished step. */
-function Summary({
-  step,
-  preview,
-  previewState,
-  location,
-  category,
-  description,
-  onEdit,
-}: {
-  step: number
-  preview: string
-  previewState: PreviewState
-  location: string
-  category: Category | ''
-  description: string
-  onEdit: (step: number) => void
-}) {
-  const t = useText()
-  const rows = [
-    { label: 'Photo', done: Boolean(preview), value: preview ? t('Added') : t('Not added yet'), step: 0 },
-    { label: 'Location', done: Boolean(location), value: location || t('Not set yet'), step: 1 },
-    {
-      label: 'Incident category',
-      done: Boolean(category),
-      value: category ? t(label(category)) : t('Not chosen yet'),
-      step: 2,
-    },
-    {
-      label: 'Description (optional)',
-      done: Boolean(description),
-      value: description || t('No description added'),
-      step: 2,
-    },
-  ]
-  return (
-    <aside className="sticky top-10 hidden space-y-4 xl:block">
-      <div className="hairline overflow-hidden rounded-2xl bg-card">
-        {preview ? (
-          <ProtectedPhoto src={preview} state={previewState} className="aspect-[2/1]" />
-        ) : (
-          <div className="grid aspect-[2/1] place-items-center bg-muted text-muted-foreground">
-            <Camera className="size-8" aria-hidden="true" />
-          </div>
-        )}
-        <div className="flex items-center gap-2 border-b px-4 py-3">
-          {category && <CategoryTile category={category} size="sm" />}
-          <strong className="text-[16px] font-semibold">
-            <Txt>Your report</Txt>
-          </strong>
-        </div>
-        <ul>
-          {rows.map(row => (
-            <li key={row.label} className="flex items-start gap-3 px-4 py-2.5 [&+&]:border-t">
-              <span
-                className={cn(
-                  'mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2',
-                  row.done ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30',
-                )}
-              >
-                {row.done && <Check className="size-3" strokeWidth={3.5} aria-hidden="true" />}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] text-muted-foreground">
-                  <Txt>{row.label}</Txt>
-                </span>
-                <span className="block truncate text-[15px]">{row.value}</span>
-              </span>
-              {row.step < step && (
-                <button
-                  type="button"
-                  onClick={() => onEdit(row.step)}
-                  className="text-[14px] font-medium text-link hover:underline"
-                >
-                  <Txt>Edit</Txt>
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="flex items-center gap-3 rounded-2xl bg-tint p-4">
-        <Kap pose="idea" className="h-20 w-auto shrink-0" />
-        <p className="text-[14px] text-foreground/80">
-          <Txt>Stand where you can see the whole problem, and keep faces and plate numbers out of the photo.</Txt>
-        </p>
-      </div>
-    </aside>
-  )
-}
-
-/** Marks a field the AI filled in from the photo; it disappears once the resident edits that field. */
-function AiTag({ check = false }: { check?: boolean }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold',
-        check
-          ? 'bg-[color-mix(in_oklab,var(--status-pending)_14%,transparent)] text-[var(--status-pending)]'
-          : 'bg-tint text-link',
-      )}
-    >
-      <Sparkles className="size-3" aria-hidden="true" />
-      <Txt>{check ? 'AI unsure · please check' : 'Filled by AI · you can edit'}</Txt>
-    </span>
-  )
-}
-
-type PreviewState = 'checking' | 'analysing' | 'ready' | 'failed'
-
-/** Shows the server's face-blurred copy. Until then, only a heavily blurred version of the original is visible. */
-function ProtectedPhoto({
-  src,
-  state,
-  className,
-  thumb = false,
-}: {
-  src: string
-  state: PreviewState
-  className?: string
-  thumb?: boolean
-}) {
-  const t = useText()
-  return (
-    <div className={cn('relative w-full overflow-hidden', className)}>
-      {/* A new element for each source: one <img> keeps painting its old picture until the next has loaded. */}
-      <img
-        key={src}
-        className={cn('size-full object-cover', state !== 'ready' && 'scale-110 blur-2xl')}
-        src={src}
-        alt={t('Preview of incident photo')}
-      />
-      {state !== 'ready' && !thumb && (
-        <div
-          className="absolute inset-0 grid place-items-center bg-black/25 p-3 text-center text-[14px] font-medium text-white"
-          role="status"
-        >
-          {state !== 'failed' && <span className="photo-scan" aria-hidden="true" />}
-          <span className="relative inline-flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1">
-            {state === 'analysing' && <Sparkles className="size-4 shrink-0" aria-hidden="true" />}
-            <Txt>
-              {state === 'checking'
-                ? 'Hiding faces and plates…'
-                : state === 'analysing'
-                  ? 'Checking the photo…'
-                  : 'Preview hidden. Faces and plates are still checked before saving.'}
-            </Txt>
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Auto-fill is only an aid: the resident must confirm what the AI and GPS filled in before sending. */
-function AutoFillCheck({ confirmed, onConfirm }: { confirmed: boolean; onConfirm: (value: boolean) => void }) {
-  return (
-    <div className="hairline space-y-2 rounded-2xl bg-card p-3 lg:space-y-3 lg:p-4">
-      <p className="flex gap-2.5 text-[13px] leading-snug lg:text-[14px]">
-        <Info className="mt-0.5 size-4 shrink-0 text-[var(--status-pending)]" aria-hidden="true" />
-        <span>
-          <Txt>
-            Auto-fill only helps you fill in this form. The AI and GPS can be wrong, so check that the category,
-            location, and description are correct. Barangay personnel still verify every report.
-          </Txt>
-        </span>
-      </p>
-      <label className="flex min-h-11 items-center gap-3 rounded-xl bg-muted/60 px-3 py-2 text-[14px] leading-snug font-medium has-focus-visible:ring-2 has-focus-visible:ring-ring lg:text-[15px]">
-        <input
-          type="checkbox"
-          className="size-5 shrink-0 accent-[var(--primary)]"
-          checked={confirmed}
-          onChange={event => onConfirm(event.target.checked)}
-        />
-        <Txt>I checked the auto-filled details and they are correct.</Txt>
-      </label>
-    </div>
-  )
-}
-
-function PhotoStep({
-  photo,
-  preparing,
-  preview,
-  previewState,
-  prediction,
-  blurLine,
-  onSelect,
-  onDrop,
-}: {
-  photo: File | null
-  preparing: boolean
-  preview: string
-  previewState: PreviewState
-  prediction: Prediction | null
-  blurLine: string
-  onSelect: (event: ChangeEvent<HTMLInputElement>) => void
-  onDrop: (file: File) => void
-}) {
-  const t = useText()
-  const [dragging, setDragging] = useState(false)
-  const tile =
-    'hairline relative flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-[16px] font-semibold transition-[transform,box-shadow,background-color] active:scale-[0.98] has-focus-visible:ring-2 has-focus-visible:ring-ring lg:min-h-44'
-  return (
-    <>
-      <p className="text-[15px] text-muted-foreground max-lg:hidden">
-        <Txt>Take a clear photo. The AI fills in the details to help you; check them and change anything wrong.</Txt>
-      </p>
-      {preview && (
-        <m.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }}>
-          <ProtectedPhoto src={preview} state={previewState} className="hairline aspect-[3/1] rounded-2xl xl:hidden" />
-        </m.div>
-      )}
-      {/* Desktops have no coach above the steps, so Kap says it here; phones say it in the coach's bubble. */}
-      {blurLine && (
-        <div className="flex items-end gap-2 max-lg:hidden">
-          <Kap pose="thumbs" className="h-12 shrink-0" />
-          <p className="kap-bubble kap-bubble-left relative mb-2 rounded-2xl border-2 bg-card px-3 py-1.5 text-[13.5px] leading-snug font-bold">
-            {blurLine}
-          </p>
-        </div>
-      )}
-      {preparing && (
-        <p className="flex items-center gap-2 px-1 text-[14px] text-muted-foreground" role="status">
-          <LoaderCircle className="size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          <Txt>Preparing photo…</Txt>
-        </p>
-      )}
-      {photo && (
-        <p className="flex items-center gap-2 px-1 text-[14px] text-muted-foreground max-lg:sr-only" role="status">
-          <CheckCircle2 className="size-4 shrink-0 text-[var(--status-resolved)]" />
-          <span className="truncate">
-            <Txt>Selected photo:</Txt> {photo.name}
-          </span>
-        </p>
-      )}
-      <div className="grid grid-cols-2 gap-3">
-        <label
-          className={cn(tile, 'bg-primary text-primary-foreground', photo && 'min-h-12 flex-row py-2 lg:min-h-16')}
-        >
-          <Camera className="size-7" aria-hidden="true" />
-          <Txt>{photo ? 'Retake photo' : 'Take photo'}</Txt>
-          <input
-            className="sr-only"
-            type="file"
-            aria-label={t('Take photo')}
-            accept="image/*"
-            capture="environment"
-            onChange={onSelect}
-          />
-        </label>
-        {/* Desktop residents can drop a photo file here as well as browse for one. */}
-        <label
-          className={cn(
-            tile,
-            'bg-card text-link',
-            photo && 'min-h-12 flex-row py-2 lg:min-h-16',
-            dragging && 'bg-tint shadow-[0_0_0_2px_var(--primary)]',
-          )}
-          onDragOver={event => {
-            event.preventDefault()
-            setDragging(true)
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={event => {
-            event.preventDefault()
-            setDragging(false)
-            const file = event.dataTransfer.files[0]
-            if (file) onDrop(file)
-          }}
-        >
-          <ImagePlus className="size-7" aria-hidden="true" />
-          <Txt>{photo ? 'Choose another' : 'Choose photo'}</Txt>
-          <span className={cn('hidden text-[13px] font-normal text-muted-foreground', !photo && 'lg:block')}>
-            <Txt>or drag a photo here</Txt>
-          </span>
-          <input
-            className="sr-only"
-            type="file"
-            aria-label={t('Incident photo · Choose photo')}
-            accept="image/jpeg,image/png,image/webp"
-            required={!photo}
-            onChange={onSelect}
-          />
-        </label>
-      </div>
-      <p className={cn('px-1 text-[13px] text-muted-foreground', photo && 'max-lg:hidden')}>
-        <Txt>JPG, PNG, or WebP, up to 25 MB. Avoid faces and license plates.</Txt>
-      </p>
-      {photo && <AiCard prediction={prediction} />}
-    </>
-  )
-}
-
-/** AI suggestions only; this card must never read as a verified result. */
-function AiCard({ prediction }: { prediction: Prediction | null }) {
-  const [title, body] = !prediction
-    ? ['Checking the photo…', 'You can continue while this runs.']
-    : prediction.problem_seen === false
-      ? [
-          'AI is uncertain',
-          'Nothing looks broken. We picked the closest category; please verify it and the description.',
-        ]
-      : prediction.model_category
-        ? [
-            '',
-            prediction.suggested_description
-              ? 'We filled in the category and a description. You can change both on the Details step.'
-              : 'We filled in the category for you. You can change it on the Details step.',
-          ]
-        : prediction.prediction_available
-          ? ['AI is uncertain', 'Choose the category yourself. Barangay personnel will verify it.']
-          : ['AI classification unavailable', 'Choose the category yourself. Barangay personnel will verify it.']
-  return (
-    <div
-      aria-live="polite"
-      className={cn('hairline flex gap-3 rounded-2xl p-3 text-[14px] lg:p-4', prediction ? 'bg-card' : 'shimmer')}
-    >
-      <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-tint text-link">
-        <Sparkles className="size-5" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 lg:text-[15px]">
-        <strong className="block font-semibold">
-          {prediction?.model_category && prediction.problem_seen !== false ? (
-            <>
-              <Txt>AI suggests</Txt> <Txt>{label(prediction.model_category)}</Txt>
-            </>
-          ) : (
-            <Txt>{title}</Txt>
-          )}
-        </strong>
-        <span className="text-muted-foreground">
-          <Txt>{body}</Txt>
-        </span>
-      </span>
-    </div>
-  )
-}
-
-function SuccessView({ report, onAnother }: { report: Report; onAnother: () => void }) {
-  const t = useText()
-  return (
-    <div
-      data-fit
-      className="flex flex-col items-center pt-[calc(env(safe-area-inset-top)+8px)] text-center lg:mx-auto lg:max-w-md lg:pt-6"
-    >
-      {kapAvailable('cheer') ? (
-        <m.div
-          initial={{ scale: 0.6, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-        >
-          <span className="relative block">
-            {/* A burst of sparkles around him, like Duolingo's lesson-complete moment. */}
-            {[
-              ['-left-6 top-4', '#ffc800'],
-              ['-right-5 top-0', '#1cb0f6'],
-              ['-left-3 bottom-6', '#ff9600'],
-              ['-right-7 bottom-10', '#ce82ff'],
-            ].map(([place, color], index) => (
-              <svg
-                key={place}
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                className={cn('sparkle absolute size-6', place)}
-                style={{ '--i': index, color } as CSSProperties}
-              >
-                <path fill="currentColor" d="M12 0c1 6 6 11 12 12-6 1-11 6-12 12-1-6-6-11-12-12C6 11 11 6 12 0z" />
-              </svg>
-            ))}
-            <Kap pose="cheer" motion="greet" interactive className="h-28 w-auto sm:h-40 lg:h-44" />
-          </span>
-        </m.div>
-      ) : (
-        <svg className="size-24" viewBox="0 0 96 96" aria-hidden="true">
-          <m.circle
-            cx="48"
-            cy="48"
-            r="44"
-            fill="var(--status-resolved)"
-            initial={{ scale: 0.4, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 16 }}
-            style={{ originX: '50%', originY: '50%' }}
-          />
-          <m.path
-            d="M30 49 l12 12 l24 -26"
-            fill="none"
-            stroke="#fff"
-            strokeWidth="7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ delay: 0.2, duration: 0.35, ease: EASE }}
-          />
-        </svg>
-      )}
-      <h1 className="display mt-2 text-[28px] lg:mt-3 lg:text-[30px]">
-        <Txt>Report sent</Txt>
-      </h1>
-      <p role="status" className="mt-1 max-w-sm text-[16px] text-muted-foreground">
-        <Txt>Report submitted. Barangay personnel will review it.</Txt>
-      </p>
-      <p className="mt-2 max-w-sm text-[13px] text-muted-foreground">
-        <Txt>Sending a report does not guarantee a response or a date. If anyone is in danger, call 911.</Txt>
-      </p>
-      <div className="mt-3 w-full rounded-2xl border-2 border-b-4 bg-card p-3.5 pb-4 text-left lg:mt-5 lg:p-4 lg:pb-5">
-        <span className="label-caps text-[12px] text-muted-foreground">
-          <Txt>Reference no.</Txt>
-        </span>
-        <strong className="mt-0.5 block font-mono text-[24px] font-bold tracking-wider">
-          {report.id.slice(0, 8).toUpperCase()}
-        </strong>
-        <div className="mt-3 border-t-2 pt-12" aria-label={t('Status path')} role="group">
-          <Journey status="Pending" compact />
-        </div>
-        <p className="mt-3 text-[14px] text-muted-foreground lg:mt-4">
-          <Txt>Track it anytime in My reports.</Txt>
-        </p>
-      </div>
-      <div className="mt-3 grid w-full gap-2 lg:mt-4">
-        <Button asChild size="lg" className="max-lg:min-h-12">
-          <Link to={`/reports/${report.id}`}>
-            <Txt>View my report</Txt>
-          </Link>
-        </Button>
-        <Button variant="tinted" size="lg" className="max-lg:min-h-12" type="button" onClick={onAnother}>
-          <Txt>Make another report</Txt>
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/** "You already reported this": offered before a second report of the same issue is sent. */
-function NearbySheet({
-  nearby,
-  adding,
-  onClose,
-  onAddToOwn,
-  onJoinCase,
-  onSubmitAnyway,
-}: {
-  nearby: Nearby | null
-  adding: boolean
-  onClose: () => void
-  onAddToOwn: (reportId: string) => void
-  onJoinCase: (caseId: string) => void
-  onSubmitAnyway: () => void
-}) {
-  const t = useText()
-  const own = nearby?.own[0]
-  const shared = own ? undefined : nearby?.cases[0]
-  return (
-    <Sheet open={Boolean(nearby)} onOpenChange={open => !open && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]"
-      >
-        <SheetHeader className="items-center px-5 pt-6 text-center">
-          {kapAvailable('thinking') && <Kap pose="thinking" className="mb-1 h-24 w-auto" />}
-          <SheetTitle className="text-[20px] font-bold">
-            <Txt>{own ? 'You already reported this' : 'Neighbours already reported this'}</Txt>
-          </SheetTitle>
-          <SheetDescription className="text-[15px]">
-            <Txt>
-              {own
-                ? 'Your open report is close to this pin. Add this photo and note to it so staff see everything in one place.'
-                : 'Barangay staff are already working on an issue close to this pin. Add your photo to it as evidence.'}
-            </Txt>
-          </SheetDescription>
-        </SheetHeader>
-        {(own || shared) && (
-          <div className="mx-5 flex items-center gap-3 rounded-2xl bg-muted/60 p-3.5">
-            <CategoryTile category={(own?.resident_category ?? shared?.category)!} />
-            <div className="min-w-0 flex-1 text-[14px]">
-              <strong className="block truncate text-[15px] font-semibold">
-                <Txt>{label(own?.resident_category ?? shared?.category ?? null)}</Txt>
-              </strong>
-              <span className="block text-muted-foreground">
-                {own ? (
-                  <>
-                    #{own.id.slice(0, 8).toUpperCase()} ·{' '}
-                    {own.created_at && <DateText value={own.created_at} compact />}
-                  </>
-                ) : (
-                  <>
-                    {shared?.location_label ?? ''} {shared?.contributors ?? 0} {t('residents')}
-                  </>
-                )}
-                {' · '}
-                {own?.distance_m ?? shared?.distance_m} m {t('away')}
-              </span>
-            </div>
-          </div>
-        )}
-        <div className="flex flex-col gap-2.5 px-5 pt-2">
-          {own && (
-            <Button size="lg" disabled={adding} onClick={() => onAddToOwn(own.id)}>
-              {adding && <LoaderCircle className="animate-spin" />}
-              <Txt>Add to my report</Txt>
-            </Button>
-          )}
-          {shared && (
-            <Button size="lg" onClick={() => onJoinCase(shared.id)}>
-              <Users />
-              <Txt>Add my photo to this issue</Txt>
-            </Button>
-          )}
-          <Button size="lg" variant="secondary" disabled={adding} onClick={onSubmitAnyway}>
-            <Txt>It is a different problem. Send a new report</Txt>
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
   )
 }

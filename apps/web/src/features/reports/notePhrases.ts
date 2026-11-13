@@ -9,7 +9,7 @@ export type NotePhrase = {
   reason?: string
 }
 
-/** Starting words for each status change, editable before sending. Filipino for all of them is in i18n.tsx. */
+/** Starting words for each status change, editable before sending. Filipino for all of them is in locales/fil.ts. */
 export const NOTE_PHRASES: Partial<Record<Status, NotePhrase[]>> = {
   'Under Verification': [
     { label: 'Checking the photo', note: 'We received your report and are checking the photo and the pin.' },

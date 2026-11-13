@@ -5,7 +5,7 @@ description: Run BarangAI's full local verification (API tests, web tests, typec
 
 Run from the repo root and report each result exactly, including failure output. Don't summarize a failure as a pass.
 
-1. API: `.venv/Scripts/python.exe -m pytest apps/api/tests -q -p no:cacheprovider --basetemp <scratch dir>`. Use a fresh basetemp each run, because Windows locks old ones.
+1. API: `.venv/Scripts/python.exe -m pytest apps/api/tests -q -p no:cacheprovider -n auto --basetemp <scratch dir>`. Use a fresh basetemp each run, because Windows locks old ones. `-n auto` (pytest-xdist, in the dev extra) runs it in about a minute; drop it to debug one failure.
 2. Web (in `apps/web`): `npm test`, then `npm run build` (runs `tsc -b` first).
 3. ML only if `ml/` changed: `cd ml; ../.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider`.
 4. Lint: `.venv/Scripts/python.exe -m ruff check apps/api` and `npx prettier --check src tests` in `apps/web`.

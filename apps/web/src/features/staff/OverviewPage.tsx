@@ -16,7 +16,7 @@ import { groupCases } from '../reports/grouping'
 import { CategoryTile, categoryColor } from '../reports/CategoryIcon'
 import { useMe } from '../auth/queries'
 import { useBoundaries } from '../reports/boundaries'
-import { useBrief, useReports } from '../reports/queries'
+import { useBrief, useReportCounts, useReports } from '../reports/queries'
 import { Kap } from '@/components/Kap'
 import { useCountUp } from '@/hooks/use-count-up'
 import { cn } from '@/lib/utils'
@@ -85,7 +85,12 @@ export function OverviewPage() {
   const all = useMemo(() => reports.data ?? [], [reports.data])
   // Each figure is the length of the list it opens, so these count as the queue does: a grouped case is one row.
   const rows = useMemo(() => groupCases(all).rows, [all])
-  const count = (...statuses: Report['status'][]) => rows.filter(report => statuses.includes(report.status)).length
+  // The server counts every report, past the newest the list holds (P9); the list's own count stands in until then.
+  const counts = useReportCounts().data
+  const count = (...statuses: Report['status'][]) =>
+    counts
+      ? statuses.reduce((sum, status) => sum + (counts.statuses[status] ?? 0), 0)
+      : rows.filter(report => statuses.includes(report.status)).length
   const trend = useMemo(
     () =>
       Array.from({ length: DAYS }, (_, index) => {
@@ -105,7 +110,9 @@ export function OverviewPage() {
   const byCategory = categories
     .map(item => ({
       ...item,
-      count: rows.filter(report => (report.verified_category ?? report.resident_category) === item.value).length,
+      count:
+        counts?.categories[item.value] ??
+        rows.filter(report => (report.verified_category ?? report.resident_category) === item.value).length,
     }))
     .sort((a, b) => b.count - a.count)
   const maxCategory = Math.max(1, ...byCategory.map(item => item.count))
@@ -150,7 +157,7 @@ export function OverviewPage() {
           </Txt>
         </p>
       )}
-      {me.data?.role === 'administrator' && <FirstRunChecklist reports={reports.data?.length} />}
+      {me.data?.role === 'administrator' && <FirstRunChecklist reports={counts?.reports ?? reports.data?.length} />}
       <BriefCard />
       {shownError(reports) && (
         <p role="alert" className="text-[14px] text-destructive">
@@ -186,7 +193,7 @@ export function OverviewPage() {
         <Kpi
           index={3}
           label="Total reports"
-          value={rows.length}
+          value={counts?.rows ?? rows.length}
           icon={Layers}
           color="#ce82ff"
           to={queueLink(ALL_STATUSES)}

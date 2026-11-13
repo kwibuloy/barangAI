@@ -11,7 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Both go through useText, so both have a Filipino entry in i18n.tsx. */
+/** Both go through useText, so both have a Filipino entry in locales/fil.ts. */
 export const CANT_REACH = "Can't reach your barangay's server. Try again."
 export const CANT_REACH_REPORT = "Can't reach your barangay's server. Your report is still here. Try again."
 

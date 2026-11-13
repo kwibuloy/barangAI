@@ -16,7 +16,8 @@ from PIL import Image, UnidentifiedImageError
 MANILA = timezone(timedelta(hours=8))
 EXIF_IFD, GPS_IFD = 0x8769, 0x8825
 DATE_TIME_ORIGINAL, MAKE, MODEL = 36867, 271, 272
-SOURCES = ("photo", "device", "manual")
+# "previous": a "Still not fixed" follow-up carried the pin of the report it follows.
+SOURCES = ("photo", "device", "manual", "previous")
 
 
 def setting(name, default):

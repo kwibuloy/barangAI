@@ -177,6 +177,12 @@ def test_photo_without_any_details_is_flagged_and_unknown_sources_are_dropped(cl
     assert seen["location_source"] is None
 
 
+def test_a_follow_up_keeps_where_its_carried_pin_came_from(client, photo):
+    register(client)
+    report_id = submit(client, photo, location_source="previous").json()["id"]
+    assert staff_view(client, report_id)["location_source"] == "previous"
+
+
 def test_trust_flag_thresholds():
     from barangai import trust
 

@@ -259,3 +259,40 @@ def test_two_accounts_with_identical_lists_never_share_a_tag(client):
     register(client, "ben@example.test")
     assert first.json() == [] and conditional(client, "/reports").json() == []
     assert conditional(client, "/reports", first.headers["etag"]).status_code == 200
+
+
+def test_overview_counts_reach_past_the_list_limit_and_count_a_case_once(client, photo, monkeypatch):
+    from barangai import reports
+
+    monkeypatch.setattr(reports, "LIST_LIMIT", 2)
+    first = resident_report(client, photo, "ana@example.test")
+    second = resident_report(client, photo, "ben@example.test", latitude="14.6050")
+    third = resident_report(client, photo, "cara@example.test", resident_category="potholes")
+    resident_report(client, photo, "dan@example.test")
+    answer = client.get("/reports/counts")
+    assert answer.status_code == 403  # residents have no overview
+    staff_login(client)
+    assert link(client, first, second).status_code == 200
+    walk(client, third, "Under Verification", "Accepted", category="fallen_trees")
+    assert len(client.get("/reports").json()) == 2  # the list stops at its limit
+    counts = client.get("/reports/counts").json()
+    assert counts["reports"] == 4 and counts["rows"] == 3 and counts["list_limit"] == 2
+    assert counts["statuses"] == {"Pending": 2, "Under Verification": 0, "Accepted": 1, "In Progress": 0,
+                                  "Resolved": 0, "Rejected": 0}
+    # Staff's category where they verified one, else the resident's.
+    assert counts["categories"]["fallen_trees"] == 1 and counts["categories"]["potholes"] == 0
+    assert counts["categories"]["flooding"] == 2
+    tag = client.get("/reports/counts").headers["etag"]
+    assert conditional(client, "/reports/counts", tag).status_code == 304
+
+
+def test_overview_counts_stay_inside_a_staff_members_barangay(client, photo):
+    load_areas()
+    register(client, "ana@example.test")
+    submit(client, photo, latitude="14.605", longitude="121.005")  # South
+    submit(client, photo, latitude="14.615", longitude="121.005")  # North
+    account("desk@example.test", "staff", "North")
+    login(client, "desk@example.test", "account-password-123")
+    assert client.get("/reports/counts").json()["reports"] == 1
+    login(client, "admin@example.test", "account-password-123")
+    assert client.get("/reports/counts").json()["reports"] == 2

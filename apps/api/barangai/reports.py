@@ -1,6 +1,7 @@
 import base64
 import logging
 import os
+from collections import Counter
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -29,6 +30,9 @@ from .notifications import notify_staff
 from .usage import limit_setting, period_key, take
 
 router = APIRouter(prefix="/reports")
+# The list sends the newest 2,000: the website filters and maps it, and a small server has little memory.
+LIST_LIMIT = 2000
+STATUSES = ("Pending", "Under Verification", "Accepted", "In Progress", "Resolved", "Rejected")
 CASE_STEP_NOTE = "Updated with case #"
 
 
@@ -283,8 +287,7 @@ def submit_report(
 
 @router.get("")
 def list_reports(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    # The newest 2,000: the website filters and maps this list, and the Render instance has 512 MB.
-    query = select(Report).order_by(Report.created_at.desc()).limit(2000)
+    query = select(Report).order_by(Report.created_at.desc()).limit(LIST_LIMIT)
     if user.role == "resident":
         query = query.where(Report.resident_id == user.id)
         return conditional_json(request, [serialize_report(report) for report in db.scalars(query)], user.id)
@@ -292,6 +295,35 @@ def list_reports(request: Request, db: Session = Depends(get_db), user: User = D
     # Staff only: a suggested priority with its reasons, never shown to residents.
     scores = priority.for_reports(db, reports)
     data = [{**serialize_report(report, staff=True), "priority": scores[report.id]} for report in reports]
+    return conditional_json(request, data, user.id)
+
+
+@router.get("/counts")
+def report_counts(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Overview's figures over every report the caller may see, not only the newest the list sends. Counted as the
+    queue counts: a confirmed case is one row, its earliest report; the category is staff's word, else the
+    resident's, never the model's. Only these columns are read, so a barangay past the list's limit stays cheap."""
+    require_role(user, {"staff", "administrator"})
+    rows = db.execute(
+        select(Report.id, Report.case_id, Report.case_confirmed, Report.status, Report.verified_category,
+               Report.resident_category, Report.created_at).where(barangays.report_filter(db, user))
+    ).all()
+    lead = {}
+    for row in rows:
+        if row.case_id and row.case_confirmed:
+            current = lead.get(row.case_id)
+            if current is None or (row.created_at, row.id) < (current.created_at, current.id):
+                lead[row.case_id] = row
+    shown = [row for row in rows if not (row.case_id and row.case_confirmed) or lead[row.case_id] is row]
+    statuses = Counter(row.status for row in shown)
+    categories = Counter(row.verified_category or row.resident_category for row in shown)
+    data = {
+        "rows": len(shown),
+        "reports": len(rows),
+        "list_limit": LIST_LIMIT,
+        "statuses": {status: statuses.get(status, 0) for status in STATUSES},
+        "categories": {category: categories.get(category, 0) for category in CATEGORIES},
+    }
     return conditional_json(request, data, user.id)
 
 

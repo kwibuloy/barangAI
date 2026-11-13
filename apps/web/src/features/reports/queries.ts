@@ -20,6 +20,28 @@ export const reportKeys = {
   case: (id: string) => ['reports', id, 'case'] as const,
   // Under 'reports' so every report write refreshes the shared map too.
   community: ['reports', 'community'] as const,
+  counts: ['reports', 'counts'] as const,
+}
+
+/** Overview's figures, counted by the server over every report the caller may see; the list stops at its newest. */
+export type ReportCounts = {
+  rows: number
+  reports: number
+  list_limit: number
+  statuses: Record<Status, number>
+  categories: Record<string, number>
+}
+
+export function useReportCounts() {
+  return useQuery({
+    queryKey: reportKeys.counts,
+    queryFn: async () => {
+      const data = await api<ReportCounts>('/reports/counts')
+      // Anything else (an older server, a stand-in in tests) leaves Overview counting the list it has.
+      return typeof data?.rows === 'number' && data.statuses ? data : null
+    },
+    refetchInterval: every(LIVE_REPORTS_MS),
+  })
 }
 
 export function useReports() {

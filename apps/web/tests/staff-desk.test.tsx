@@ -240,6 +240,39 @@ it('opens from each Overview figure a list of exactly that many rows', async () 
   }
 }, 60_000) // Four round trips through two heavy pages.
 
+it('shows true totals from the server when a barangay has more reports than the list holds (P9)', async () => {
+  const counts = {
+    rows: 2400,
+    reports: 2500,
+    list_limit: 2000,
+    statuses: {
+      Pending: 900,
+      'Under Verification': 100,
+      Accepted: 300,
+      'In Progress': 200,
+      Resolved: 850,
+      Rejected: 50,
+    },
+    categories: { potholes: 1234 },
+  }
+  serve(staff, url => (url.endsWith('/reports/counts') ? counts : url.endsWith('/reports') ? GROUPED : []))
+  at('/desk')
+  render(<App />)
+  const figure = (title: string) => screen.getAllByRole('link', { name: new RegExp(title) })[0]
+  // The figures count up to their value, so wait on each one rather than reading it once.
+  await screen.findAllByRole('link', { name: /Total reports/ })
+  for (const [title, value] of [
+    ['Total reports', '2400'],
+    ['Waiting for review', '1000'],
+    ['Being worked on', '500'],
+    ['Resolved', '850'],
+  ]) {
+    await waitFor(() => expect(figure(title)).toHaveTextContent(value), { timeout: 15_000 })
+  }
+  const figureForPotholes = (await screen.findByText('1234', {}, { timeout: 15_000 })).closest('li') as HTMLElement
+  expect(within(figureForPotholes).getByText('Potholes')).toBeInTheDocument()
+}, 60_000) // Figures count up; under a full run the page can be slow to settle.
+
 it('labels the category figures and counts the verified category over the resident one', async () => {
   serve(staff, url => (url.endsWith('/reports') ? GROUPED : []))
   at('/desk')

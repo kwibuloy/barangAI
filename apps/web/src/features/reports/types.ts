@@ -59,7 +59,7 @@ export type Report = {
   /** Staff only: placed by the server from the pin. Null when the pin is outside every boundary. */
   barangay?: string | null
   /** Where the pin came from, as the resident's form reported it. */
-  location_source?: 'photo' | 'device' | 'manual' | null
+  location_source?: 'photo' | 'device' | 'manual' | 'previous' | null
   /** Staff only: checks of the photo against the pin and date. Signals to look closer, never proof. */
   trust_flags?: TrustFlag[]
   addenda?: Addendum[]

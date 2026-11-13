@@ -4,17 +4,17 @@ Started 4 November 2026 from a code, security, UX and market audit. This is the 
 
 **Evidence:** R = reproduced or measured here. C = read in the code. E = outside source (see business-model.md). H = hypothesis, not yet tested.
 
-## Current state (5 November)
+## Current state (13 November)
 
 States: Verified complete, Blocked, Deferred, Ready. The tables below keep each item's evidence and acceptance criteria.
 
 | State | Items |
 | --- | --- |
-| **Verified complete** (branch `improvement/product-audit-implementation`) | B5, B6, P1 (except QR), P2 to P6, P8 to P14, M1 to M10, M12 to M14 (M11: the command only), P7 confirm prompt, plus the demo batch: synthetic story, demo server and label, blur cue, what your barangay fixed, comparison with last month, city rollup. Android-only and screen-reader parts of P2, P4, P11 and P12 need a device: see Blocked. |
+| **Verified complete** (branch `improvement/product-audit-implementation`) | B5, B6, P1 (except QR), P2 to P6, P8, P9, P11 to P15, M2 to M8, M9 download, M10, M12 to M14 (M11: the command only), P7 confirm prompt, the 13 November batch (D14), plus the demo batch: synthetic story, demo server and label, blur cue, what your barangay fixed, comparison with last month, city rollup. Android-only and screen-reader parts of P2, P4, P11 and P12 need a device: see Blocked. |
 | **Verified complete: deliverables** | Business model, pitch contents, video handoff and Q&A. These are documents: none of them shows demand or validation. |
-| **Blocked: owner decision** | Q1 MobileCLIP2 (B1); Q2 rewards (B3); Q3 pilot buyer; Q4 same-Wi-Fi limit (F1); Q5 white or dark text on the primary button (P10: comparison in `.shots/batch5`); P7 unlink, which needs a status-path exception; M11 running the photo move and deleting the stray copies; approval of `visual-check` screenshots; hall reset procedure in `docs/mobile.md`. |
+| **Blocked: owner decision** | Q1 MobileCLIP2 (B1); Q2 rewards (B3), and M1 after it; Q3 pilot buyer; Q4 same-Wi-Fi limit (F1); Q5 white or dark text on the primary button (P10: comparison in `.shots/batch5`); P7 unlink, which needs a status-path exception; M11 (see its row: the photos it would move are missing); approval of `visual-check` screenshots; hall reset procedure in `docs/mobile.md`. |
 | **Blocked: outside this work** | B2 counsel; V1 to V4 and V6 conversations with officials and legal opinions; human Filipino review; test on an Android device, real Rokid Glasses, TalkBack and NVDA; CI jobs first run on GitHub (needs a push). |
-| **Ready, small** | P15 draft edge cases; V5 re-measure AI cost; P1 QR code (needs a library, so an approval); dev-only `npm audit` findings; 2,000-report list cap behind Overview counts. |
+| **Ready, small** | V5 re-measure AI cost; P1 QR code (needs a library, so an approval). |
 | **Deferred** | Section 5 and section 6 below, including B4 (TLS), F1 to F5. |
 
 ## Done in the first batches (4 November)
@@ -33,6 +33,7 @@ States: Verified complete, Blocked, Deferred, Ready. The tables below keep each 
 | D10 | Security and backend batch, API side (B5, B6, P1 API, M1, M3 to M10, M12 to M14; P7 without unlink): see docs/api.md and docs/architecture.md | `test_admin.py`, `test_limits.py`, `test_points_ledger.py`, `test_links_and_polls.py`, `test_export_erasure_ops.py` |
 | D12 | Resident batch: P2, P3, P4, P5, P12, P13 resident side, P14 strings and scan (Filipino review by a person still open), P10 except the primary button, P11 resident side (TalkBack and NVDA not run). Reads refused on a temporary password; a terminal reset makes staff and administrators choose their own; administrators can delete feedback; `backup consolidate-photos` prepared for M11 and not run on real data; M2 | `resident-help.test.tsx`, `contrast.test.ts`, `api-errors-i18n.test.ts`, `mobile-fallback.test.ts`, `test_staff_desk.py`, `test_data_safety.py`, `scripts/journey.mjs`. The Android screens compile but were not run on a device; screenshots await approval |
 | D13 | Demo batch: `seed_demo --story`, `DEMO_MODE` label, `deploy/demo.ps1`, blur counts on the Photo step, "What your barangay fixed", comparison with last month, rollup by barangay (admin only, CSV) | `test_demo_story.py`, `records.test.tsx`, `community.test.tsx`, `ai-form.test.tsx`; screenshots in `.shots/batch6` await approval |
+| D14 | 13 November batch: P15 (each case has a test); P9 (Overview figures from `GET /reports/counts`, every report the caller may see, a grouped case once); dev-only `npm audit` (vitest 3 to 5, puppeteer-core 24 to 25, `npm audit fix` in web and mobile; 6 low and moderate findings left, all inside the shadcn CLI, which only adds components and has no fix yet); M10 speed (pytest-xdist, `-n auto`, approved by the owner); `ReportForm.tsx` split into one file per step under `reports/form/`, `ReportDetail.tsx` into `reports/detail/`, Filipino strings moved to `lib/locales/fil.ts`; M3 to M8 and M10 checked against their acceptance tests | `test_hardening.py` (follow-up pin source), `test_links_and_polls.py` (counts past the list limit, barangay scope, 304; the existing ten-query and 304 tests for M4), `resident-help.test.tsx` (P15), `staff-desk.test.tsx` (true totals); screenshots of the new staff line, Overview and the report steps approved by the owner on 13 November; 501 API tests in 39 to 55 s with `-n auto` (145 s serial), 239 web tests three runs in a row, typecheck, lint, build. Also fixed: the Overview count-up read the frame's own time stamp, which jsdom (and some browsers) take from another clock, so a figure could show a huge negative number or stay at 0 (`count-up.test.tsx`) |
 | D11 | Staff desk batch: P1 (accounts page, first-run checklist, forced password change, phone address as text), P6, P8 (thumbnails, open-only default, saved phrases, save and next, bulk "Start verification"), P9, P11 for staff screens, P13 staff side, M8 screen, P7's confirm prompt (a safety net so far: screens only link pairs staff already confirmed, which skip the check) | `test_staff_desk.py`, `staff-desk.test.tsx`, screenshots awaiting approval |
 
 ## Open: 1. Blockers and current risks
@@ -54,10 +55,8 @@ States: Verified complete, Blocked, Deferred, Ready. The tables below keep each 
 | P6 | Duplicate review shows both photos, distance and date | C | Staff merge blind, and merging moves other residents' status | S-M | Compare without leaving the report | UX |
 | P7 | Grouping can't be undone (the distance check and its prompt are done) | R | A mis-click follows the resident forever and pays points | M | Unlink restores status, points, category and history, audited (status-path exception needs owner) | Backend |
 | P8 | Faster triage: thumbnails, open-only default, saved phrases, save and next | C | Daily staff time, which is what a barangay pays for | S each | Pending to Accepted in two choices and two clicks | UX |
-| P9 | Counts come from the server (figures now equal the lists they open; both stop at the newest 2,000) | C | Lists cut at 2,000 | S-M | A barangay past 2,000 reports still sees true totals | UX |
 | P10 | Contrast left: white on green is 2.09:1 on every primary button. Error text, links, badges, muted text, focus rings and input borders now pass (`contrast.test.ts`) | R (computed) | Hard to read outdoors; fails WCAG AA | S | Owner picks white or dark labels (Q5) and approves the screenshots | UX |
 | P11 | Screen reader checks not run. Report steps move focus to the heading and announce the pin; both sides have route titles, row names and a chart table | C | Accessibility and public-sector credibility | S-M | TalkBack report and NVDA status change completed | UX |
-| P15 | Report form leftovers from the resident batch: clearing the form leaves the stored draft until it expires or is replaced; "Continue" on an old draft drops a pending "Still not fixed"; a carried pin reaches staff with no source (`previous` is stored as none); a browser that can't redraw a photo stores the original, metadata included, in the draft on that device | C | Small gaps, none visible in the normal flow | S | Each has a test | UX |
 | P14 | Filipino review by a person | R | Trust among non-English users | S | A Filipino speaker has read the screens | UX |
 
 ## Open: 3. Business validation (business-model.md)
@@ -76,17 +75,8 @@ States: Verified complete, Blocked, Deferred, Ready. The tables below keep each 
 | ID | Item | Evidence | Effort | Done when |
 | --- | --- | --- | --- | --- |
 | M1 | Points: refund after deletion keeps points for a deleted report; merges pay twice; "a day" is rolling; the daily cap applies at acceptance | R | M | Ledger tests cover these sequences. Do after Q2 |
-| M3 | Product metrics command computed from the database, with no third-party analytics (business-model.md) | C | S | Prints activation, follow-through and retention |
-| M4 | Admin report list: N+1 on barangay names, 1.7 MB every 15 s at 2,000 reports; add indexes; ETag or `?since=` | R | S-M | Ten queries or fewer; unchanged poll returns 304 |
-| M5 | A confirmed duplicate can end with no shared case when linking then fails | R | S | No suggestion confirmed without a case |
-| M6 | Per-address caps so one device can't use the whole site's daily allowance | R | S | One address can't exhaust the signup or report cap |
-| M7 | Weak passwords, slow-lockout, and an identity check for hall resets | R | S | Common passwords refused; written reset procedure |
-| M8 | Admin log of rewards and codes: who priced, redeemed and honoured | R | M | Any code can be traced |
-| M9 | Self-service data download; retention schedule (after B2) | C | M | A resident downloads their data |
-| M10 | Log to a rotating file; faster tests (195 s) with a template database | R | S | Under 90 s; failures survive closing the window |
-| M11 | Move the 24 photos under `apps/api/private_media` into `private_media` (`python -m barangai.backup consolidate-photos`, a dry run unless `--apply`; prepared and tested, not run on real data), then remove the stray `apps/api/barangai-dev.db` and old `barangai-backup.sql` (a plain-text PostgreSQL dump) | R | S | Owner approves deleting them; all photos load |
-| M12 | Dependencies: install with the constraints file; add `pip-audit` and `npm audit` to CI (no Python vulnerability scan has run) | C | S | CI fails on known-vulnerable pins |
-| M13 | Move psycopg2 to an optional extra | C | S | Base install works without it |
+| M9 | Retention schedule (after B2). The self-service download is done (`test_export_erasure_ops.py`) | C | M | A resident downloads their data |
+| M11 | Dry run on 13 November (`python -m barangai.backup consolidate-photos`, read-only): the database the app uses, `barangai-dev.db` in the repo root, points to 32 photos and none is on disk. 24 point to `apps/api/private_media`, which no longer exists, and 8 to `private_media`, which is empty (made 12 November). `apps/api/barangai-dev.db` is gone too. Nothing to move until the photos are found; `barangai-backup.sql` (a plain-text PostgreSQL dump, 3 November) is still in the root | R | S | Owner finds the photos or accepts them lost; owner approves deleting the dump |
 
 ## Open: 5. Longer term
 
@@ -121,6 +111,5 @@ States: Verified complete, Blocked, Deferred, Ready. The tables below keep each 
 - **Q1. MobileCLIP2:** replace it now (recommended), since the licence excludes commercial use and this is now a business?
 - **Q2. Rewards:** keep points in the first paid offer, or sell without public-funded rewards until counsel answers (recommended)?
 - **Q3. Pilot buyer:** Dasmariñas barangays first (recommended), HOAs, or the city?
-- **Q5. Primary button label:** keep white on green (2.09:1, Duolingo's look) or switch to the dark label `#131f24` (recommended on readability, since residents use it outdoors)? Comparison: `.shots/batch5/primary-label-current.png` and `primary-label-dark.png`.
-- **Q5. Primary button text:** white (2.09:1) or dark `#131f24` (recommended)? Comparison in `.shots/batch5/`.
 - **Q4. Same-Wi-Fi limit:** accept that real resident pilots wait on F1 (recommended), or build capture-and-send-later first?
+- **Q5. Primary button label:** keep white on green (2.09:1, Duolingo's look) or switch to the dark label `#131f24` (recommended on readability, since residents use it outdoors)? Comparison: `.shots/batch5/primary-label-current.png` and `primary-label-dark.png`.
